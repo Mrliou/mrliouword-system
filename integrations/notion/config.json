@@ -1,0 +1,31 @@
+{
+  "workspace": "Mrliouword 8♾️Flowagent",
+  "databases": {
+    "system_architecture": "fa847b67-8709-4f95-b720-995014ca6680",
+    "conversations": "indexed_in_docs"
+  },
+  "key_pages": [
+    {
+      "title": "MRLiou層級穿越系統 - 核心組件中心",
+      "id": "2e18eeee-c5b5-8002-ae2c-c634c7e80c5d",
+      "type": "code"
+    },
+    {
+      "title": "分析師雙腦2",
+      "id": "2df8eeee-c5b5-80aa-9a08-c354f2b3cd1b",
+      "type": "persona"
+    },
+    {
+      "title": "MRLiou層級穿越系統 - LAW-0簽名律實現細節",
+      "id": "2afb5af4-0250-407c-922e-25178d5bc920",
+      "type": "law"
+    },
+    {
+      "title": "MRLiou層級穿越系統 - 系統整合指南",
+      "id": "0bc5ed82-45a1-4f44-b10a-63afabe85129",
+      "type": "integration"
+    }
+  ],
+  "origin_signature": "MrLiouWord",
+  "sync_enabled": true
+}
