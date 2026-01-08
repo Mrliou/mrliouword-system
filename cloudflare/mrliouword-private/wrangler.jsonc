@@ -6,7 +6,14 @@
   "kv_namespaces": [
     {
       "binding": "MRLIOUWORD_VAULT",
-      "id": "YOUR_KV_NAMESPACE_ID"
+      "id": "01275832766148bfbcaa00ee4aeb9946"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "MRLIOUWORD_DB",
+      "database_name": "mrliouword-db",
+      "database_id": "7980baaf-48d3-43cc-8be7-dd8c9590f3d1"
     }
   ],
   "r2_buckets": [
