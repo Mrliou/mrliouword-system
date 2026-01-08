@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "particle-auth-gateway",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-01",
+  "kv_namespaces": [
+    {
+      "binding": "PARTICLE_AUTH_VAULT",
+      "id": "8cd99b4a67f74afea367f394995d5c50"
+    }
+  ]
+}
