@@ -1,0 +1,19 @@
+{
+  "name": "mrliouword-private",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "kv_namespaces": [
+    {
+      "binding": "MRLIOUWORD_VAULT",
+      "id": "8cd99b4a67f74afea367f394995d5c50"
+    }
+  ],
+  "vars": {
+    "MASTER_KEY": ""
+  }
+}
