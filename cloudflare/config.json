@@ -1,0 +1,39 @@
+{
+  "account": "dofaromg",
+  "workers": {
+    "mrliouword-private": {
+      "url": "https://mrliouword-private.mrliou.workers.dev",
+      "description": "Private AI Server - 記憶/人格/吸收/掃描"
+    },
+    "particle-auth-gateway": {
+      "url": "https://particle-auth-gateway.mrliou.workers.dev",
+      "description": "粒子認證網關 - 統一身份投影"
+    },
+    "mrliouword": {
+      "url": "https://mrliouword.mrliou.workers.dev",
+      "description": "主入口"
+    }
+  },
+  "kv_namespaces": {
+    "mrliouword-vault": {
+      "id": "01275832766148bfbcaa00ee4aeb9946",
+      "description": "記憶存儲"
+    },
+    "particle-auth-vault": {
+      "id": "8cd99b4a67f74afea367f394995d5c50",
+      "description": "認證存儲"
+    }
+  },
+  "d1_databases": {
+    "mrliouword-db": {
+      "id": "7980baaf-48d3-43cc-8be7-dd8c9590f3d1",
+      "tables": ["memories", "particles", "personas", "absorbed"]
+    }
+  },
+  "r2_buckets": {
+    "mrlioubook": {
+      "description": "檔案存儲"
+    }
+  },
+  "origin_signature": "MrLiouWord"
+}
