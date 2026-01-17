@@ -181,12 +181,42 @@ Expected response format:
 ```json
 {
   "name": "MrliouWord Private AI Server",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "philosophy": "怎麼過去，就怎麼回來",
   "endpoints": ["GET /status", "POST /wake", "..."],
   "origin": "MrLiouWord"
 }
 ```
+
+## Security Notes
+
+### Dependency Vulnerabilities
+
+The project may show npm audit warnings for development dependencies. These are typically:
+- **esbuild**: Development server vulnerabilities (not applicable in production Workers)
+- **miniflare**: Local development tool (not deployed)
+
+To update dependencies and address vulnerabilities:
+
+```bash
+cd cloudflare/mrliouword-private
+npm audit fix
+```
+
+### GitHub Secrets Security
+
+- **Never commit** API tokens or secrets to the repository
+- Use GitHub Secrets for all sensitive credentials
+- Rotate API tokens regularly
+- Use scoped tokens with minimal required permissions
+
+### Cloudflare Worker Security
+
+The deployed Workers run in Cloudflare's edge network with built-in security features:
+- Automatic DDoS protection
+- TLS/SSL by default
+- Isolated V8 execution environment
+- No access to local filesystem
 
 ## Additional Resources
 
