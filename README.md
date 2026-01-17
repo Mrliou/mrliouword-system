@@ -79,11 +79,23 @@ mrliouword-system/
 
 ---
 
+## 🔧 部署指南
+
+詳細的部署說明請參考 [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+**快速開始**：
+1. 配置 GitHub Secrets (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`)
+2. 在 Cloudflare 創建所需資源 (KV, D1, R2)
+3. 推送到 `main` 分支自動部署
+
+---
+
 ## 🔗 相關連結
 
 - **GitHub Repos**: 153+ repositories ([索引](./docs/REPOS_INDEX.md))
 - **Notion 工作區**: Mrliouword 8♾️Flowagent
 - **對話索引**: [conversations/INDEX.md](./docs/conversations/INDEX.md)
+- **部署指南**: [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ---
 
