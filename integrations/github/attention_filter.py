@@ -86,7 +86,7 @@ class AttentionBasedFilter:
         # 為每個粒子生成向量表示
         particle_vectors = {}
         for particle in particles:
-            vector = self._particleto_vector(particle, use_frequency)
+            vector = self._particle_to_vector(particle, use_frequency)
             particle_vectors[particle['id']] = vector
         
         # 計算兩兩之間的注意力
