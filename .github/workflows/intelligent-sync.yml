@@ -1,0 +1,205 @@
+name: Intelligent Repository Sync
+
+on:
+  schedule:
+    # 每週一 UTC 00:00 執行
+    - cron: '0 0 * * 1'
+  
+  workflow_dispatch:
+    inputs:
+      pattern:
+        description: '指定要同步的邏輯模式（可選）'
+        required: false
+        type: string
+      repository:
+        description: '指定要同步的倉庫名稱（可選）'
+        required: false
+        type: string
+      dry_run:
+        description: '乾運行（不實際提交）'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  validate-config:
+    name: 驗證配置檔案
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+      
+      - name: Validate config
+        run: |
+          python scripts/sync_config_validator.py intelligent_sync.yaml
+
+  intelligent-sync:
+    name: 智能同步
+    runs-on: ubuntu-latest
+    needs: validate-config
+    permissions:
+      contents: write  # 需要寫入權限以提交粒子
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 需要完整歷史以便 Merkle 驗證
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          pip install pyyaml numpy
+      
+      - name: Configure Git
+        run: |
+          git config user.name "MrLiouWord System"
+          git config user.email "system@mrliouword.dev"
+      
+      - name: Run Intelligent Sync
+        run: |
+          # 構建命令
+          CMD="python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml"
+          
+          # 添加可選參數
+          if [ -n "${{ github.event.inputs.pattern }}" ]; then
+            CMD="$CMD --pattern '${{ github.event.inputs.pattern }}'"
+          fi
+          
+          if [ -n "${{ github.event.inputs.repository }}" ]; then
+            CMD="$CMD --repo '${{ github.event.inputs.repository }}'"
+          fi
+          
+          # 執行同步
+          eval $CMD
+        
+        env:
+          # 如果需要訪問私有倉庫，可以在這裡添加 token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Commit synced particles
+        if: ${{ !github.event.inputs.dry_run }}
+        run: |
+          # 添加新增的粒子記憶
+          git add particle_memory/
+          
+          # 檢查是否有變更
+          if git diff --cached --quiet; then
+            echo "沒有新的粒子需要提交"
+            exit 0
+          fi
+          
+          # 構建提交訊息
+          COMMIT_MSG="🌀 Intelligent sync: "
+          
+          if [ -n "${{ github.event.inputs.pattern }}" ]; then
+            COMMIT_MSG="${COMMIT_MSG}pattern=${{ github.event.inputs.pattern }}"
+          elif [ -n "${{ github.event.inputs.repository }}" ]; then
+            COMMIT_MSG="${COMMIT_MSG}repo=${{ github.event.inputs.repository }}"
+          else
+            COMMIT_MSG="${COMMIT_MSG}$(date +'%Y-%m-%d')"
+          fi
+          
+          # 提交並推送
+          git commit -m "$COMMIT_MSG"
+          git push
+      
+      - name: Generate sync report
+        if: always()
+        run: |
+          # 生成同步報告
+          python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml --stats > sync_report.txt
+          cat sync_report.txt
+      
+      - name: Upload sync report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-report-${{ github.run_number }}
+          path: sync_report.txt
+          retention-days: 30
+
+  verify-integrity:
+    name: 驗證 Merkle 鏈完整性
+    runs-on: ubuntu-latest
+    needs: intelligent-sync
+    if: ${{ !github.event.inputs.dry_run }}
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Verify Merkle Chain
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, 'core')
+          from merkle import MerkleChain
+          
+          chain = MerkleChain('./particle_memory/chain')
+          valid, errors = chain.verify()
+          
+          if valid:
+              print('✅ Merkle 鏈完整性驗證通過')
+              sys.exit(0)
+          else:
+              print('❌ Merkle 鏈驗證失敗:')
+              for error in errors:
+                  print(f'  - {error}')
+              sys.exit(1)
+          "
+
+  notify:
+    name: 通知
+    runs-on: ubuntu-latest
+    needs: [intelligent-sync, verify-integrity]
+    if: always() && !github.event.inputs.dry_run
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Summary
+        run: |
+          echo "## 🌀 Intelligent Repository Sync 完成" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **觸發方式**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **執行時間**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -n "${{ github.event.inputs.pattern }}" ]; then
+            echo "- **模式過濾**: ${{ github.event.inputs.pattern }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -n "${{ github.event.inputs.repository }}" ]; then
+            echo "- **倉庫過濾**: ${{ github.event.inputs.repository }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "檢查 [同步報告](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) 以獲取詳細信息。" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,95 @@
+# MrLiouWord Intelligent Repository Sync Configuration
+# 智能倉庫同步配置檔案
+# 
+# 哲學：怎麼過去，就怎麼回來
+# 基於邏輯架構原理的全域智能同步
+
+settings:
+  # 基礎設定
+  scan_mode: "global"  # global | targeted - 全域掃描或目標檔案
+  sync_strategy: "logical_pattern"  # logical_pattern | file_based - 邏輯模式或檔案匹配
+  
+  # 邏輯架構匹配
+  pattern_matching:
+    enabled: true
+    patterns:
+      - "attention_mechanism"      # 注意力機制
+      - "memory_system"            # 記憶系統
+      - "particle_engine"          # 粒子引擎
+      - "frequency_resonance"      # 頻率共振
+      - "merkle_chain"             # Merkle 鏈
+      - "logical_reasoning"        # 邏輯推理
+    
+  # 粒子化記憶
+  particle_memory:
+    enabled: true
+    storage_path: "./particle_memory"  # 粒子存儲路徑
+    simhash_threshold: 3               # Hamming 距離閾值（0-64）
+    layer_mapping:
+      concepts: "L1"      # 概念 -> L1 原子粒子層
+      patterns: "L2"      # 模式 -> L2 原型模組層
+      functions: "L3"     # 函數 -> L3 封裝層
+      reasoning: "L4"     # 推理 -> L4 拓撲跳點層
+  
+  # 注意力機制
+  attention:
+    enabled: true
+    dimension: 64                # 向量維度
+    num_heads: 8                 # 多頭注意力頭數
+    similarity_threshold: 0.75   # 相似度閾值（0-1）
+    use_frequency_resonance: true  # 啟用頻率共振匹配
+
+# 倉庫配置
+repositories:
+  # 示例：flow-tasks 粒子核心
+  - name: "flow-tasks-particle-core"
+    url: "https://github.com/dofaromg/flow-tasks.git"
+    branch: "main"
+    enabled: true
+    
+    # 邏輯架構匹配（不指定具體檔案，全域掃描）
+    logical_patterns:
+      - pattern: "attention_mechanism"
+        description: "注意力機制相關實現"
+        target_layer: "L2"
+      
+      - pattern: "logical_reasoning"
+        description: "邏輯結構提取器"
+        target_layer: "L4"
+      
+      - pattern: "particle_engine"
+        description: "粒子引擎核心"
+        target_layer: "L1"
+      
+      - pattern: "memory_system"
+        description: "記憶系統實現"
+        target_layer: "L3"
+
+  # 示例：其他倉庫（預設禁用）
+  - name: "example-repo"
+    url: "https://github.com/example/repo.git"
+    branch: "main"
+    enabled: false
+    
+    logical_patterns:
+      - pattern: "frequency_resonance"
+        description: "頻率共振相關代碼"
+        target_layer: "L5"
+
+# 進階設定
+advanced:
+  # 備份設定
+  backup:
+    enabled: true
+    path: "./backups"
+    keep_last: 10  # 保留最近 10 次備份
+  
+  # 日誌設定
+  logging:
+    level: "INFO"  # DEBUG | INFO | WARNING | ERROR
+    file: "./logs/sync.log"
+  
+  # 並發設定
+  concurrency:
+    max_workers: 4  # 最大並發數
+    timeout: 300    # 超時時間（秒）
