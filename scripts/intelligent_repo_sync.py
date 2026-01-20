@@ -464,15 +464,15 @@ async def main():
     # Validate limit if provided
     if args.limit is not None:
         if args.limit < 1 or args.limit > 100:
-            parser.error("--limit must be an integer between 1 and 100")
+            parser.error("--limit must be an integer from 1 to 100 (inclusive)")
     
     # Sanitize and validate pattern if provided
     if args.pattern is not None:
         sanitized_pattern = args.pattern.strip()
         if not sanitized_pattern:
             parser.error("--pattern must not be empty or whitespace-only")
-        # Basic control-character check to avoid malformed patterns
-        if any(ord(ch) < 32 for ch in sanitized_pattern):
+        # Check for control characters (ASCII < 32 or DEL = 127)
+        if any(ord(ch) < 32 or ord(ch) == 127 for ch in sanitized_pattern):
             parser.error("--pattern contains invalid control characters")
         args.pattern = sanitized_pattern
     

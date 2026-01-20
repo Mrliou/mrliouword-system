@@ -27,6 +27,7 @@ import os
 import sys
 import json
 import logging
+import hashlib
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -285,7 +286,6 @@ class ParticleNamingEngine:
                 # Sanitize repo name - preserve more structure with hash for collision prevention
                 repo_clean = re.sub(r'[^a-z0-9]+', '_', repo_name.lower())
                 # Add hash suffix to prevent unintended collisions from aggressive sanitization
-                import hashlib
                 repo_hash = hashlib.md5(repo_name.encode()).hexdigest()[:4]
                 repo_clean_with_hash = f"{repo_clean[:16]}_{repo_hash}"
                 suffix_parts.append(repo_clean_with_hash)
