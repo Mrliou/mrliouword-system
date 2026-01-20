@@ -88,19 +88,23 @@ jobs:
             # Extract summary
             python -c "
           import json, sys
-          with open('$LATEST_REPORT') as f:
-              report = json.load(f)
-              print(f\"**Pattern:** {report['pattern']}\")
-              print(f\"**GitHub Results:** {report['github_results']}\")
-              print(f\"**Particles Created:** {report['particles_created']}\")
-              print(f\"**Particles Merged:** {report['particles_merged']}\")
-              print(f\"**Naming Decisions:** {report['naming_decisions']}\")
-              if report.get('test_results'):
-                  tr = report['test_results']
-                  if 'passed' in tr:
-                      print(f\"**Tests:** {tr['passed']}/{tr['total']} passed\")
-              if report.get('errors'):
-                  print(f\"**Errors:** {len(report['errors'])}\")
+          try:
+              with open('$LATEST_REPORT') as f:
+                  report = json.load(f)
+                  print(f\"**Pattern:** {report.get('pattern', 'N/A')}\")
+                  print(f\"**GitHub Results:** {report.get('github_results', 0)}\")
+                  print(f\"**Particles Created:** {report.get('particles_created', 0)}\")
+                  print(f\"**Particles Merged:** {report.get('particles_merged', 0)}\")
+                  print(f\"**Naming Decisions:** {report.get('naming_decisions', 0)}\")
+                  if report.get('test_results'):
+                      tr = report['test_results']
+                      if 'passed' in tr and 'total' in tr:
+                          print(f\"**Tests:** {tr['passed']}/{tr['total']} passed\")
+                  if report.get('errors'):
+                      print(f\"**Errors:** {len(report['errors'])}\")
+          except Exception as e:
+              print(f\"Error reading report: {e}\")
+              sys.exit(0)
           " >> $GITHUB_STEP_SUMMARY
             
             echo "" >> $GITHUB_STEP_SUMMARY

@@ -174,7 +174,12 @@ class GitHubSearchEngine:
             if response.status_code == 200:
                 import base64
                 content_b64 = response.json().get('content', '')
-                return base64.b64decode(content_b64).decode('utf-8', errors='ignore')
+                try:
+                    return base64.b64decode(content_b64).decode('utf-8')
+                except UnicodeDecodeError:
+                    # Use replacement for invalid UTF-8
+                    logger.warning(f"Replacing invalid UTF-8 in {url}")
+                    return base64.b64decode(content_b64).decode('utf-8', errors='replace')
         except Exception as e:
             logger.debug(f"Content fetch error: {e}")
         return None
