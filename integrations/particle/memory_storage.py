@@ -33,7 +33,7 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../'))
 
-from core.simhash64 import simhash64, hamming_distance, is_similar
+from core.simhash64 import simhash64, hamming_distance
 from core.merkle import MerkleChain
 
 logging.basicConfig(level=logging.INFO)

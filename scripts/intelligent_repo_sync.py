@@ -235,17 +235,17 @@ class IntelligentRepoSync:
                     for s in structures]
             
             similarity_threshold = self.config.get('attention', {}).get('similarity_threshold', 0.5)
-            attention_scores = self.attention_filter.filter_by_attention(
+            # Compute attention scores for logging (results not currently used)
+            scores = self.attention_filter.filter_by_attention(
                 texts,
                 threshold=similarity_threshold
             )
             
-            logger.info(f"Found {len(attention_scores)} similar pairs")
+            logger.info(f"Found {len(scores)} similar pairs")
             
         except Exception as e:
             logger.error(f"Attention error: {e}")
             self.errors.append(f"Attention computation error: {str(e)}")
-            attention_scores = []
         
         # Step 4: Test particle access (7 tests)
         test_results = {}
@@ -460,6 +460,21 @@ async def main():
     )
     
     args = parser.parse_args()
+    
+    # Validate limit if provided
+    if args.limit is not None:
+        if args.limit < 1 or args.limit > 100:
+            parser.error("--limit must be an integer between 1 and 100")
+    
+    # Sanitize and validate pattern if provided
+    if args.pattern is not None:
+        sanitized_pattern = args.pattern.strip()
+        if not sanitized_pattern:
+            parser.error("--pattern must not be empty or whitespace-only")
+        # Basic control-character check to avoid malformed patterns
+        if any(ord(ch) < 32 for ch in sanitized_pattern):
+            parser.error("--pattern contains invalid control characters")
+        args.pattern = sanitized_pattern
     
     # Initialize orchestrator
     sync = IntelligentRepoSync(config_path=args.config)

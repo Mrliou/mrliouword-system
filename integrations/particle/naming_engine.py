@@ -35,8 +35,6 @@ import re
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../'))
 
-from core.simhash64 import simhash64
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -284,14 +282,20 @@ class ParticleNamingEngine:
         if source_info:
             if 'repo' in source_info:
                 repo_name = source_info['repo'].split('/')[-1]
-                # Sanitize repo name
+                # Sanitize repo name - preserve more structure with hash for collision prevention
                 repo_clean = re.sub(r'[^a-z0-9]+', '_', repo_name.lower())
-                suffix_parts.append(repo_clean[:20])
+                # Add hash suffix to prevent unintended collisions from aggressive sanitization
+                import hashlib
+                repo_hash = hashlib.md5(repo_name.encode()).hexdigest()[:4]
+                repo_clean_with_hash = f"{repo_clean[:16]}_{repo_hash}"
+                suffix_parts.append(repo_clean_with_hash)
         
         # Build base name
         if suffix_parts:
             suffix = '_'.join(suffix_parts[:3])  # Limit to 3 parts
             suffix = re.sub(r'[^a-z0-9_]+', '_', suffix.lower())
+            # Remove consecutive underscores that might be created
+            suffix = re.sub(r'_+', '_', suffix).strip('_')
             base_name = f"{particle_type}.{suffix}"
         else:
             base_name = particle_type

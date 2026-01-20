@@ -54,18 +54,35 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "${{ github.event.inputs.pattern }}" ]; then
+          PATTERN="${{ github.event.inputs.pattern }}"
+          LIMIT="${{ github.event.inputs.limit || 30 }}"
+
+          # Validate LIMIT: must be a non-negative integer
+          if ! echo "$LIMIT" | grep -Eq '^[0-9]+$'; then
+            echo "Invalid limit input: '$LIMIT'. Only non-negative integers are allowed."
+            exit 1
+          fi
+
+          # Validate PATTERN if provided: allow only safe characters to avoid shell injection
+          if [ -n "$PATTERN" ]; then
+            if ! echo "$PATTERN" | grep -Eq '^[A-Za-z0-9_.:/\- ]*$'; then
+              echo "Invalid pattern input. Only letters, digits, space, '.', '_', '-', '/', and ':' are allowed."
+              exit 1
+            fi
+          fi
+
+          if [ -n "$PATTERN" ]; then
             # Sync specific pattern
             python scripts/intelligent_repo_sync.py \
               --config intelligent_sync.yaml \
-              --pattern "${{ github.event.inputs.pattern }}" \
-              --limit ${{ github.event.inputs.limit || 30 }}
+              --pattern "$PATTERN" \
+              --limit "$LIMIT"
           else
             # Sync all patterns
             python scripts/intelligent_repo_sync.py \
               --config intelligent_sync.yaml \
               --all \
-              --limit ${{ github.event.inputs.limit || 30 }}
+              --limit "$LIMIT"
           fi
       
       - name: Run particle tests
@@ -85,27 +102,8 @@ jobs:
             echo "### Latest Sync" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
-            # Extract summary
-            python -c "
-          import json, sys
-          try:
-              with open('$LATEST_REPORT') as f:
-                  report = json.load(f)
-                  print(f\"**Pattern:** {report.get('pattern', 'N/A')}\")
-                  print(f\"**GitHub Results:** {report.get('github_results', 0)}\")
-                  print(f\"**Particles Created:** {report.get('particles_created', 0)}\")
-                  print(f\"**Particles Merged:** {report.get('particles_merged', 0)}\")
-                  print(f\"**Naming Decisions:** {report.get('naming_decisions', 0)}\")
-                  if report.get('test_results'):
-                      tr = report['test_results']
-                      if 'passed' in tr and 'total' in tr:
-                          print(f\"**Tests:** {tr['passed']}/{tr['total']} passed\")
-                  if report.get('errors'):
-                      print(f\"**Errors:** {len(report['errors'])}\")
-          except Exception as e:
-              print(f\"Error reading report: {e}\")
-              sys.exit(0)
-          " >> $GITHUB_STEP_SUMMARY
+            # Extract summary using dedicated script
+            REPORT_PATH="$LATEST_REPORT" python scripts/generate_summary.py >> $GITHUB_STEP_SUMMARY
             
             echo "" >> $GITHUB_STEP_SUMMARY
           else
@@ -135,8 +133,8 @@ jobs:
       - name: Commit changes
         if: success()
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           
           # Add particle memory
           git add particle_memory/ || true
