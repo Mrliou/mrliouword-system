@@ -247,8 +247,9 @@ class AttentionBasedFilter:
                     vector[i] = 1.0
                 else:
                     vector[i] = -1.0
-        except:
-            pass
+        except (ValueError, TypeError) as e:
+            # 如果 SimHash 格式無效，使用零向量
+            print(f"警告：無效的 SimHash 格式: {simhash}")
         
         # 頻率特徵（如果向量維度 > 64）
         if use_frequency and self.dimension > 64:

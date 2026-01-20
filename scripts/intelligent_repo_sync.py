@@ -130,7 +130,7 @@ class IntelligentRepoSync:
                         continue
                     
                     try:
-                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                             code = f.read()
                         
                         # 提取邏輯架構

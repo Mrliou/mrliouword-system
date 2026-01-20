@@ -103,8 +103,12 @@ class ParticleMemoryManager:
     def _load_index(self) -> Dict[str, str]:
         """載入粒子索引 (SimHash -> Particle ID)"""
         if os.path.exists(self.index_file):
-            with open(self.index_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            try:
+                with open(self.index_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"警告：載入索引失敗 {self.index_file}: {e}")
+                return {}
         return {}
     
     def _save_index(self):
@@ -156,8 +160,8 @@ class ParticleMemoryManager:
         # 獲取前一粒子的 Merkle
         prev = self.merkle_chain.head
         
-        # 計算 Merkle 雜湊
-        merkle_input = f"{content}{content_hash}{timestamp}{prev}"
+        # 計算 Merkle 雜湊（使用分隔符防止碰撞）
+        merkle_input = f"{content}|{content_hash}|{timestamp}|{prev}"
         merkle = sha256_str(merkle_input)
         
         particle = CodeParticle(

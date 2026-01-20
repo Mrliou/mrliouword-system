@@ -139,7 +139,10 @@ class LogicalStructureExtractor:
                 elif isinstance(node, ast.ImportFrom):
                     module = node.module or ''
                     for alias in node.names:
-                        structure['imports'].append(f"{module}.{alias.name}")
+                        if module:
+                            structure['imports'].append(f"{module}.{alias.name}")
+                        else:
+                            structure['imports'].append(alias.name)
                 
                 # 提取函數和類
                 elif isinstance(node, ast.FunctionDef):

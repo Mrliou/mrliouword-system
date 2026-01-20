@@ -206,7 +206,7 @@ class SyncConfigValidator:
         
         # URL 格式
         url = repo.get('url', '')
-        if url and not (url.startswith('http://') or url.startswith('https://')):
+        if url and not (url.startswith('http://') or url.startswith('https://') or url.startswith('git@')):
             self.errors.append(f"{prefix}: 無效的 URL 格式: {url}")
         
         # 邏輯模式配置
