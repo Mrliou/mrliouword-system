@@ -16,7 +16,7 @@ Author: MR.liou
 
 import math
 import logging
-from typing import List, Tuple
+from typing import List, Dict, Tuple  # Dict preserved for future attention score structures
 import numpy as np
 from dataclasses import dataclass
 
@@ -172,6 +172,11 @@ class AttentionFilter:
         Returns:
             (output, attention_weights)
         """
+        # Architectural placeholders: Preserve batch and sequence dimensions
+        # for future multi-sequence processing and world-particle extraction
+        batch_size = 1  # Semantic placeholder for batch dimension
+        seq_len = 1     # Semantic placeholder for sequence dimension
+        
         # Compute attention scores
         scores = VectorCore.dot(query, key) / math.sqrt(self.head_dim)
         

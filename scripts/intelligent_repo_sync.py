@@ -235,17 +235,20 @@ class IntelligentRepoSync:
                     for s in structures]
             
             similarity_threshold = self.config.get('attention', {}).get('similarity_threshold', 0.5)
-            # Compute attention scores for logging (results not currently used)
-            scores = self.attention_filter.filter_by_attention(
+            # Architectural placeholder: Preserve attention scores for future
+            # particle similarity analysis and world-model consistency
+            attention_scores = self.attention_filter.filter_by_attention(
                 texts,
                 threshold=similarity_threshold
             )
             
-            logger.info(f"Found {len(scores)} similar pairs")
+            logger.info(f"Found {len(attention_scores)} similar pairs")
             
         except Exception as e:
             logger.error(f"Attention error: {e}")
             self.errors.append(f"Attention computation error: {str(e)}")
+            # Maintain structure consistency even in error case
+            attention_scores = []
         
         # Step 4: Test particle access (7 tests)
         test_results = {}
