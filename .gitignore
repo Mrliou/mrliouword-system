@@ -1,48 +1,45 @@
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-yarn.lock
-.pnpm-debug.log*
+# Particle system runtime
+particle_memory/
+naming_history/
+test_results/
+sync_reports/
+test_temp/
+test_naming_temp/
+test_storage/
+test_particles/
+test_particles_output/
+*_temp/
 
-# Wrangler
-.wrangler/
-.dev.vars
-wrangler.toml.bak
-
-# TypeScript
-*.tsbuildinfo
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
 dist/
 build/
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# OS files
-.DS_Store
-Thumbs.db
+# Virtual environments
+venv/
+env/
+ENV/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
 # Logs
-logs/
 *.log
+intelligent_sync.log
 
-# Temporary files
-tmp/
-temp/
-*.tmp
+# OS
+.DS_Store
+Thumbs.db
 
-# Build artifacts
-*.zip
-*.tar.gz
-!*.tar.gz.sha256
+# Test outputs
+.pytest_cache/
+.coverage
+htmlcov/

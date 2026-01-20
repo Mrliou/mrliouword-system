@@ -1,0 +1,218 @@
+# Intelligent GitHub Synchronization Configuration
+# ==============================================
+# MrLiouWord Global Logical Architecture Sync System
+#
+# Philosophy: 怎麼過去，就怎麼回來 (What goes around, comes around)
+
+# GitHub Search Configuration
+github:
+  # Minimum repository stars
+  min_stars: 10
+  
+  # Languages to search
+  languages:
+    - Python
+    - TypeScript
+    - JavaScript
+    - Go
+    - Rust
+    - Java
+  
+  # Exclude forked repositories
+  exclude_forks: true
+  
+  # Maximum results per pattern
+  max_results: 30
+  
+  # Rate limit handling
+  rate_limit:
+    enabled: true
+    max_requests_per_minute: 30
+
+# Patterns to Search
+patterns:
+  # Attention mechanisms
+  - "attention mechanism"
+  - "multi-head attention"
+  - "self-attention"
+  
+  # Memory systems
+  - "memory system"
+  - "cache mechanism"
+  - "key-value store"
+  
+  # Merkle trees
+  - "merkle tree"
+  - "hash tree"
+  - "blockchain verification"
+  
+  # Particle systems
+  - "particle system"
+  - "quantum computing"
+  - "wave function"
+  
+  # Flow systems
+  - "data pipeline"
+  - "workflow orchestration"
+  - "stream processing"
+  
+  # Layer architectures
+  - "layered architecture"
+  - "hierarchical system"
+  - "multi-tier"
+
+# Particle Memory Configuration
+particle_memory:
+  # Storage path
+  storage_path: "./particle_memory"
+  
+  # SimHash deduplication threshold (Hamming distance)
+  simhash_threshold: 3
+  
+  # Layer assignment by similarity score
+  layer_assignment:
+    L1: 0.9   # ≥0.9 → L1 (highest quality)
+    L2: 0.75  # ≥0.75 → L2
+    L3: 0.6   # ≥0.6 → L3
+    L4: 0.4   # ≥0.4 → L4
+    L5: 0.0   # <0.4 → L5 (lowest quality)
+  
+  # Frequency constants (Hz)
+  frequencies:
+    SCHUMANN: 7.83
+    PHI: 1.618033988749895
+    L7: 127.45  # SCHUMANN * PHI^6
+    L6: 78.76   # SCHUMANN * PHI^5
+    L5: 48.69   # SCHUMANN * PHI^4
+    L4: 30.09   # SCHUMANN * PHI^3
+    L3: 18.60   # SCHUMANN * PHI^2
+    L2: 11.49   # SCHUMANN * PHI
+    L1: 7.83    # SCHUMANN
+    L0: 4.84    # SCHUMANN / PHI
+  
+  # Merkle chain configuration
+  merkle:
+    enabled: true
+    verify_on_commit: true
+
+# Testing Configuration
+testing:
+  # Enable particle testing
+  enabled: true
+  
+  # Test storage path
+  storage_path: "./test_results"
+  
+  # 7 Critical Tests
+  tests:
+    - write_test          # Test 1: Write verification
+    - read_test           # Test 2: Read verification
+    - simhash_collision   # Test 3: SimHash collision detection
+    - merkle_integrity    # Test 4: Merkle chain integrity
+    - layer_retrieval     # Test 5: Layer-based retrieval
+    - tag_search          # Test 6: Tag-based search
+    - frequency_resonance # Test 7: Frequency resonance
+  
+  # Run tests on sync
+  run_on_sync: true
+
+# Naming Configuration
+naming:
+  # Naming history storage
+  storage_path: "./naming_history"
+  
+  # Auto-version on conflicts
+  auto_version: true
+  
+  # Naming rules (pattern -> particle type)
+  rules:
+    attention: "fx.pattern.attention"
+    memory: "fx.pattern.memory"
+    merkle: "fx.pattern.chain"
+    chain: "fx.pattern.chain"
+    particle: "fx.pattern.particle"
+    flow: "fx.flow.pipeline"
+    layer: "fx.pattern.hierarchical"
+    
+    # Concept-based rules
+    distributed: "fx.system.distributed"
+    concurrent: "fx.system.concurrent"
+    reactive: "fx.pattern.reactive"
+    functional: "fx.paradigm.functional"
+    graph: "fx.structure.graph"
+    state: "fx.pattern.state"
+    vector: "fx.math.vector"
+    neural: "fx.ai.neural"
+    crypto: "fx.security.crypto"
+    consensus: "fx.protocol.consensus"
+  
+  # Default type
+  default_type: "fx.logic.general"
+
+# Attention Filter Configuration
+attention:
+  # Embedding dimension
+  embedding_dim: 128
+  
+  # Number of attention heads
+  num_heads: 4
+  
+  # Similarity threshold
+  similarity_threshold: 0.5
+  
+  # Frequency-based embedding
+  use_frequency_embedding: true
+  base_frequency: 7.83  # Schumann resonance
+
+# Sync Scheduling
+schedule:
+  # Enable scheduled sync
+  enabled: true
+  
+  # Cron expression (weekly on Monday at 00:00 UTC)
+  cron: "0 0 * * 1"
+  
+  # Timezone
+  timezone: "UTC"
+
+# Reporting
+reporting:
+  # Report output directory
+  output_dir: "./sync_reports"
+  
+  # Report format
+  format: "json"
+  
+  # Include detailed logs
+  include_logs: true
+  
+  # Upload to GitHub as artifact
+  upload_artifact: true
+
+# Logging
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"
+  
+  # Log file
+  file: "./intelligent_sync.log"
+  
+  # Console output
+  console: true
+
+# Advanced Settings
+advanced:
+  # Parallel processing
+  parallel:
+    enabled: true
+    max_workers: 4
+  
+  # Cache settings
+  cache:
+    enabled: true
+    ttl_seconds: 3600
+  
+  # Retry settings
+  retry:
+    max_attempts: 3
+    backoff_seconds: 5

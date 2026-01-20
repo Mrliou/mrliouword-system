@@ -1,0 +1,162 @@
+name: Intelligent GitHub Sync
+
+on:
+  # Weekly schedule (Monday at 00:00 UTC)
+  schedule:
+    - cron: '0 0 * * 1'
+  
+  # Manual trigger with pattern selection
+  workflow_dispatch:
+    inputs:
+      pattern:
+        description: 'Search pattern (leave empty for all patterns)'
+        required: false
+        type: string
+      limit:
+        description: 'Maximum results per pattern'
+        required: false
+        type: number
+        default: 30
+      run_tests:
+        description: 'Run particle tests'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  intelligent-sync:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      actions: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pyyaml numpy
+      
+      - name: Verify core modules
+        run: |
+          python -c "from core.simhash64 import simhash64; print('✓ simhash64')"
+          python -c "from core.merkle import MerkleChain; print('✓ merkle')"
+      
+      - name: Run intelligent sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ github.event.inputs.pattern }}" ]; then
+            # Sync specific pattern
+            python scripts/intelligent_repo_sync.py \
+              --config intelligent_sync.yaml \
+              --pattern "${{ github.event.inputs.pattern }}" \
+              --limit ${{ github.event.inputs.limit || 30 }}
+          else
+            # Sync all patterns
+            python scripts/intelligent_repo_sync.py \
+              --config intelligent_sync.yaml \
+              --all \
+              --limit ${{ github.event.inputs.limit || 30 }}
+          fi
+      
+      - name: Run particle tests
+        if: ${{ github.event.inputs.run_tests != 'false' }}
+        run: |
+          python integrations/particle/test_recorder.py
+      
+      - name: Generate summary report
+        run: |
+          echo "## Intelligent Sync Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Find latest sync report
+          LATEST_REPORT=$(ls -t sync_reports/*.json 2>/dev/null | head -1)
+          
+          if [ -f "$LATEST_REPORT" ]; then
+            echo "### Latest Sync" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Extract summary
+            python -c "
+          import json, sys
+          with open('$LATEST_REPORT') as f:
+              report = json.load(f)
+              print(f\"**Pattern:** {report['pattern']}\")
+              print(f\"**GitHub Results:** {report['github_results']}\")
+              print(f\"**Particles Created:** {report['particles_created']}\")
+              print(f\"**Particles Merged:** {report['particles_merged']}\")
+              print(f\"**Naming Decisions:** {report['naming_decisions']}\")
+              if report.get('test_results'):
+                  tr = report['test_results']
+                  if 'passed' in tr:
+                      print(f\"**Tests:** {tr['passed']}/{tr['total']} passed\")
+              if report.get('errors'):
+                  print(f\"**Errors:** {len(report['errors'])}\")
+          " >> $GITHUB_STEP_SUMMARY
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No sync reports found" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Storage statistics
+          if [ -d "particle_memory" ]; then
+            echo "### Particle Storage" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            PARTICLE_COUNT=$(wc -l < particle_memory/particles.jsonl 2>/dev/null || echo 0)
+            echo "**Total Particles:** $PARTICLE_COUNT" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Upload sync reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-reports-${{ github.run_number }}
+          path: |
+            sync_reports/
+            test_results/
+            naming_history/
+          retention-days: 90
+      
+      - name: Commit changes
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Add particle memory
+          git add particle_memory/ || true
+          git add naming_history/ || true
+          git add sync_reports/ || true
+          
+          # Commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            COMMIT_MSG="🔄 Intelligent Sync: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+            
+            if [ -n "${{ github.event.inputs.pattern }}" ]; then
+              COMMIT_MSG="$COMMIT_MSG - Pattern: ${{ github.event.inputs.pattern }}"
+            fi
+            
+            git commit -m "$COMMIT_MSG"
+            git push
+          fi
+      
+      - name: Notification on failure
+        if: failure()
+        run: |
+          echo "::error::Intelligent Sync failed. Check logs for details."
+          
+          # Create issue on failure (optional)
+          # gh issue create --title "Intelligent Sync Failed" --body "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
