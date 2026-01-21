@@ -18,7 +18,7 @@ Author: MR.liou
 
 import re
 import logging
-from typing import List, Dict, Set
+from typing import List, Dict
 from dataclasses import dataclass, field, asdict
 
 logging.basicConfig(level=logging.INFO)
@@ -271,8 +271,6 @@ class LogicalExtractor:
     
     def _calculate_confidence(self, structure: LogicalStructure, code: str) -> float:
         """Calculate extraction confidence score"""
-        score = 0.0
-        
         # Pattern confidence
         pattern_score = min(len(structure.patterns) * 0.15, 0.45)
         

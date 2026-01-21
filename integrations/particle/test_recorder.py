@@ -22,7 +22,7 @@ import os
 import sys
 import json
 import logging
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
