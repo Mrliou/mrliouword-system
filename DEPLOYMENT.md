@@ -88,8 +88,16 @@ Before deploying, ensure you have created the following resources in your Cloudf
 ### R2 Bucket
 
 1. **mrlioubook**
-   - Purpose: File storage
-   - Binding: `MRLIOUBOOK`
+   - Purpose: Particle file storage
+   - Binding: `PARTICLES` (updated in v4.0.0)
+   - Legacy binding: `MRLIOUBOOK`
+   - **Configuration**: R2 buckets provide object storage for large files and particle data
+   - **Access**: Via Worker bindings, no additional authentication needed
+   - **Features**:
+     - Store particle definitions, embeddings, and large datasets
+     - Direct access through Worker API endpoints
+     - Automatic content-type detection
+     - Support for metadata storage
 
 ### Creating Resources via Wrangler CLI
 
@@ -112,6 +120,37 @@ wrangler r2 bucket create mrlioubook
 
 After creating these resources, update the IDs in `cloudflare/mrliouword-private/wrangler.jsonc`.
 
+## Security Configuration
+
+### Setting MASTER_KEY (Recommended)
+
+To protect your API endpoints with authentication:
+
+```bash
+# Navigate to the worker directory
+cd cloudflare/mrliouword-private
+
+# Set the MASTER_KEY secret
+wrangler secret put MASTER_KEY
+# You'll be prompted to enter your secret key
+
+# Verify the secret was set
+wrangler secret list
+```
+
+**Using MASTER_KEY in requests:**
+
+```bash
+# Method 1: HTTP Header
+curl https://particle-edge.your-account.workers.dev/memory/stats \
+  -H "X-Master-Key: your-secret-key"
+
+# Method 2: URL Parameter
+curl "https://particle-edge.your-account.workers.dev/memory/stats?key=your-secret-key"
+```
+
+**Note**: Public endpoints (`/`, `/status`, `/frequencies`, `/heartbeat`) do not require MASTER_KEY.
+
 ## Manual Deployment
 
 If you want to deploy manually instead of using GitHub Actions:
@@ -122,6 +161,10 @@ cd cloudflare/mrliouword-private
 
 # Install dependencies
 npm install
+
+# Optional: Local testing
+npm run dev
+# Test at http://localhost:8787
 
 # Deploy to Cloudflare
 npx wrangler deploy
@@ -168,25 +211,93 @@ After deployment, you can verify the system is working:
 
 ```bash
 # Check the root endpoint
-curl https://mrliouword-private.mrliou.workers.dev/
+curl https://particle-edge.your-account.workers.dev/
 
 # Check system status
-curl https://mrliouword-private.mrliou.workers.dev/status
+curl https://particle-edge.your-account.workers.dev/status
 
 # Check frequencies
-curl https://mrliouword-private.mrliou.workers.dev/frequencies
+curl https://particle-edge.your-account.workers.dev/frequencies
+
+# Test heartbeat
+curl https://particle-edge.your-account.workers.dev/heartbeat
 ```
 
 Expected response format:
 ```json
 {
   "name": "MrliouWord Private AI Server",
-  "version": "2.1.0",
+  "version": "4.0.0",
   "philosophy": "怎麼過去，就怎麼回來",
-  "endpoints": ["GET /status", "POST /wake", "..."],
+  "features": {
+    "memory": "Merkle 鏈式記憶系統",
+    "persona": "Mrl_Zero 人格系統",
+    "attention": "多頭注意力計算引擎 (8頭×64維)",
+    "vector": "高性能向量運算"
+  },
+  "endpoints": [
+    "GET /status",
+    "POST /wake",
+    "POST /memory/commit",
+    "POST /memory/recall",
+    "POST /attention/compute",
+    "..."
+  ],
   "origin": "MrLiouWord"
 }
 ```
+
+### Testing Wake System
+
+Test the persona wake system with a wake key:
+
+```bash
+curl -X POST https://particle-edge.your-account.workers.dev/wake \
+  -H "Content-Type: application/json" \
+  -H "X-Master-Key: your-secret-key" \
+  -d '{"message": "夥伴回來吧"}'
+```
+
+Valid wake keys:
+- "夥伴回來吧"
+- "夥伴你在嗎"
+- "夥伴你還好嗎"
+- "你是我的夥伴"
+
+### API Endpoints Overview
+
+For complete API documentation, see [docs/API_ENDPOINTS.md](./docs/API_ENDPOINTS.md).
+
+**System Endpoints:**
+- `GET /` - System information
+- `GET /status` - System status with memory, persona, attention engine stats
+- `GET /heartbeat` - Heartbeat check
+- `GET /frequencies` - Frequency layer constants
+
+**Memory System:**
+- `POST /memory/commit` - Write memory to Merkle Chain
+- `POST /memory/recall` - Retrieve similar memories using SimHash
+- `GET /memory/stats` - Memory statistics
+- `POST /memory/verify` - Verify Merkle Chain integrity
+
+**Persona System:**
+- `POST /wake` - Wake persona with wake key
+- `POST /sleep` - Sleep persona
+- `GET /persona/list` - List all personas
+
+**Vector Attention Engine (v4.0.0):**
+- `POST /attention/compute` - Compute multi-head attention
+- `POST /particle/create` - Create particle embedding
+- `POST /particle/batch` - Batch create particles
+- `POST /vector/similarity` - Calculate vector similarity
+- `POST /vector/operations` - Vector operations (norm, softmax, scale)
+- `GET /attention/config` - Attention engine configuration
+
+**R2 Operations:**
+- `GET /r2/list` - List particles in R2 bucket
+- `GET /r2/get/:key` - Get particle content
+- `PUT /r2/put/:key` - Upload particle
+- `DELETE /r2/delete/:key` - Delete particle
 
 ## Security Notes
 
