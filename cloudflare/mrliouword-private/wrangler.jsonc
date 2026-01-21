@@ -1,29 +1,33 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "mrliouword-private",
+  "name": "particle-edge",
   "main": "src/index.ts",
   "compatibility_date": "2024-12-01",
   "kv_namespaces": [
     {
       "binding": "MRLIOUWORD_VAULT",
       "id": "01275832766148bfbcaa00ee4aeb9946"
+    },
+    {
+      "binding": "PARTICLE_AUTH_VAULT",
+      "id": "8cd99b4a67f74afea367f394995d5c50"
     }
   ],
   "d1_databases": [
     {
-      "binding": "MRLIOUWORD_DB",
+      "binding": "DB",
       "database_name": "mrliouword-db",
       "database_id": "7980baaf-48d3-43cc-8be7-dd8c9590f3d1"
     }
   ],
   "r2_buckets": [
     {
-      "binding": "MRLIOUBOOK",
+      "binding": "PARTICLES",
       "bucket_name": "mrlioubook"
     }
   ],
   "vars": {
     "ORIGIN": "MrLiouWord",
-    "VERSION": "2.0.0"
+    "VERSION": "4.0.0"
   }
 }
