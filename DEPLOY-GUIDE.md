@@ -209,7 +209,11 @@ curl https://particle-edge.您的帳號.workers.dev/heartbeat
 | **D1 Database** | `DB` | mrliouword-db | `7980baaf-48d3-43cc-8be7-dd8c9590f3d1` | SQL 結構化查詢 |
 | **R2 Bucket** | `PARTICLES` | mrlioubook | N/A | 粒子檔案存儲 |
 
-**注意**：如果您使用不同的資源 ID，請更新 `wrangler.jsonc` 中對應的值。
+**注意事項**：
+- 如果您使用不同的資源 ID，請更新 `wrangler.jsonc` 中對應的值。
+- 綁定名稱 `DB` 和 `PARTICLES` 是 v4.0.0 的新命名方案，為未來擴展預留。
+- 目前代碼主要使用 `MRLIOUWORD_VAULT` KV 存儲，R2 和 D1 功能正在開發中。
+- Worker 名稱已從 "mrliouword-private" 更新為 "particle-edge"，但目錄結構保持不變以確保兼容性。
 
 ---
 
