@@ -16,6 +16,7 @@ wrangler.toml.bak
 *.tsbuildinfo
 dist/
 build/
+containers/dist/
 
 # Environment variables
 .env
@@ -74,3 +75,6 @@ test_chain/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Container runtime outputs
+rules_output.yaml

@@ -75,7 +75,7 @@ export class MetaEnvController {
     return snapshot_id
   }
   
-  async channelMap(app: string, from: string, to: string, mode = 'dry-run'): Promise<any> {
+  async channelMap(app: string, from: string, to: string, mode: 'dry-run' | 'apply' | 'revert' = 'dry-run'): Promise<any> {
     return this.channelMapper.map(app, from, to, mode)
   }
   

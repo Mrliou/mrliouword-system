@@ -59,9 +59,32 @@ export async function configure(instance: RuntimeInstance, layer: Layer) {
 
 async function loadParticles(instance: RuntimeInstance) {
   try {
-    const particles = await import('../../core/particle_dict.json')
-    instance.particles = particles.default || particles
-    console.log(`[LayerManager] Loaded particle dictionary`)
+    const path = require('path')
+    const fs = require('fs')
+    
+    // Try multiple paths to find particle_dict.json
+    const possiblePaths = [
+      path.join(__dirname, '../../core/particle_dict.json'),
+      path.join(process.cwd(), 'core/particle_dict.json'),
+      path.join(__dirname, '../../../core/particle_dict.json'),
+    ]
+    
+    let particleData = null
+    for (const filePath of possiblePaths) {
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8')
+        particleData = JSON.parse(content)
+        break
+      }
+    }
+    
+    if (particleData) {
+      // Store the entire particle dictionary
+      instance.metadata.particle_dict = particleData
+      console.log(`[LayerManager] Loaded particle dictionary`)
+    } else {
+      console.warn(`[LayerManager] particle_dict.json not found in any expected location`)
+    }
   } catch (error) {
     console.warn(`[LayerManager] Could not load particles: ${error}`)
   }
