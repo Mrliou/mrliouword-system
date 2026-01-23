@@ -74,8 +74,8 @@ program
     const { spawn } = await import('child_process')
     const python = spawn('python', [
       'containers/reverse-engine/TraceMiner.py',
-      options['trace-fs'],
-      options['trace-ops']
+      options.traceFs,
+      options.traceOps
     ])
     
     python.stdout.on('data', (data) => console.log(data.toString()))
