@@ -15,7 +15,7 @@ export function compile(fltnz: string, metadata: any): FlpkgContainer {
       return { word: match[1], fx: match[2] }
     }
     return null
-  }).filter(Boolean)
+  }).filter((token): token is { word: string, fx: string } => token !== null)
   
   return {
     id: `flpkg-${Date.now()}`,

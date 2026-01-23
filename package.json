@@ -21,6 +21,6 @@
     "wrangler": "^4.59.2"
   },
   "bin": {
-    "mrliou-runtime": "./containers/cli/mrliou-runtime.js"
+    "mrliou-runtime": "./containers/dist/cli/mrliou-runtime.js"
   }
 }

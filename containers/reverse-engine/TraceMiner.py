@@ -79,14 +79,15 @@ class TraceMiner:
     
     def build_channel_map(self, df_fs: pd.DataFrame, df_ops: pd.DataFrame) -> Dict:
         """建構通道地圖"""
+        import os
         channel_map = {}
         
         # 分析真實路徑映射
         for idx, row in df_fs.iterrows():
             path = row['fullpath']
             if 'VirtualStore' in path:
-                # 提取原始路徑
-                original = path.replace('VirtualStore\\', '')
+                # 提取原始路徑 - 使用 os.path.sep 以支援跨平台
+                original = path.replace(f'VirtualStore{os.path.sep}', '')
                 channel_map[original] = path
         
         return channel_map

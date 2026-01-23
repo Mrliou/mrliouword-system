@@ -59,8 +59,8 @@ export async function configure(instance: RuntimeInstance, layer: Layer) {
 
 async function loadParticles(instance: RuntimeInstance) {
   try {
-    const path = require('path')
-    const fs = require('fs')
+    const path = await import('path')
+    const fs = await import('fs')
     
     // Try multiple paths to find particle_dict.json
     const possiblePaths = [
