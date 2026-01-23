@@ -57,9 +57,9 @@ jobs:
           PATTERN="${{ github.event.inputs.pattern }}"
           LIMIT="${{ github.event.inputs.limit || 30 }}"
 
-          # Validate LIMIT: must be a non-negative integer
-          if ! echo "$LIMIT" | grep -Eq '^[0-9]+$'; then
-            echo "Invalid limit input: '$LIMIT'. Only non-negative integers are allowed."
+          # Validate LIMIT: must be an integer between 1 and 100 (inclusive)
+          if ! echo "$LIMIT" | grep -Eq '^[1-9][0-9]?$|^100$'; then
+            echo "Invalid limit input: '$LIMIT'. Only integers between 1 and 100 are allowed."
             exit 1
           fi
 
