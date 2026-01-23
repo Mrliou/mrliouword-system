@@ -17,6 +17,8 @@ Author: MR.liou
 import math
 import logging
 from typing import List, Dict, Tuple  # Dict preserved for future attention score structures
+from typing import List, Tuple
+import numpy as np
 from dataclasses import dataclass
 
 # Optional dependency: numpy (for vector operations)
@@ -206,6 +208,12 @@ class AttentionFilter:
         
         # Softmax over the (single) attention score
         attn_weights = VectorCore.softmax(np.array([scores], dtype=np.float32))
+        # Reshape for multi-head
+        # For simplicity, treating as single sequence
+        
+        # Compute attention scores
+        # Note: Single sequence, so attention weight is 1.0
+        attn_weights = np.array([1.0], dtype=np.float32)
         
         # Weighted sum
         output = attn_weights[0] * value
