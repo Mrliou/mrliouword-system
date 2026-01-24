@@ -16,9 +16,19 @@ Author: MR.liou
 
 import math
 import logging
+from typing import List, Dict, Tuple  # Dict preserved for future attention score structures
 from typing import List, Tuple
 import numpy as np
 from dataclasses import dataclass
+
+# Optional dependency: numpy (for vector operations)
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    # Fallback for import-time checks in environments without numpy
+    np = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,18 +63,30 @@ class VectorCore:
     """High-performance vector operations (Python equivalent of TS VectorCore)"""
     
     @staticmethod
-    def dot(a: np.ndarray, b: np.ndarray) -> float:
+    def _check_numpy():
+        """Check if numpy is available, raise ImportError if not"""
+        if not HAS_NUMPY:
+            raise ImportError(
+                "numpy is required for vector operations. "
+                "Install with: pip install numpy"
+            )
+    
+    @staticmethod
+    def dot(a, b) -> float:
         """Compute dot product"""
+        VectorCore._check_numpy()
         return float(np.dot(a, b))
     
     @staticmethod
-    def norm(v: np.ndarray) -> float:
+    def norm(v) -> float:
         """Compute L2 norm"""
+        VectorCore._check_numpy()
         return float(np.linalg.norm(v))
     
     @staticmethod
-    def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+    def cosine_similarity(a, b) -> float:
         """Compute cosine similarity"""
+        VectorCore._check_numpy()
         dot_product = VectorCore.dot(a, b)
         norm_a = VectorCore.norm(a)
         norm_b = VectorCore.norm(b)
@@ -75,8 +97,9 @@ class VectorCore:
         return dot_product / (norm_a * norm_b)
     
     @staticmethod
-    def softmax(scores: np.ndarray) -> np.ndarray:
+    def softmax(scores) -> 'np.ndarray':
         """Numerically stable softmax"""
+        VectorCore._check_numpy()
         # Subtract max for numerical stability
         max_score = np.max(scores)
         exp_scores = np.exp(scores - max_score)
@@ -105,7 +128,7 @@ class AttentionFilter:
         
         logger.info(f"AttentionFilter: dim={embedding_dim}, heads={num_heads}")
     
-    def compute_embedding(self, text: str, base_freq: float = SCHUMANN) -> np.ndarray:
+    def compute_embedding(self, text: str, base_freq: float = SCHUMANN):
         """
         Compute frequency-based embedding for text
         
@@ -116,8 +139,11 @@ class AttentionFilter:
             base_freq: Base frequency (default: SCHUMANN)
             
         Returns:
-            Embedding vector
+            Embedding vector (numpy array if numpy available)
         """
+        if not HAS_NUMPY:
+            raise ImportError("numpy is required for compute_embedding")
+        
         # Character frequency analysis
         char_freq = {}
         for char in text.lower():
@@ -157,10 +183,10 @@ class AttentionFilter:
     
     def multi_head_attention(
         self,
-        query: np.ndarray,
-        key: np.ndarray,
-        value: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        query,
+        key,
+        value
+    ):
         """
         Multi-head attention mechanism
         
@@ -172,6 +198,16 @@ class AttentionFilter:
         Returns:
             (output, attention_weights)
         """
+        # Architectural placeholders: Preserve batch and sequence dimensions
+        # for future multi-sequence processing and world-particle extraction
+        batch_size = 1  # Semantic placeholder for batch dimension
+        seq_len = 1     # Semantic placeholder for sequence dimension
+        
+        # Compute attention scores
+        scores = VectorCore.dot(query, key) / math.sqrt(self.head_dim)
+        
+        # Softmax over the (single) attention score
+        attn_weights = VectorCore.softmax(np.array([scores], dtype=np.float32))
         # Reshape for multi-head
         # For simplicity, treating as single sequence
         
@@ -186,8 +222,8 @@ class AttentionFilter:
     
     def compute_similarity_matrix(
         self,
-        embeddings: List[np.ndarray]
-    ) -> np.ndarray:
+        embeddings: List
+    ):
         """
         Compute pairwise similarity matrix
         
@@ -197,6 +233,9 @@ class AttentionFilter:
         Returns:
             Similarity matrix (n x n)
         """
+        if not HAS_NUMPY:
+            raise ImportError("numpy is required for compute_similarity_matrix")
+        
         n = len(embeddings)
         similarity_matrix = np.zeros((n, n), dtype=np.float32)
         

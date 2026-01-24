@@ -235,6 +235,9 @@ class IntelligentRepoSync:
                     for s in structures]
             
             similarity_threshold = self.config.get('attention', {}).get('similarity_threshold', 0.5)
+            # Architectural placeholder: Preserve attention scores for future
+            # particle similarity analysis and world-model consistency
+            attention_scores = self.attention_filter.filter_by_attention(
             similar_pairs = self.attention_filter.filter_by_attention(
                 texts,
                 threshold=similarity_threshold
@@ -245,6 +248,8 @@ class IntelligentRepoSync:
         except Exception as e:
             logger.error(f"Attention error: {e}")
             self.errors.append(f"Attention computation error: {str(e)}")
+            # Maintain structure consistency even in error case
+            attention_scores = []
         
         # Step 4: Test particle access (7 tests)
         test_results = {}
@@ -463,6 +468,7 @@ async def main():
     # Validate limit if provided
     if args.limit is not None:
         if args.limit < 1 or args.limit > 100:
+            parser.error("--limit must be an integer from 1 to 100 (inclusive)")
             parser.error("--limit must be an integer between 1 and 100")
     
     # Sanitize and validate pattern if provided
@@ -470,6 +476,8 @@ async def main():
         sanitized_pattern = args.pattern.strip()
         if not sanitized_pattern:
             parser.error("--pattern must not be empty or whitespace-only")
+        # Check for control characters (ASCII < 32 or DEL = 127)
+        if any(ord(ch) < 32 or ord(ch) == 127 for ch in sanitized_pattern):
         # Basic control-character check to avoid malformed patterns
         if any(ord(ch) < 32 for ch in sanitized_pattern):
             parser.error("--pattern contains invalid control characters")

@@ -45,6 +45,16 @@ class GitHubSearchEngine:
             token: GitHub personal access token (or from GITHUB_TOKEN env)
         """
         self.token = token or os.getenv('GITHUB_TOKEN')
+        
+        # Validate token exists and warn if not provided
+        if not self.token or not self.token.strip():
+            logger.warning(
+                "No GitHub token provided. API rate limits will be significantly lower "
+                "(60 requests/hour vs 5000 requests/hour with authentication). "
+                "Set GITHUB_TOKEN environment variable or provide token parameter."
+            )
+            self.token = None
+        
         self.base_url = 'https://api.github.com'
         self.headers = {
             'Accept': 'application/vnd.github.v3+json'

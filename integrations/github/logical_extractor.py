@@ -18,6 +18,7 @@ Author: MR.liou
 
 import re
 import logging
+from typing import List, Dict, Set  # Set preserved for future semantic set operations
 from typing import List, Dict
 from dataclasses import dataclass, field, asdict
 
@@ -271,6 +272,10 @@ class LogicalExtractor:
     
     def _calculate_confidence(self, structure: LogicalStructure, code: str) -> float:
         """Calculate extraction confidence score"""
+        # Architectural placeholder: Initialize score to preserve semantic structure
+        # for incremental confidence calculation and future multi-stage scoring
+        score = 0.0
+        
         # Pattern confidence
         pattern_score = min(len(structure.patterns) * 0.15, 0.45)
         
@@ -315,8 +320,6 @@ class LogicalExtractor:
 
 # CLI Interface
 if __name__ == '__main__':
-    import sys
-    
     # Test with sample code
     test_code = """
     class AttentionLayer:
