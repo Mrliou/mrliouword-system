@@ -17,9 +17,10 @@ export class McpConfigManager {
    */
   private async ensureConfigDir(): Promise<void> {
     try {
-      await fs.mkdir(CONFIG_DIR, { recursive: true })
+      await fs.access(CONFIG_DIR)
     } catch (error) {
-      // Directory already exists
+      // Directory doesn't exist, create it
+      await fs.mkdir(CONFIG_DIR, { recursive: true })
     }
   }
 
