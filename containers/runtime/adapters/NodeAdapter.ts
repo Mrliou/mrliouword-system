@@ -1,33 +1,15 @@
 /**
  * Node.js Platform Adapter
+ * Origin Signature: MrLiouWord
  */
 
-import { FlpkgContainer, RuntimeInstance } from '../types'
-
 export class NodeAdapter {
-  async create(container: FlpkgContainer): Promise<RuntimeInstance> {
-    console.log(`[NodeAdapter] Creating instance for container ${container.id}`)
-    
-    const instance: RuntimeInstance = {
-      id: `runtime-${container.id}-${Date.now()}`,
-      container,
-      platform: 'node',
-      status: 'starting',
-      metadata: {
-        origin_signature: container.origin_signature,
-        created_at: new Date().toISOString(),
-        node_version: process.version,
-      },
-      async execute() {
-        console.log(`[NodeAdapter] Executing container ${container.id}`)
-        this.status = 'running'
-      },
-      async stop() {
-        console.log(`[NodeAdapter] Stopping container ${container.id}`)
-        this.status = 'stopped'
-      }
-    }
-    
-    return instance
+  async create(config: any): Promise<any> {
+    console.log('🔧 Creating Node.js runtime adapter');
+    return {
+      type: 'node',
+      version: process.version,
+      config
+    };
   }
 }

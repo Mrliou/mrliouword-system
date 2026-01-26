@@ -1,0 +1,13 @@
+{
+  "name": "@mrliouword/containers",
+  "version": "1.0.0",
+  "description": "MrLiouWord Universal Container Runtime",
+  "main": "runtime/UniversalRuntime.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "keywords": ["mrliouword", "container", "runtime", "flpkg"],
+  "author": "Mr. Liou",
+  "license": "PROPRIETARY"
+}

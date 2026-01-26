@@ -64,6 +64,12 @@ mrliouword-system/
 │   ├── simhash64.py             # 語意指紋
 │   ├── merkle.py                # Merkle Chain 驗證
 │   └── particle_dict.json       # 52 個粒子定義
+├── containers/                  # 容器運行時系統
+│   ├── runtime/                 # 統一運行時
+│   ├── formats/                 # 容器格式處理器
+│   ├── metaenv/                 # 元代碼沙盒
+│   ├── reverse-engine/          # 反推引擎
+│   └── cli/                     # CLI 工具
 ├── cloudflare/                  # Cloudflare Workers
 │   ├── config.json              # 服務配置
 │   ├── mrliouword-private/      # Private AI Server
@@ -72,10 +78,48 @@ mrliouword-system/
 │   ├── notion/                  # Notion 同步
 │   └── google/                  # Google Drive/Earth
 ├── docs/                        # 文檔
+│   ├── containers/              # 容器規格文檔
 │   ├── conversations/           # 對話索引
 │   └── REPOS_INDEX.md           # 153+ repo 索引
 └── tools/                       # 工具腳本
 ```
+
+---
+
+## 🐳 容器運行時系統
+
+MrLiouWord 系統現已支援統一容器運行時！
+
+### 快速開始
+
+```bash
+# 安裝 CLI 工具
+npm install -g @mrliouword/runtime-cli
+
+# 初始化運行時
+mrliou-runtime init
+
+# 載入容器
+mrliou-runtime load MyApp.flpkg --layer L3
+
+# 啟動元環境
+mrliou-runtime spawn --cpu 4 --ram 8G
+```
+
+### 支援的容器格式
+
+- ✅ `.flpkg` - Flow Package (粒子封裝)
+- ✅ `.fltnz` - Flow Tensor (張量序列)
+- ✅ `.pcode` - Particle Code (粒子指令)
+
+### 支援的平台
+
+- ✅ Unix/Linux/macOS/Windows
+- ✅ Node.js
+- ✅ Next.js
+- ✅ Cloudflare Workers
+
+詳細文檔請參考 [docs/containers/](./docs/containers/)
 
 ---
 
