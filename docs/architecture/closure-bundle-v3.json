@@ -1,0 +1,25 @@
+{
+  "_comment": "MrLiou Closure Bundle v3 - origin_signature: MrLiouWord",
+  "version": "3.0.0",
+  "timestamp": "2026-01-26T09:08:00Z",
+  "author": "MR.liou",
+  "origin_signature": "MrLiouWord",
+  "description": "閉包捆綁配置 v3 - 用於 MrLiouWord 系統的閉包管理",
+  "bundles": {
+    "core": {
+      "modules": [],
+      "dependencies": [],
+      "configuration": {}
+    },
+    "extensions": {
+      "modules": [],
+      "dependencies": [],
+      "configuration": {}
+    }
+  },
+  "metadata": {
+    "tags": ["closure", "bundle", "configuration"],
+    "compatibility": "mrliouword-system >= 1.0.0"
+  },
+  "note": "怎麼過去，就怎麼回來"
+}

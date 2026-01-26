@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# origin_signature: MrLiouWord
 """
 Sync Config Validator - 配置驗證器
 

@@ -1,5 +1,7 @@
 # MCP Server Management
 
+<!-- origin_signature: MrLiouWord -->
+
 This document describes how to manage Model Context Protocol (MCP) servers using the mrliou-runtime CLI.
 
 ## Overview
