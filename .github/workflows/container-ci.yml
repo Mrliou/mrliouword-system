@@ -34,4 +34,4 @@ jobs:
     
     - name: Run tests
       run: |
-        npx jest
+        npm test

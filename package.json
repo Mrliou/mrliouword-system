@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "bash test.sh",
+    "test": "jest",
+    "test:integration": "bash test.sh",
     "build:containers": "tsc -p containers/tsconfig.json",
     "cli": "node containers/cli/mrliou-runtime.js"
   },
