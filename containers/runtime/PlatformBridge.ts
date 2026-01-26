@@ -4,50 +4,47 @@
  * Origin Signature: MrLiouWord
  */
 
-export class PlatformBridge {
-  private platform?: string;
+import { Platform } from './types';
 
-  constructor(platform?: string) {
+export class PlatformBridge {
+  private platform?: Platform;
+
+  constructor(platform?: Platform) {
     this.platform = platform;
   }
 
-  async detectPlatform(): Promise<string> {
+  async detectPlatform(): Promise<Platform> {
     if (this.platform) return this.platform;
 
     // Detect platform
     if (typeof process !== 'undefined') {
       if (process.versions?.node) {
         this.platform = 'node';
+        return this.platform;
       }
     }
 
-    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
-      this.platform = 'browser';
-    }
-
-    if (!this.platform) {
-      const os = await import('os');
-      const platform = os.platform();
-      
-      switch (platform) {
-        case 'darwin':
-          this.platform = 'macos';
-          break;
-        case 'linux':
-          this.platform = 'linux';
-          break;
-        case 'win32':
-          this.platform = 'windows';
-          break;
-        default:
-          this.platform = 'unix';
-      }
+    const os = await import('os');
+    const platform = os.platform();
+    
+    switch (platform) {
+      case 'darwin':
+        this.platform = 'macos';
+        break;
+      case 'linux':
+        this.platform = 'linux';
+        break;
+      case 'win32':
+        this.platform = 'windows';
+        break;
+      default:
+        this.platform = 'unix';
     }
 
     return this.platform;
   }
 
-  getPlatform(): string {
-    return this.platform || 'unknown';
+  getPlatform(): Platform | undefined {
+    return this.platform;
   }
 }
