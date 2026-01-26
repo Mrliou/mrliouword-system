@@ -82,42 +82,7 @@ mrliouword-system/
 │   ├── conversations/           # 對話索引
 │   └── REPOS_INDEX.md           # 153+ repo 索引
 └── tools/                       # 工具腳本
-    ├── deploy.sh                # 部署腳本
-    ├── deploy-enhanced.sh       # 增強部署腳本
-    ├── safe-pr-checkout.sh      # 安全 PR 檢出（Bash）
-    └── safe-pr-checkout.py      # 安全 PR 檢出（Python）
 ```
-
----
-
-## 🛠️ 開發工具
-
-### 安全 PR 檢出工具
-
-在處理 Pull Request 時，使用安全檢出工具可以避免檢出不存在的 PR：
-
-**使用 Python 版本（推薦）**：
-```bash
-# 檢出 PR（會先驗證 PR 是否存在）
-python3 tools/safe-pr-checkout.py <pr_number>
-
-# 範例：檢出 PR #15
-python3 tools/safe-pr-checkout.py 15
-```
-
-**使用 Bash 版本**：
-```bash
-# 檢出 PR（需要 gh CLI 認證）
-./tools/safe-pr-checkout.sh <pr_number>
-```
-
-**功能特點**：
-- ✅ 自動驗證 PR 是否存在
-- ✅ 提供清晰的錯誤訊息
-- ✅ 列出最近的 PR 作為參考
-- ✅ 避免嘗試檢出不存在的 PR
-
-**詳細文檔**：參考 [docs/PR_CHECKOUT_GUIDE.md](./docs/PR_CHECKOUT_GUIDE.md)
 
 ---
 
