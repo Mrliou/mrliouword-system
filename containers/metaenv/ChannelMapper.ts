@@ -11,12 +11,12 @@ export interface ChannelMapRequest {
 }
 
 export class ChannelMapper {
-  async map(req: ChannelMapRequest): Promise<any> {
-    console.log(`🔗 Channel mapping: ${req.from} → ${req.to}`);
+  async map(mappingRequest: ChannelMapRequest): Promise<any> {
+    console.log(`🔗 Channel mapping: ${mappingRequest.from} → ${mappingRequest.to}`);
     
     return {
       ok: true,
-      changes: [`Mapped ${req.from} to ${req.to}`],
+      changes: [`Mapped ${mappingRequest.from} to ${mappingRequest.to}`],
       revert_token: `revert-${Date.now()}`
     };
   }

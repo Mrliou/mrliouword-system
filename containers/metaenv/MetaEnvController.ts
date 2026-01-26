@@ -21,41 +21,41 @@ export interface SpawnResponse {
 }
 
 export class MetaEnvController {
-  private environments: Map<string, any> = new Map();
+  private environmentInstances: Map<string, any> = new Map();
 
-  async spawn(req: SpawnRequest): Promise<SpawnResponse> {
-    const env_id = req.env_id || `env-${Date.now()}`;
+  async spawn(spawnRequest: SpawnRequest): Promise<SpawnResponse> {
+    const environmentId = spawnRequest.env_id || `env-${Date.now()}`;
     
-    console.log(`🌐 Spawning MetaEnv: ${env_id}`);
+    console.log(`🌐 Spawning MetaEnv: ${environmentId}`);
     
-    this.environments.set(env_id, {
-      id: env_id,
-      shape: req.shape,
+    this.environmentInstances.set(environmentId, {
+      id: environmentId,
+      shape: spawnRequest.shape,
       status: 'running',
       created: new Date().toISOString()
     });
 
     return {
       ok: true,
-      env_id,
+      env_id: environmentId,
       status: 'running'
     };
   }
 
-  async health(env_id?: string): Promise<any> {
-    if (env_id) {
-      const env = this.environments.get(env_id);
+  async health(environmentId?: string): Promise<any> {
+    if (environmentId) {
+      const environmentInstance = this.environmentInstances.get(environmentId);
       return {
-        ok: !!env,
-        env_id,
-        status: env?.status || 'not_found'
+        ok: !!environmentInstance,
+        env_id: environmentId,
+        status: environmentInstance?.status || 'not_found'
       };
     }
 
     return {
       ok: true,
       time: new Date().toISOString(),
-      environments: this.environments.size
+      environments: this.environmentInstances.size
     };
   }
 }

@@ -4,11 +4,11 @@
  */
 
 export class NextAdapter {
-  async create(config: any): Promise<any> {
+  async create(adapterConfig: any): Promise<any> {
     console.log('🔧 Creating Next.js runtime adapter');
     return {
       type: 'next',
-      config
+      config: adapterConfig
     };
   }
 }

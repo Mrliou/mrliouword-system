@@ -10,25 +10,25 @@ export interface PolicyConfig {
 }
 
 export class GuardV1 {
-  private policies: Map<string, PolicyConfig> = new Map();
+  private policyConfigurations: Map<string, PolicyConfig> = new Map();
 
-  async applyPolicy(env_id: string, policy: string): Promise<void> {
-    console.log(`🛡️ Applying Guard.v1 policy to ${env_id}`);
+  async applyPolicy(environmentId: string, policyName: string): Promise<void> {
+    console.log(`🛡️ Applying Guard.v1 policy to ${environmentId}`);
     
-    this.policies.set(env_id, {
+    this.policyConfigurations.set(environmentId, {
       locked: false,
       allowedOperations: ['read', 'write', 'execute'],
       riskLevel: 'low'
     });
   }
 
-  async lockdown(env_id: string, reason: string): Promise<void> {
-    console.log(`🔒 Locking down ${env_id}: ${reason}`);
+  async lockdown(environmentId: string, lockdownReason: string): Promise<void> {
+    console.log(`🔒 Locking down ${environmentId}: ${lockdownReason}`);
     
-    const policy = this.policies.get(env_id);
-    if (policy) {
-      policy.locked = true;
-      policy.allowedOperations = [];
+    const existingPolicy = this.policyConfigurations.get(environmentId);
+    if (existingPolicy) {
+      existingPolicy.locked = true;
+      existingPolicy.allowedOperations = [];
     }
   }
 }
