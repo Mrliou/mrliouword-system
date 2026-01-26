@@ -21,7 +21,7 @@ export class PlatformBridge {
       }
     }
 
-    if (typeof window !== 'undefined') {
+    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       this.platform = 'browser';
     }
 
