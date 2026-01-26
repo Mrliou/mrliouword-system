@@ -119,7 +119,16 @@ class DocVerifier:
 
 def main():
     """Main function."""
-    verifier = DocVerifier("/home/runner/work/mrliouword-system/mrliouword-system")
+    import argparse
+    import os
+    
+    parser = argparse.ArgumentParser(description="MrLiouWord System Scanner")
+    parser.add_argument("path", nargs="?", default=os.getcwd(), help="Path to scan")
+    parser.add_argument("-o", "--output", help="Output JSON file")
+    
+    args = parser.parse_args()
+    
+    verifier = DocVerifier(args.path)
     exit_code = verifier.verify_all()
     sys.exit(exit_code)
 

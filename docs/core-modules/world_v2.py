@@ -12,7 +12,7 @@ This module provides the core World functionality for the MrLiouWord system.
 import json
 import logging
 from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 
 # Configure logging
@@ -25,11 +25,7 @@ class WorldState:
     """Represents the current state of the World module."""
     version: str = "2.0.0"
     active: bool = False
-    entities: List[Dict[str, Any]] = None
-    
-    def __post_init__(self):
-        if self.entities is None:
-            self.entities = []
+    entities: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class World:

@@ -57,11 +57,12 @@ class SnapshotExporter:
             True if successful, False otherwise
         """
         try:
+            import tempfile
+            
             print(f"Creating snapshot from: {self.source_path}")
             
             # Prepare temporary directory
-            temp_dir = Path("/tmp/mrliouword_snapshot")
-            temp_dir.mkdir(exist_ok=True)
+            temp_dir = Path(tempfile.mkdtemp(prefix="mrliouword_snapshot_"))
             
             # Collect files
             files_to_pack = self._collect_files(include_patterns, exclude_patterns)
