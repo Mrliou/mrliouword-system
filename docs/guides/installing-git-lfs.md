@@ -144,7 +144,7 @@ MrLiouWord System 已經配置了 `.gitattributes` 文件來自動追蹤大型�
 
 ```shell
 $ git check-attr filter *.pdf
-分析師小腦.pdf: filter: lfs
+example.pdf: filter: lfs
 ```
 
 查看所有 LFS 追蹤模式：
