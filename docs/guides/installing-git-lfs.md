@@ -93,7 +93,7 @@ tags: [git, lfs, installation, guide]
 4. 將當前工作目錄更改到您下載並解壓的文件夾中。
 
    ```shell
-   cd ~/Downloads/git-lfs-1.X.X
+   cd ~/Downloads/git-lfs-X.X.X
    ```
 
    > \[!NOTE]
