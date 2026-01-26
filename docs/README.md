@@ -304,6 +304,15 @@ API 文檔和接口說明：
 - **[智能同步 README](./INTELLIGENT_SYNC_README.md)**
   - 智能同步系統概述
 
+### 🔟 操作指南
+
+**Git 與版本控制指南**：
+
+- **[安裝 Git Large File Storage](./guides/installing-git-lfs.md)**
+  - 多平台 Git LFS 安裝指南
+  - Mac、Windows、Linux 安裝步驟
+  - 包管理器安裝方法
+
 ### 🔟 其他資源
 
 - **[MCP Server 管理](./MCP_SERVER_MANAGEMENT.md)**
@@ -326,6 +335,7 @@ API 文檔和接口說明：
 - **我想開發整合** → [API 參考](./core/api-reference.md) + [整合示例](./examples/integration-examples.md)
 - **我想使用工具** → [核心模組代碼](#5️⃣-核心模組代碼)
 - **我想學習最佳實踐** → [最佳實踐](./core/best-practices.md)
+- **我想使用 Git LFS** → [安裝 Git LFS](./guides/installing-git-lfs.md)
 - **我想貢獻代碼** → [系統概覽](../README.md#contributing)
 
 ### 按角色查找
