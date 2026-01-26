@@ -23,130 +23,130 @@ def simhash64(text: str) -> str:
         16 字元十六進位字串
     """
     # 正規化
-    normalizedText = text.lower().replace('\n', ' ').strip()
-    if len(normalizedText) < 3:
+    normalized = text.lower().replace('\n', ' ').strip()
+    if len(normalized) < 3:
         return '0' * 16
     
     # 生成 3-gram shingles
     shingles: List[str] = []
-    for charIndex in range(len(normalizedText) - 2):
-        shingles.append(normalizedText[charIndex:charIndex+3])
+    for i in range(len(normalized) - 2):
+        shingles.append(normalized[i:i+3])
     
     # 初始化 64 維向量
-    bitVector = [0] * 64
+    v = [0] * 64
     
     # FNV-1a 雜湊每個 shingle
     FNV_PRIME = 1099511628211
     FNV_OFFSET = 14695981039346656037
     
     for shingle in shingles:
-        hashValue = FNV_OFFSET
-        for charByte in shingle.encode('utf-8'):
-            hashValue ^= charByte
-            hashValue = (hashValue * FNV_PRIME) & 0xFFFFFFFFFFFFFFFF
+        h = FNV_OFFSET
+        for char in shingle.encode('utf-8'):
+            h ^= char
+            h = (h * FNV_PRIME) & 0xFFFFFFFFFFFFFFFF
         
         # 更新向量
-        for bitIndex in range(64):
-            if (hashValue >> bitIndex) & 1:
-                bitVector[bitIndex] += 1
+        for i in range(64):
+            if (h >> i) & 1:
+                v[i] += 1
             else:
-                bitVector[bitIndex] -= 1
+                v[i] -= 1
     
     # 生成指紋
     fingerprint = 0
-    for bitIndex in range(64):
-        if bitVector[bitIndex] > 0:
-            fingerprint |= (1 << bitIndex)
+    for i in range(64):
+        if v[i] > 0:
+            fingerprint |= (1 << i)
     
     return format(fingerprint, '016x')
 
 
-def hamming_distance(hashA: str, hashB: str) -> int:
+def hamming_distance(a: str, b: str) -> int:
     """
     計算兩個 SimHash 的 Hamming 距離
     
     Args:
-        hashA: 第一個 SimHash (hex)
-        hashB: 第二個 SimHash (hex)
+        a: 第一個 SimHash (hex)
+        b: 第二個 SimHash (hex)
         
     Returns:
         Hamming 距離（不同位元數）
     """
-    xorResult = int(hashA, 16) ^ int(hashB, 16)
+    x = int(a, 16) ^ int(b, 16)
     distance = 0
-    while xorResult:
-        distance += xorResult & 1
-        xorResult >>= 1
+    while x:
+        distance += x & 1
+        x >>= 1
     return distance
 
 
-def is_similar(hashA: str, hashB: str, threshold: int = 3) -> bool:
+def is_similar(a: str, b: str, threshold: int = 3) -> bool:
     """
     判斷兩個文本是否語意相似
     
     Args:
-        hashA: 第一個 SimHash
-        hashB: 第二個 SimHash
+        a: 第一個 SimHash
+        b: 第二個 SimHash
         threshold: Hamming 距離閾值（預設 3）
         
     Returns:
         是否相似
     """
-    return hamming_distance(hashA, hashB) <= threshold
+    return hamming_distance(a, b) <= threshold
 
 
-def find_similar(queryText: str, candidateTexts: List[str], threshold: int = 3) -> List[tuple]:
+def find_similar(query: str, candidates: List[str], threshold: int = 3) -> List[tuple]:
     """
     從候選列表中找出相似文本
     
     Args:
-        queryText: 查詢文本
-        candidateTexts: 候選文本列表
+        query: 查詢文本
+        candidates: 候選文本列表
         threshold: 相似度閾值
         
     Returns:
         [(文本, SimHash, 距離), ...] 按距離排序
     """
-    queryHash = simhash64(queryText)
-    matchResults = []
+    query_hash = simhash64(query)
+    results = []
     
-    for candidateText in candidateTexts:
-        candidateHash = simhash64(candidateText)
-        distanceValue = hamming_distance(queryHash, candidateHash)
-        if distanceValue <= threshold:
-            matchResults.append((candidateText, candidateHash, distanceValue))
+    for candidate in candidates:
+        candidate_hash = simhash64(candidate)
+        dist = hamming_distance(query_hash, candidate_hash)
+        if dist <= threshold:
+            results.append((candidate, candidate_hash, dist))
     
-    return sorted(matchResults, key=lambda matchItem: matchItem[2])
+    return sorted(results, key=lambda x: x[2])
 
 
-def deduplicate(textList: List[str], threshold: int = 3) -> List[str]:
+def deduplicate(texts: List[str], threshold: int = 3) -> List[str]:
     """
     去除重複文本
     
     Args:
-        textList: 文本列表
+        texts: 文本列表
         threshold: 相似度閾值
         
     Returns:
         去重後的文本列表
     """
-    seenHashes: Set[str] = set()
-    uniqueTexts: List[str] = []
+    seen_hashes: Set[str] = set()
+    unique_texts: List[str] = []
     
-    for textItem in textList:
-        textHash = simhash64(textItem)
-        isDuplicate = False
+    for text in texts:
+        text_hash = simhash64(text)
+        is_dup = False
         
-        for seenHash in seenHashes:
-            if hamming_distance(textHash, seenHash) <= threshold:
-                isDuplicate = True
+        for seen_hash in seen_hashes:
+            if hamming_distance(text_hash, seen_hash) <= threshold:
+                is_dup = True
                 break
         
-        if not isDuplicate:
-            seenHashes.add(textHash)
-            uniqueTexts.append(textItem)
+        if not is_dup:
+            seen_hashes.add(text_hash)
+            unique_texts.append(text)
     
-    return uniqueTexts
+    return unique_texts
 
 
 # 測試

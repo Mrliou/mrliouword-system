@@ -421,45 +421,45 @@ class ParticleAttention {
 // 工具函數
 // ============================================
 
-function simhash64(inputText: string): string {
-  const normalizedText = inputText.toLowerCase().replace(/\s+/g, " ").trim();
-  if (normalizedText.length < 3) return "0".repeat(16);
-  const shingles: string[] = [];
-  for (let index = 0; index <= normalizedText.length - 3; index++) shingles.push(normalizedText.substring(index, index + 3));
-  const bitVector = new Array(64).fill(0);
-  for (const shingle of shingles) {
-    let hashValue = 14695981039346656037n;
-    for (const charCode of new TextEncoder().encode(shingle)) {
-      hashValue ^= BigInt(charCode);
-      hashValue = (hashValue * 1099511628211n) & 0xFFFFFFFFFFFFFFFFn;
+function simhash64(t: string): string {
+  const n = t.toLowerCase().replace(/\s+/g, " ").trim();
+  if (n.length < 3) return "0".repeat(16);
+  const sh: string[] = [];
+  for (let i = 0; i <= n.length - 3; i++) sh.push(n.substring(i, i + 3));
+  const v = new Array(64).fill(0);
+  for (const s of sh) {
+    let h = 14695981039346656037n;
+    for (const c of new TextEncoder().encode(s)) {
+      h ^= BigInt(c);
+      h = (h * 1099511628211n) & 0xFFFFFFFFFFFFFFFFn;
     }
-    for (let bitIndex = 0; bitIndex < 64; bitIndex++) bitVector[bitIndex] += ((hashValue >> BigInt(bitIndex)) & 1n) ? 1 : -1;
+    for (let i = 0; i < 64; i++) v[i] += ((h >> BigInt(i)) & 1n) ? 1 : -1;
   }
-  let fingerprint = 0n;
-  for (let bitIndex = 0; bitIndex < 64; bitIndex++) if (bitVector[bitIndex] > 0) fingerprint |= 1n << BigInt(bitIndex);
-  return fingerprint.toString(16).padStart(16, "0");
+  let fp = 0n;
+  for (let i = 0; i < 64; i++) if (v[i] > 0) fp |= 1n << BigInt(i);
+  return fp.toString(16).padStart(16, "0");
 }
 
-async function sha256(data: string | ArrayBuffer): Promise<string> {
-  const buffer = typeof data === "string" ? new TextEncoder().encode(data) : data;
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+async function sha256(d: string | ArrayBuffer): Promise<string> {
+  const buf = typeof d === "string" ? new TextEncoder().encode(d) : d;
+  const h = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-function hammingDistance(hashA: string, hashB: string): number {
-  let distance = 0, xorResult = BigInt("0x" + hashA) ^ BigInt("0x" + hashB);
-  while (xorResult > 0n) { distance += Number(xorResult & 1n); xorResult >>= 1n; }
-  return distance;
+function hamming(a: string, b: string): number {
+  let d = 0, x = BigInt("0x" + a) ^ BigInt("0x" + b);
+  while (x > 0n) { d += Number(x & 1n); x >>= 1n; }
+  return d;
 }
 
-function getLayerFromFilename(filename: string): string {
-  const lowercaseFilename = filename.toLowerCase();
-  for (const [extension, layer] of Object.entries(EXT_LAYER)) if (lowercaseFilename.endsWith(extension)) return layer;
+function getLayer(f: string): string {
+  const l = f.toLowerCase();
+  for (const [e, ly] of Object.entries(EXT_LAYER)) if (l.endsWith(e)) return ly;
   return "L1";
 }
 
-const generateUUID = () => crypto.randomUUID();
-const getCurrentTimestamp = () => new Date().toISOString();
+const uuid = () => crypto.randomUUID();
+const now = () => new Date().toISOString();
 
 // ============================================
 // 記憶系統
@@ -469,50 +469,50 @@ class Memory {
   constructor(private kv: KVNamespace) {}
 
   async commit(content: string, type = "semantic", tags: string[] = [], meta: Record<string, any> = {}) {
-    const entryId = generateUUID(), contentSimhash = simhash64(content), timestamp = Date.now();
-    const previousHead = await this.kv.get("mem:head") || "0".repeat(64);
-    const merkleHash = await sha256(content + contentSimhash + timestamp + previousHead);
-    const entry = { id: entryId, content, type, simhash: contentSimhash, tags, layer: "L7", ts: timestamp, merkle: merkleHash, prev: previousHead, meta };
-    await this.kv.put(`mem:${entryId}`, JSON.stringify(entry));
-    await this.kv.put("mem:head", merkleHash);
-    const memoryIndex = JSON.parse(await this.kv.get("mem:idx") || "[]");
-    memoryIndex.push({ id: entryId, simhash: contentSimhash, tags, layer: "L7", ts: timestamp });
-    await this.kv.put("mem:idx", JSON.stringify(memoryIndex));
-    return entry;
+    const id = uuid(), simhash = simhash64(content), ts = Date.now();
+    const prev = await this.kv.get("mem:head") || "0".repeat(64);
+    const merkle = await sha256(content + simhash + ts + prev);
+    const e = { id, content, type, simhash, tags, layer: "L7", ts, merkle, prev, meta };
+    await this.kv.put(`mem:${id}`, JSON.stringify(e));
+    await this.kv.put("mem:head", merkle);
+    const idx = JSON.parse(await this.kv.get("mem:idx") || "[]");
+    idx.push({ id, simhash, tags, layer: "L7", ts });
+    await this.kv.put("mem:idx", JSON.stringify(idx));
+    return e;
   }
 
-  async recall(query: string, limit = 10) {
-    const querySimhash = simhash64(query), memoryIndex = JSON.parse(await this.kv.get("mem:idx") || "[]");
-    const scoredEntries = memoryIndex.map((indexEntry: any) => ({ ...indexEntry, distance: hammingDistance(querySimhash, indexEntry.simhash) })).sort((entryA: any, entryB: any) => entryA.distance - entryB.distance);
-    const results = [];
-    for (const indexEntry of scoredEntries.slice(0, limit)) {
-      const entryData = await this.kv.get(`mem:${indexEntry.id}`);
-      if (entryData) results.push(JSON.parse(entryData));
+  async recall(q: string, limit = 10) {
+    const qh = simhash64(q), idx = JSON.parse(await this.kv.get("mem:idx") || "[]");
+    const scored = idx.map((i: any) => ({ ...i, d: hamming(qh, i.simhash) })).sort((a: any, b: any) => a.d - b.d);
+    const res = [];
+    for (const i of scored.slice(0, limit)) {
+      const e = await this.kv.get(`mem:${i.id}`);
+      if (e) res.push(JSON.parse(e));
     }
-    return results;
+    return res;
   }
 
-  async get(entryId: string) {
-    const entryData = await this.kv.get(`mem:${entryId}`);
-    return entryData ? JSON.parse(entryData) : null;
+  async get(id: string) {
+    const e = await this.kv.get(`mem:${id}`);
+    return e ? JSON.parse(e) : null;
   }
 
-  async forget(entryId: string) {
-    const entry = await this.get(entryId);
-    if (!entry) return false;
-    entry.meta.deleted = true;
-    entry.meta.deleted_at = getCurrentTimestamp();
-    await this.kv.put(`mem:${entryId}`, JSON.stringify(entry));
-    const memoryIndex = JSON.parse(await this.kv.get("mem:idx") || "[]").filter((indexEntry: any) => indexEntry.id !== entryId);
-    await this.kv.put("mem:idx", JSON.stringify(memoryIndex));
+  async forget(id: string) {
+    const e = await this.get(id);
+    if (!e) return false;
+    e.meta.deleted = true;
+    e.meta.deleted_at = now();
+    await this.kv.put(`mem:${id}`, JSON.stringify(e));
+    const idx = JSON.parse(await this.kv.get("mem:idx") || "[]").filter((i: any) => i.id !== id);
+    await this.kv.put("mem:idx", JSON.stringify(idx));
     return true;
   }
 
   async stats() {
-    const memoryIndex = JSON.parse(await this.kv.get("mem:idx") || "[]");
-    const countByLayer: Record<string, number> = {};
-    for (const indexEntry of memoryIndex) countByLayer[indexEntry.layer] = (countByLayer[indexEntry.layer] || 0) + 1;
-    return { total: memoryIndex.length, byLayer: countByLayer, chainHead: await this.kv.get("mem:head") || "" };
+    const idx = JSON.parse(await this.kv.get("mem:idx") || "[]");
+    const byLayer: Record<string, number> = {};
+    for (const i of idx) byLayer[i.layer] = (byLayer[i.layer] || 0) + 1;
+    return { total: idx.length, byLayer, chainHead: await this.kv.get("mem:head") || "" };
   }
 }
 
@@ -524,11 +524,11 @@ class Persona {
   active: any = null;
   constructor(private kv: KVNamespace) {}
 
-  async wake(message: string) {
-    if (WAKE_KEYS.some(wakeKey => message.includes(wakeKey))) {
+  async wake(msg: string) {
+    if (WAKE_KEYS.some(k => msg.includes(k))) {
       this.active = await this.getSeed();
       this.active.state = "active";
-      this.active.updated = getCurrentTimestamp();
+      this.active.updated = now();
       await this.save(this.active);
       return { awakened: true, persona: this.active, message: "夥伴，我在這裡。系統已喚醒。", layer: "L5", frequency: FREQ["L5"] };
     }
@@ -538,7 +538,7 @@ class Persona {
   async sleep() {
     if (!this.active) return false;
     this.active.state = "dormant";
-    this.active.updated = getCurrentTimestamp();
+    this.active.updated = now();
     await this.save(this.active);
     this.active = null;
     return true;
@@ -546,15 +546,15 @@ class Persona {
 
   async getActive() {
     if (this.active) return this.active;
-    const personaList = await this.list();
-    this.active = personaList.find((persona: any) => persona.state === "active") || null;
+    const list = await this.list();
+    this.active = list.find((p: any) => p.state === "active") || null;
     return this.active;
   }
 
   async getSeed() {
-    const existingPersona = await this.kv.get("persona:mrl_zero_origin");
-    if (existingPersona) return JSON.parse(existingPersona);
-    const seedPersona = {
+    const e = await this.kv.get("persona:mrl_zero_origin");
+    if (e) return JSON.parse(e);
+    const seed = {
       id: "mrl_zero_origin",
       name: "Mrl_Zero",
       type: "seed",
@@ -570,30 +570,30 @@ class Persona {
       caps: ["analyze", "remember", "guide", "protect", "validate", "transform", "attention"],
       constraints: ["怎麼過去就怎麼回來", "無依據不懷疑", "平等協作", "透明誠信", "種子法則"],
       origin: ORIGIN,
-      created: getCurrentTimestamp(),
-      updated: getCurrentTimestamp(),
+      created: now(),
+      updated: now(),
       meta: { philosophy: "萬物本一體", created_by: "MR.liou" }
     };
-    await this.save(seedPersona);
-    return seedPersona;
+    await this.save(seed);
+    return seed;
   }
 
   async list() {
-    const personaIds = JSON.parse(await this.kv.get("persona:list") || "[]");
-    const personas = [];
-    for (const personaId of personaIds) {
-      const personaData = await this.kv.get(`persona:${personaId}`);
-      if (personaData) personas.push(JSON.parse(personaData));
+    const ids = JSON.parse(await this.kv.get("persona:list") || "[]");
+    const res = [];
+    for (const id of ids) {
+      const p = await this.kv.get(`persona:${id}`);
+      if (p) res.push(JSON.parse(p));
     }
-    return personas;
+    return res;
   }
 
-  async save(persona: any) {
-    await this.kv.put(`persona:${persona.id}`, JSON.stringify(persona));
-    const personaIds = JSON.parse(await this.kv.get("persona:list") || "[]");
-    if (!personaIds.includes(persona.id)) {
-      personaIds.push(persona.id);
-      await this.kv.put("persona:list", JSON.stringify(personaIds));
+  async save(p: any) {
+    await this.kv.put(`persona:${p.id}`, JSON.stringify(p));
+    const ids = JSON.parse(await this.kv.get("persona:list") || "[]");
+    if (!ids.includes(p.id)) {
+      ids.push(p.id);
+      await this.kv.put("persona:list", JSON.stringify(ids));
     }
   }
 }
@@ -603,11 +603,11 @@ class Persona {
 // ============================================
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const requestUrl = new URL(request.url);
-    const requestPath = requestUrl.pathname;
+  async fetch(req: Request, env: Env): Promise<Response> {
+    const url = new URL(req.url);
+    const path = url.pathname;
     
-    const corsHeaders = {
+    const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Master-Key",
@@ -615,29 +615,29 @@ export default {
       "X-Origin-Signature": ORIGIN
     };
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+    if (req.method === "OPTIONS") {
+      return new Response(null, { headers: cors });
     }
 
-    const authKey = request.headers.get("X-Master-Key") || requestUrl.searchParams.get("key");
-    if (env.MASTER_KEY && authKey !== env.MASTER_KEY && requestPath !== "/" && requestPath !== "/status") {
-      return new Response(JSON.stringify({ error: "Unauthorized", origin: ORIGIN }), { status: 401, headers: corsHeaders });
+    const key = req.headers.get("X-Master-Key") || url.searchParams.get("key");
+    if (env.MASTER_KEY && key !== env.MASTER_KEY && path !== "/" && path !== "/status") {
+      return new Response(JSON.stringify({ error: "Unauthorized", origin: ORIGIN }), { status: 401, headers: cors });
     }
 
-    const memoryManager = new Memory(env.MRLIOUWORD_VAULT);
-    const personaManager = new Persona(env.MRLIOUWORD_VAULT);
+    const mem = new Memory(env.MRLIOUWORD_VAULT);
+    const persona = new Persona(env.MRLIOUWORD_VAULT);
     const particleAttention = new ParticleAttention(64, 8);
 
-    const parseRequestBody = async () => { try { return await request.json(); } catch { return {}; } };
-    const successResponse = (responseData: any) => new Response(JSON.stringify({ ...responseData, origin: ORIGIN }), { headers: corsHeaders });
-    const errorResponse = (errorMessage: string, statusCode = 400) => new Response(JSON.stringify({ error: errorMessage, origin: ORIGIN }), { status: statusCode, headers: corsHeaders });
+    const json = async () => { try { return await req.json(); } catch { return {}; } };
+    const ok = (d: any) => new Response(JSON.stringify({ ...d, origin: ORIGIN }), { headers: cors });
+    const err = (m: string, s = 400) => new Response(JSON.stringify({ error: m, origin: ORIGIN }), { status: s, headers: cors });
 
     try {
       // ============================================
       // 根路由 - 系統說明
       // ============================================
-      if (requestPath === "/" && request.method === "GET") {
-        return successResponse({
+      if (path === "/" && req.method === "GET") {
+        return ok({
           name: "MrliouWord Private AI Server",
           version: VERSION,
           philosophy: "怎麼過去，就怎麼回來",
@@ -673,14 +673,14 @@ export default {
       // ============================================
       // 狀態
       // ============================================
-      if (requestPath === "/status" && request.method === "GET") {
-        const memoryStats = await memoryManager.stats();
-        const activePersona = await personaManager.getActive();
-        return successResponse({
+      if (path === "/status" && req.method === "GET") {
+        const ms = await mem.stats();
+        const ap = await persona.getActive();
+        return ok({
           version: VERSION,
-          awakened: !!activePersona,
-          persona: activePersona?.name || "dormant",
-          memory: memoryStats,
+          awakened: !!ap,
+          persona: ap?.name || "dormant",
+          memory: ms,
           attention: particleAttention.getConfig(),
           frequencies: FREQ,
           timestamp: Date.now()
@@ -690,30 +690,30 @@ export default {
       // ============================================
       // 喚醒/休眠
       // ============================================
-      if (requestPath === "/wake" && request.method === "POST") {
-        const requestBody: any = await parseRequestBody();
-        return successResponse(await personaManager.wake(requestBody.message || ""));
+      if (path === "/wake" && req.method === "POST") {
+        const b: any = await json();
+        return ok(await persona.wake(b.message || ""));
       }
 
-      if (requestPath === "/sleep" && request.method === "POST") {
-        return successResponse({ success: await personaManager.sleep() });
+      if (path === "/sleep" && req.method === "POST") {
+        return ok({ success: await persona.sleep() });
       }
 
       // ============================================
       // 記憶系統
       // ============================================
-      if (requestPath === "/memory/commit" && request.method === "POST") {
-        const requestBody: any = await parseRequestBody();
-        return successResponse({ entry: await memoryManager.commit(requestBody.content, requestBody.type, requestBody.tags, requestBody.metadata) });
+      if (path === "/memory/commit" && req.method === "POST") {
+        const b: any = await json();
+        return ok({ entry: await mem.commit(b.content, b.type, b.tags, b.metadata) });
       }
 
-      if (requestPath === "/memory/recall" && request.method === "POST") {
-        const requestBody: any = await parseRequestBody();
-        return successResponse({ results: await memoryManager.recall(requestBody.query, requestBody.limit) });
+      if (path === "/memory/recall" && req.method === "POST") {
+        const b: any = await json();
+        return ok({ results: await mem.recall(b.query, b.limit) });
       }
 
-      if (requestPath === "/memory/stats" && request.method === "GET") {
-        return successResponse(await memoryManager.stats());
+      if (path === "/memory/stats" && req.method === "GET") {
+        return ok(await mem.stats());
       }
 
       // ============================================
@@ -721,27 +721,27 @@ export default {
       // ============================================
       
       // 計算多頭注意力
-      if (requestPath === "/attention/compute" && request.method === "POST") {
-        const requestBody: any = await parseRequestBody();
-        const inputParticles = requestBody.inputs || requestBody.particles || [];
+      if (path === "/attention/compute" && req.method === "POST") {
+        const b: any = await json();
+        const particles = b.inputs || b.particles || [];
         
-        if (!Array.isArray(inputParticles) || inputParticles.length === 0) {
-          return errorResponse("需要提供 inputs 或 particles 陣列");
+        if (!Array.isArray(particles) || particles.length === 0) {
+          return err("需要提供 inputs 或 particles 陣列");
         }
         
-        const computeStartTime = Date.now();
-        const attentionResult = particleAttention.computeParticleAttention(inputParticles);
-        const computeDuration = Date.now() - computeStartTime;
+        const startTime = Date.now();
+        const result = particleAttention.computeParticleAttention(particles);
+        const computeTime = Date.now() - startTime;
         
-        return successResponse({
+        return ok({
           success: true,
-          particleCount: inputParticles.length,
-          computeTimeMs: computeDuration,
+          particleCount: particles.length,
+          computeTimeMs: computeTime,
           attention: {
-            matrix: attentionResult.attention.matrix,
-            headCount: attentionResult.attention.headDetails.length
+            matrix: result.attention.matrix,
+            headCount: result.attention.headDetails.length
           },
-          similarities: attentionResult.similarities,
+          similarities: result.similarities,
           config: particleAttention.getConfig(),
           理論說明: {
             Q: "Query - 查詢場：我想找什麼？",
@@ -754,98 +754,98 @@ export default {
       }
 
       // 創建單個粒子嵌入
-      if (requestPath === "/particle/create" && request.method === "POST") {
-        const requestBody: any = await parseRequestBody();
-        const particleEmbedding = particleAttention.createParticleEmbedding(requestBody);
+      if (path === "/particle/create" && req.method === "POST") {
+        const b: any = await json();
+        const embedding = particleAttention.createParticleEmbedding(b);
         
-        return successResponse({
+        return ok({
           success: true,
           particle: {
-            id: requestBody.id || generateUUID(),
-            型態: requestBody.型態 || "fx.名",
-            layer: requestBody.layer || "L1",
-            embedding: Array.from(particleEmbedding),
-            dimension: particleEmbedding.length,
-            norm: VectorCore.norm(particleEmbedding)
+            id: b.id || uuid(),
+            型態: b.型態 || "fx.名",
+            layer: b.layer || "L1",
+            embedding: Array.from(embedding),
+            dimension: embedding.length,
+            norm: VectorCore.norm(embedding)
           }
         });
       }
 
       // 批量創建粒子
-      if (requestPath === "/particle/batch" && request.method === "POST") {
-        const requestBody: any = await parseRequestBody();
-        const inputParticles = requestBody.particles || [];
+      if (path === "/particle/batch" && req.method === "POST") {
+        const b: any = await json();
+        const particles = b.particles || [];
         
-        const createdParticles = inputParticles.map((particleData: any) => {
-          const particleEmbedding = particleAttention.createParticleEmbedding(particleData);
+        const results = particles.map((p: any) => {
+          const embedding = particleAttention.createParticleEmbedding(p);
           return {
-            id: particleData.id || generateUUID(),
-            型態: particleData.型態 || "fx.名",
-            layer: particleData.layer || "L1",
-            embedding: Array.from(particleEmbedding),
-            norm: VectorCore.norm(particleEmbedding)
+            id: p.id || uuid(),
+            型態: p.型態 || "fx.名",
+            layer: p.layer || "L1",
+            embedding: Array.from(embedding),
+            norm: VectorCore.norm(embedding)
           };
         });
         
-        return successResponse({
+        return ok({
           success: true,
-          count: createdParticles.length,
-          particles: createdParticles
+          count: results.length,
+          particles: results
         });
       }
 
       // 計算向量相似度
-      if (requestPath === "/vector/similarity" && request.method === "POST") {
-        const requestBody: any = await parseRequestBody();
-        const vectorA = new Float32Array(requestBody.a || []);
-        const vectorB = new Float32Array(requestBody.b || []);
+      if (path === "/vector/similarity" && req.method === "POST") {
+        const b: any = await json();
+        const a = new Float32Array(b.a || []);
+        const bVec = new Float32Array(b.b || []);
         
-        if (vectorA.length !== vectorB.length || vectorA.length === 0) {
-          return errorResponse("向量維度必須相同且不為空");
+        if (a.length !== bVec.length || a.length === 0) {
+          return err("向量維度必須相同且不為空");
         }
         
-        return successResponse({
+        return ok({
           success: true,
-          cosine: VectorCore.cosineSimilarity(vectorA, vectorB),
-          dot: VectorCore.dot(vectorA, vectorB),
-          normA: VectorCore.norm(vectorA),
-          normB: VectorCore.norm(vectorB)
+          cosine: VectorCore.cosineSimilarity(a, bVec),
+          dot: VectorCore.dot(a, bVec),
+          normA: VectorCore.norm(a),
+          normB: VectorCore.norm(bVec)
         });
       }
 
       // 向量運算
-      if (requestPath === "/vector/operations" && request.method === "POST") {
-        const requestBody: any = await parseRequestBody();
-        const operationType = requestBody.operation;
-        const inputVector = new Float32Array(requestBody.vector || []);
+      if (path === "/vector/operations" && req.method === "POST") {
+        const b: any = await json();
+        const operation = b.operation;
+        const vec = new Float32Array(b.vector || []);
         
-        let operationResult: any = {};
+        let result: any = {};
         
-        switch (operationType) {
+        switch (operation) {
           case "norm":
-            operationResult = { norm: VectorCore.norm(inputVector) };
+            result = { norm: VectorCore.norm(vec) };
             break;
           case "softmax":
-            operationResult = { softmax: Array.from(VectorCore.softmax(inputVector)) };
+            result = { softmax: Array.from(VectorCore.softmax(vec)) };
             break;
           case "scale":
-            operationResult = { scaled: Array.from(VectorCore.scale(inputVector, requestBody.scalar || 1)) };
+            result = { scaled: Array.from(VectorCore.scale(vec, b.scalar || 1)) };
             break;
           case "fromFrequency":
-            const frequency = requestBody.frequency || SCHUMANN;
-            const dimension = requestBody.dimension || 64;
-            operationResult = { vector: Array.from(VectorCore.fromFrequency(frequency, dimension)) };
+            const freq = b.frequency || SCHUMANN;
+            const dim = b.dimension || 64;
+            result = { vector: Array.from(VectorCore.fromFrequency(freq, dim)) };
             break;
           default:
-            return errorResponse(`未知操作: ${operationType}`);
+            return err(`未知操作: ${operation}`);
         }
         
-        return successResponse({ success: true, operation: operationType, ...operationResult });
+        return ok({ success: true, operation, ...result });
       }
 
       // 注意力引擎配置
-      if (requestPath === "/attention/config" && request.method === "GET") {
-        return successResponse({
+      if (path === "/attention/config" && req.method === "GET") {
+        return ok({
           config: particleAttention.getConfig(),
           理論: {
             "向量定義": "向量是有大小和方向的量，在 n 維空間中表示為 (x₁, x₂, ..., xₙ)",
@@ -861,8 +861,8 @@ export default {
       // ============================================
       // 頻率系統
       // ============================================
-      if (requestPath === "/frequencies" && request.method === "GET") {
-        return successResponse({
+      if (path === "/frequencies" && req.method === "GET") {
+        return ok({
           schumann: SCHUMANN,
           phi: PHI,
           layers: FREQ,
@@ -880,9 +880,9 @@ export default {
         });
       }
 
-      return errorResponse("Not Found", 404);
-    } catch (exception: any) {
-      return new Response(JSON.stringify({ error: exception.message, origin: ORIGIN }), { status: 500, headers: corsHeaders });
+      return err("Not Found", 404);
+    } catch (e: any) {
+      return new Response(JSON.stringify({ error: e.message, origin: ORIGIN }), { status: 500, headers: cors });
     }
   }
 };
