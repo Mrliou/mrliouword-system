@@ -5,7 +5,7 @@
   "main": "runtime/UniversalRuntime.ts",
   "scripts": {
     "build": "tsc",
-    "test": "jest"
+    "test": "cd .. && npm test"
   },
   "keywords": ["mrliouword", "container", "runtime", "flpkg"],
   "author": "Mr. Liou",
