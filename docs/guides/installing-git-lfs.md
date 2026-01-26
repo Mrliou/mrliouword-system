@@ -120,6 +120,39 @@ tags: [git, lfs, installation, guide]
 
 </div>
 
+## 本專案的 Git LFS 配置
+
+MrLiouWord System 已經配置了 `.gitattributes` 文件來自動追蹤大型文件。
+
+### 追蹤的文件類型
+
+以下文件類型會自動使用 Git LFS 存儲：
+
+- **壓縮檔案**: `*.zip`, `*.tar.gz`, `*.tgz`, `*.tar`
+- **文檔**: `*.pdf`, `*.gdoc`
+- **媒體文件**: `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*.mp4`, `*.mov`
+- **執行檔**: `*.so`, `*.dylib`, `*.dll`, `*.exe`
+- **數據庫**: `*.db`, `*.sqlite`
+
+### 例外情況
+
+- **SHA256 校驗文件** (`*.sha256`) 不使用 LFS，保持為普通文本文件
+
+### 驗證配置
+
+檢查特定文件是否使用 LFS：
+
+```shell
+$ git check-attr filter *.pdf
+example.pdf: filter: lfs
+```
+
+查看所有 LFS 追蹤模式：
+
+```shell
+$ git lfs track
+```
+
 ## 延伸閱讀
 
 * [配置 Git Large File Storage](/en/repositories/working-with-files/managing-large-files/configuring-git-large-file-storage)
