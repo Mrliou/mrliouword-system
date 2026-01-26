@@ -8,7 +8,9 @@ Usage: python3 tools/safe-pr-checkout.py <pr_number>
 import sys
 import subprocess
 import json
+import re
 from urllib import request, error
+from urllib.parse import urlparse
 
 
 def get_repo_info():
@@ -22,16 +24,31 @@ def get_repo_info():
         )
         remote_url = result.stdout.strip()
         
-        # Parse GitHub URL
+        # Parse GitHub URL using proper URL parsing and regex
         # Examples: 
         # - https://github.com/owner/repo.git
         # - git@github.com:owner/repo.git
-        if 'github.com' in remote_url:
-            parts = remote_url.replace('.git', '').split('/')
-            if len(parts) >= 2:
-                repo = parts[-1]
-                owner = parts[-2].split(':')[-1]  # Handle git@ format
-                return owner, repo
+        
+        # Handle HTTPS URLs
+        if remote_url.startswith('https://'):
+            parsed = urlparse(remote_url)
+            # Ensure it's actually github.com and not a subdomain or similar
+            if parsed.netloc == 'github.com':
+                # Remove .git extension
+                path = parsed.path.rstrip('.git')
+                # Extract owner/repo from /owner/repo
+                match = re.match(r'^/([^/]+)/([^/]+?)(?:\.git)?$', path)
+                if match:
+                    return match.group(1), match.group(2)
+        
+        # Handle SSH URLs (git@github.com:owner/repo.git)
+        elif remote_url.startswith('git@github.com:'):
+            # Remove git@github.com: prefix and .git suffix
+            path = remote_url.replace('git@github.com:', '').replace('.git', '')
+            # Extract owner/repo
+            match = re.match(r'^([^/]+)/([^/]+)$', path)
+            if match:
+                return match.group(1), match.group(2)
     except subprocess.CalledProcessError:
         pass
     
