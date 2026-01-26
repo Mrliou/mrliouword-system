@@ -18,13 +18,91 @@ origin_signature: "MrLiouWord"
 如果您是第一次使用 MrLiouWord System，建議按以下順序閱讀：
 
 1. [系統概覽](../README.md) - 了解系統的基本概念
-2. [快速開始指南](../QUICKSTART.md) - 快速部署和運行
-3. [架構文檔](#架構設計) - 深入了解系統架構
-4. [API 參考](#api-與接口) - 開始集成和開發
+2. [核心邏輯原理](./core/principles.md) - 理解系統核心理念和架構
+3. [用戶指南與入門教程](./core/user-guide.md) - 快速入門和第一個粒子程序
+4. [快速開始指南](../QUICKSTART.md) - 快速部署和運行
+5. [最佳實踐](./core/best-practices.md) - 學習使用案例和設計模式
+6. [API 參考](./core/api-reference.md) - 開始集成和開發
+
+## 📋 文檔更新摘要
+
+### 2026-01-26 重大更新
+
+本次更新完成了 MrLiouWord System 的完整文檔體系整合，新增內容包括：
+
+✅ **核心文檔系列** (5 個文檔)
+- 核心邏輯原理、核心組件中心、用戶指南、最佳實踐、API 參考
+
+✅ **LAW-0 簽名律文檔** 
+- 完整的簽名規範和實現細節
+
+✅ **部署文檔** (2 個文檔)
+- L-1/L0/L1 多層部署架構、安全部署方案
+
+✅ **架構文檔** (4 個新文檔)
+- WebGPU 整合、前粒子整合、終端種子、ANALYST_BG API
+
+✅ **整合示例文檔**
+- 完整的系統整合示例和代碼範例
+
+所有文檔都符合以下標準：
+- ✓ 包含 `origin_signature="MrLiouWord"` 標記
+- ✓ 完整的 YAML front matter 元數據
+- ✓ 詳細的目錄和交叉引用
+- ✓ 可執行的代碼示例
+- ✓ 統一的格式和風格
 
 ## 📖 文檔結構
 
-### 1️⃣ 架構設計
+### 0️⃣ 核心文檔
+
+**MRLiou 層級穿越系統核心文檔**：
+
+- **[核心邏輯原理](./core/principles.md)** 
+  - 系統核心哲學和理念
+  - 八層架構設計 (L0-L7-L∞)
+  - 頻率共振原理和創世公式
+  - 粒子系統和可逆性原則
+
+- **[核心組件中心](./core/components.md)**
+  - FlowAgent 運行時
+  - MemoryVault 七層記憶系統
+  - 粒子立體地球儀
+  - F++ 升維語言
+  - Mrl_Zero AGI 前輩系統
+
+- **[用戶指南與入門教程](./core/user-guide.md)**
+  - 系統安裝和快速開始
+  - 第一個粒子程序
+  - 層級穿越實踐
+  - 記憶系統使用
+
+- **[使用案例與最佳實踐](./core/best-practices.md)**
+  - 設計模式
+  - 實際使用案例
+  - 性能優化
+  - 安全最佳實踐
+  - 錯誤處理和測試策略
+
+- **[API 參考文檔](./core/api-reference.md)**
+  - FlowAgent API
+  - MemoryVault API  
+  - ParticleGlobe API
+  - Layer API 和 Persona API
+  - 錯誤類型定義
+
+### 1️⃣ LAW-0 簽名律
+
+**系統安全和簽名規範**：
+
+- **[LAW-0 簽名律實現細節](./law0/implementation.md)**
+  - LAW-0 簽名律概述
+  - 不同文件類型的簽名規範
+  - 實現要求和代碼示例
+  - 驗證機制和安全考量
+  - 合規性檢查工具
+
+### 2️⃣ 架構設計
 
 核心系統架構和設計文檔：
 
@@ -32,9 +110,32 @@ origin_signature: "MrLiouWord"
   - FlowAgent Zero-Flow ASI 系統的完整部署記錄
   - 包含架構設計和部署流程
   
-- **[L-1/L0/L1 多層部署架構](./architecture/l-1-l0-l1-deployment.md)**
+- **[L-1/L0/L1 多層部署架構](./deployment/l-1-to-l1.md)**
   - 現實世界部署雲端、雲端部署雲上雲
   - 多層架構的設計理念和實現
+  
+- **[WebGPU 神經元與注意力機制整合](./architecture/webgpu-integration.md)**
+  - WebGPU 整合架構
+  - 神經網絡計算管線
+  - 注意力機制 GPU 實現
+  - 性能優化策略
+
+- **[前粒子整合流程圖與實現指南](./architecture/pre-particle.md)**
+  - 前粒子整合管線
+  - 狀態機和流程圖
+  - 驗證和資源分配
+  - 錯誤處理機制
+
+- **[終端系統立體種子整合](./architecture/terminal-seed.md)**
+  - 3D 種子架構
+  - 終端命令系統
+  - ASCII 3D 可視化
+  - 種子生命週期管理
+
+- **[ANALYST_BG 分析師人格 API](./architecture/analyst-bg-api.md)**
+  - 分析師人格 API 完整文檔
+  - 接口定義和使用示例
+  - 符合 LAW-0 簽名律規範
   
 - **[World Module 整合報告](./architecture/world-module-integration.md)**
   - World Module 與系統的整合詳情
@@ -69,6 +170,17 @@ API 文檔和接口說明：
 ### 3️⃣ 部署配置
 
 部署相關的配置和指南：
+
+- **[L-1/L0/L1 多層部署架構](./deployment/l-1-to-l1.md)**
+  - 現實世界部署雲端、雲端部署雲上雲
+  - L-1、L0、L1 三層架構
+  - 跨層通信協議
+
+- **[安全部署方案 - 私人使用版](./deployment/security.md)**
+  - 本地私密部署
+  - 雲端私密部署  
+  - 數據加密和訪問控制
+  - 備份與恢復機制
 
 - **[Envoy 代理配置](./deployment/envoy-config.yaml)**
   - Envoy Proxy 的完整配置
@@ -170,7 +282,19 @@ API 文檔和接口說明：
 - **[容器快速開始](./containers/QUICKSTART.md)**
   - 容器快速部署指南
 
-### 9️⃣ 智能同步
+### 9️⃣ 示例代碼
+
+**完整的整合示例**：
+
+- **[整合示例](./examples/integration-examples.md)**
+  - 完整系統整合示例
+  - Cloudflare Workers 整合
+  - 本地開發環境設置
+  - WebGPU 粒子處理示例
+  - 地理記憶整合
+  - 多人協作整合
+
+### 🔟 智能同步
 
 智能同步系統文檔：
 
@@ -195,18 +319,32 @@ API 文檔和接口說明：
 
 ### 按用途查找
 
-- **我想部署系統** → [部署指南](../DEPLOY-GUIDE.md) + [Deployment](../DEPLOYMENT.md)
-- **我想了解架構** → [架構設計](#1️⃣-架構設計)
-- **我想開發整合** → [API 與接口](#2️⃣-api-與接口)
+- **我是新手，想快速入門** → [用戶指南](./core/user-guide.md) + [快速開始](../QUICKSTART.md)
+- **我想了解系統原理** → [核心邏輯原理](./core/principles.md) + [核心組件](./core/components.md)
+- **我想部署系統** → [部署指南](../DEPLOY-GUIDE.md) + [安全部署](./deployment/security.md)
+- **我想了解架構** → [架構設計](#2️⃣-架構設計) + [LAW-0 簽名律](./law0/implementation.md)
+- **我想開發整合** → [API 參考](./core/api-reference.md) + [整合示例](./examples/integration-examples.md)
 - **我想使用工具** → [核心模組代碼](#5️⃣-核心模組代碼)
+- **我想學習最佳實踐** → [最佳實踐](./core/best-practices.md)
 - **我想貢獻代碼** → [系統概覽](../README.md#contributing)
 
 ### 按角色查找
 
-- **系統管理員** → [部署配置](#3️⃣-部署配置) + [容器文檔](#8️⃣-容器文檔)
-- **開發人員** → [API 參考](#2️⃣-api-與接口) + [核心模組](#5️⃣-核心模組代碼)
-- **架構師** → [架構設計](#1️⃣-架構設計)
-- **整合工程師** → [整合文檔](#4️⃣-整合文檔)
+- **系統管理員** → [部署配置](#3️⃣-部署配置) + [容器文檔](#8️⃣-容器文檔) + [安全部署](./deployment/security.md)
+- **開發人員** → [API 參考](./core/api-reference.md) + [核心模組](#5️⃣-核心模組代碼) + [整合示例](./examples/integration-examples.md)
+- **架構師** → [架構設計](#2️⃣-架構設計) + [核心原理](./core/principles.md)
+- **整合工程師** → [整合文檔](#4️⃣-整合文檔) + [整合示例](./examples/integration-examples.md)
+- **初學者** → [用戶指南](./core/user-guide.md) + [最佳實踐](./core/best-practices.md)
+
+### 按主題查找
+
+- **粒子系統** → [核心原理](./core/principles.md) + [核心組件](./core/components.md)
+- **層級穿越** → [核心原理](./core/principles.md) + [用戶指南](./core/user-guide.md)
+- **記憶系統** → [核心組件](./core/components.md) + [MemoryVault API](./core/api-reference.md#memoryvault-api)
+- **安全與加密** → [LAW-0 簽名律](./law0/implementation.md) + [安全部署](./deployment/security.md)
+- **WebGPU 整合** → [WebGPU 架構](./architecture/webgpu-integration.md) + [整合示例](./examples/integration-examples.md)
+- **地理記憶** → [粒子地球儀 API](./core/api-reference.md#particleglobe-api) + [整合示例](./examples/integration-examples.md)
+- **雲端部署** → [L-1/L0/L1 架構](./deployment/l-1-to-l1.md) + [Cloudflare 整合](./examples/integration-examples.md)
 
 ## 📝 文檔規範
 
