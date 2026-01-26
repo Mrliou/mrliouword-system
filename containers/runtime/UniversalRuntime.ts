@@ -6,24 +6,14 @@
 
 import { LayerManager } from './LayerManager';
 import { PlatformBridge } from './PlatformBridge';
-import { NodeAdapter } from './adapters/NodeAdapter';
-import { NextAdapter } from './adapters/NextAdapter';
+import { FlpkgContainer, RuntimeInstance, Platform } from './types';
 
 export interface RuntimeConfig {
-  platform?: 'unix' | 'linux' | 'macos' | 'windows' | 'node' | 'next';
+  platform?: Platform;
   layer?: string;
   cpu?: number;
   ram?: string;
   gpu?: number;
-}
-
-export interface RuntimeInstance {
-  id: string;
-  status: 'starting' | 'running' | 'stopped' | 'failed';
-  platform: string;
-  layer: string;
-  execute(): Promise<any>;
-  stop(): Promise<void>;
 }
 
 export class UniversalRuntime {
@@ -44,19 +34,22 @@ export class UniversalRuntime {
     console.log('✅ Universal Runtime initialized');
   }
 
-  async spawn(config: RuntimeConfig): Promise<RuntimeInstance> {
+  async spawn(container: FlpkgContainer): Promise<RuntimeInstance> {
     const instanceId = `runtime-${Date.now()}`;
-    const platform = config.platform || await this.platformBridge.detectPlatform();
-    const layer = config.layer || 'L3';
+    const platform = await this.platformBridge.detectPlatform();
 
     const instance: RuntimeInstance = {
       id: instanceId,
-      status: 'starting',
+      container,
       platform,
-      layer,
+      status: 'starting',
+      metadata: {
+        origin_signature: container.origin_signature,
+        created_at: new Date().toISOString()
+      },
+      particles: container.content.particles || [],
       execute: async () => {
         instance.status = 'running';
-        return { success: true, instanceId };
       },
       stop: async () => {
         instance.status = 'stopped';
