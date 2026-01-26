@@ -21,48 +21,48 @@ def sha256(data: bytes) -> str:
     """計算 SHA256 雜湊"""
     return hashlib.sha256(data).hexdigest()
 
-def sha256_str(s: str) -> str:
+def sha256_str(inputString: str) -> str:
     """字串 SHA256"""
-    return sha256(s.encode('utf-8'))
+    return sha256(inputString.encode('utf-8'))
 
-def sha256_file(path: str) -> str:
+def sha256_file(filePath: str) -> str:
     """檔案 SHA256"""
-    h = hashlib.sha256()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b''):
-            h.update(chunk)
-    return h.hexdigest()
+    hashCalculator = hashlib.sha256()
+    with open(filePath, 'rb') as fileHandle:
+        for chunk in iter(lambda: fileHandle.read(1024 * 1024), b''):
+            hashCalculator.update(chunk)
+    return hashCalculator.hexdigest()
 
 
-def merkle_fold(leaves: List[str]) -> str:
+def merkle_fold(leafHashes: List[str]) -> str:
     """
     Merkle Tree 折疊
     
     將葉子節點折疊成單一根節點
     
     Args:
-        leaves: 葉子雜湊列表（hex）
+        leafHashes: 葉子雜湊列表（hex）
         
     Returns:
         Merkle 根雜湊
     """
-    if not leaves:
+    if not leafHashes:
         return sha256(b'')
     
     # 轉換為 bytes
-    layer = [bytes.fromhex(x) for x in leaves]
+    currentLayer = [bytes.fromhex(hashValue) for hashValue in leafHashes]
     
     # 逐層折疊
-    while len(layer) > 1:
-        next_layer = []
-        for i in range(0, len(layer), 2):
-            a = layer[i]
-            b = layer[i + 1] if i + 1 < len(layer) else a  # 奇數時自己配對
-            combined = hashlib.sha256(a + b).digest()
-            next_layer.append(combined)
-        layer = next_layer
+    while len(currentLayer) > 1:
+        nextLayer = []
+        for pairIndex in range(0, len(currentLayer), 2):
+            leftNode = currentLayer[pairIndex]
+            rightNode = currentLayer[pairIndex + 1] if pairIndex + 1 < len(currentLayer) else leftNode  # 奇數時自己配對
+            combinedHash = hashlib.sha256(leftNode + rightNode).digest()
+            nextLayer.append(combinedHash)
+        currentLayer = nextLayer
     
-    return layer[0].hex()
+    return currentLayer[0].hex()
 
 
 @dataclass
@@ -262,36 +262,36 @@ class MerkleChain:
         return merkle_fold(sorted(leaves))
 
 
-def build_bundle_merkle(bundle_dir: str, file_list: List[str]) -> Dict:
+def build_bundle_merkle(bundleDirectory: str, fileList: List[str]) -> Dict:
     """
     為 bundle 目錄建立 Merkle 驗證
     
     Args:
-        bundle_dir: bundle 目錄路徑
-        file_list: 要驗證的檔案列表
+        bundleDirectory: bundle 目錄路徑
+        fileList: 要驗證的檔案列表
         
     Returns:
         包含 merkle_root 和檔案資訊的字典
     """
-    leaves = []
-    file_meta = {}
+    leafHashes = []
+    fileMetadata = {}
     
-    for fn in file_list:
-        fp = os.path.join(bundle_dir, fn)
-        if os.path.exists(fp):
-            h = sha256_file(fp)
-            leaves.append(h)
-            file_meta[fn] = {
-                'sha256': h,
-                'bytes': os.path.getsize(fp)
+    for filename in fileList:
+        filePath = os.path.join(bundleDirectory, filename)
+        if os.path.exists(filePath):
+            fileHash = sha256_file(filePath)
+            leafHashes.append(fileHash)
+            fileMetadata[filename] = {
+                'sha256': fileHash,
+                'bytes': os.path.getsize(filePath)
             }
     
-    root = merkle_fold(sorted(leaves))
+    merkleRoot = merkle_fold(sorted(leafHashes))
     
     return {
-        'merkle_root': root,
-        'leaves': sorted(leaves),
-        'files': file_meta
+        'merkle_root': merkleRoot,
+        'leaves': sorted(leafHashes),
+        'files': fileMetadata
     }
 
 
