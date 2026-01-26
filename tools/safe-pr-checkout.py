@@ -77,14 +77,18 @@ def list_recent_prs(owner, repo, limit=5):
 def checkout_pr(pr_number):
     """Checkout PR using gh CLI or git fetch"""
     # Try gh CLI first
-    result = subprocess.run(
-        ['gh', 'pr', 'checkout', str(pr_number)],
-        capture_output=True,
-        text=True
-    )
-    
-    if result.returncode == 0:
-        return True, "gh CLI"
+    try:
+        result = subprocess.run(
+            ['gh', 'pr', 'checkout', str(pr_number)],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            return True, "gh CLI"
+    except FileNotFoundError:
+        # gh CLI not installed
+        pass
     
     # Fallback: Check if we can fetch the PR branch
     print("💡 Attempting alternative checkout method...")
@@ -135,7 +139,7 @@ def main():
             print("  (Could not fetch recent PRs)")
         
         print()
-        print("💡 Tip: Visit https://github.com/{}/{}/pulls to see all pull requests".format(owner, repo))
+        print(f"💡 Tip: Visit https://github.com/{owner}/{repo}/pulls to see all pull requests")
         sys.exit(1)
     
     if exists is True:
