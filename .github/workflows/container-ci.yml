@@ -28,12 +28,10 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd containers
         npm install
-        cd reverse-engine
+        cd containers/reverse-engine
         pip install -r requirements.txt
     
     - name: Run tests
       run: |
-        cd containers
-        npm test
+        npx jest
