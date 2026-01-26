@@ -3,16 +3,16 @@
  * Origin Signature: MrLiouWord
  */
 
-import { FlpkgLoader, FlpkgManifest } from '../../formats/flpkg/FlpkgLoader';
-import { FlpkgPacker } from '../../formats/flpkg/FlpkgPacker';
+import { FlpkgLoader as Loader, FlpkgManifest } from '../../formats/flpkg/FlpkgLoader';
+import { FlpkgPacker as Packer } from '../../formats/flpkg/FlpkgPacker';
 
 export async function load(path: string): Promise<FlpkgManifest> {
-  const loader = new FlpkgLoader();
+  const loader = new Loader();
   return loader.load(path);
 }
 
 export async function pack(manifest: FlpkgManifest, outputPath: string): Promise<void> {
-  const packer = new FlpkgPacker();
+  const packer = new Packer();
   return packer.pack(manifest, outputPath);
 }
 
