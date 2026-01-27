@@ -1,87 +1,195 @@
-#define USE_THE_REPOSITORY_VARIABLE
-#include "builtin.h"
-#include "config.h"
-#include "environment.h"
+#include "git-compat-util.h"
+#include "abspath.h"
+#include "advice.h"
 #include "gettext.h"
 #include "hook.h"
-#include "parse-options.h"
-#include "strvec.h"
+#include "path.h"
+#include "run-command.h"
+#include "config.h"
+#include "strbuf.h"
+#include "environment.h"
+#include "setup.h"
 
-#define BUILTIN_HOOK_RUN_USAGE \
-	N_("git hook run [--ignore-missing] [--to-stdin=<path>] <hook-name> [-- <hook-args>]")
-
-static const char * const builtin_hook_usage[] = {
-	BUILTIN_HOOK_RUN_USAGE,
-	NULL
-};
-
-static const char * const builtin_hook_run_usage[] = {
-	BUILTIN_HOOK_RUN_USAGE,
-	NULL
-};
-
-static int run(int argc, const char **argv, const char *prefix,
-	       struct repository *repo UNUSED)
+const char *find_hook(struct repository *r, const char *name)
 {
-	int i;
-	struct run_hooks_opt opt = RUN_HOOKS_OPT_INIT;
-	int ignore_missing = 0;
-	const char *hook_name;
-	struct option run_options[] = {
-		OPT_BOOL(0, "ignore-missing", &ignore_missing,
-			 N_("silently ignore missing requested <hook-name>")),
-		OPT_STRING(0, "to-stdin", &opt.path_to_stdin, N_("path"),
-			   N_("file to read into hooks' stdin")),
-		OPT_END(),
-	};
-	int ret;
+	static struct strbuf path = STRBUF_INIT;
 
-	argc = parse_options(argc, argv, prefix, run_options,
-			     builtin_hook_run_usage,
-			     PARSE_OPT_KEEP_DASHDASH);
+	int found_hook;
 
-	if (!argc)
-		goto usage;
+	repo_git_path_replace(r, &path, "hooks/%s", name);
+	found_hook = access(path.buf, X_OK) >= 0;
+#ifdef STRIP_EXTENSION
+	if (!found_hook) {
+		int err = errno;
 
-	/*
-	 * Having a -- for "run" when providing <hook-args> is
-	 * mandatory.
-	 */
-	if (argc > 1 && strcmp(argv[1], "--") &&
-	    strcmp(argv[1], "--end-of-options"))
-		goto usage;
+		strbuf_addstr(&path, STRIP_EXTENSION);
+		found_hook = access(path.buf, X_OK) >= 0;
+		if (!found_hook)
+			errno = err;
+	}
+#endif
 
-	/* Add our arguments, start after -- */
-	for (i = 2 ; i < argc; i++)
-		strvec_push(&opt.args, argv[i]);
+	if (!found_hook) {
+		if (errno == EACCES && advice_enabled(ADVICE_IGNORED_HOOK)) {
+			static struct string_list advise_given = STRING_LIST_INIT_DUP;
 
-	/* Need to take into account core.hooksPath */
-	repo_config(the_repository, git_default_config, NULL);
-
-	hook_name = argv[0];
-	if (!ignore_missing)
-		opt.error_if_missing = 1;
-	ret = run_hooks_opt(the_repository, hook_name, &opt);
-	if (ret < 0) /* error() return */
-		ret = 1;
-	return ret;
-usage:
-	usage_with_options(builtin_hook_run_usage, run_options);
+			if (!string_list_lookup(&advise_given, name)) {
+				string_list_insert(&advise_given, name);
+				advise(_("The '%s' hook was ignored because "
+					 "it's not set as executable.\n"
+					 "You can disable this warning with "
+					 "`git config set advice.ignoredHook false`."),
+				       path.buf);
+			}
+		}
+		return NULL;
+	}
+	return path.buf;
 }
 
-int cmd_hook(int argc,
-	     const char **argv,
-	     const char *prefix,
-	     struct repository *repo)
+int hook_exists(struct repository *r, const char *name)
 {
-	parse_opt_subcommand_fn *fn = NULL;
-	struct option builtin_hook_options[] = {
-		OPT_SUBCOMMAND("run", &fn, run),
-		OPT_END(),
+	return !!find_hook(r, name);
+}
+
+static int pick_next_hook(struct child_process *cp,
+			  struct strbuf *out UNUSED,
+			  void *pp_cb,
+			  void **pp_task_cb UNUSED)
+{
+	struct hook_cb_data *hook_cb = pp_cb;
+	const char *hook_path = hook_cb->hook_path;
+
+	if (!hook_path)
+		return 0;
+
+	cp->no_stdin = 1;
+	strvec_pushv(&cp->env, hook_cb->options->env.v);
+	/* reopen the file for stdin; run_command closes it. */
+	if (hook_cb->options->path_to_stdin) {
+		cp->no_stdin = 0;
+		cp->in = xopen(hook_cb->options->path_to_stdin, O_RDONLY);
+	}
+	cp->stdout_to_stderr = 1;
+	cp->trace2_hook_name = hook_cb->hook_name;
+	cp->dir = hook_cb->options->dir;
+
+	strvec_push(&cp->args, hook_path);
+	strvec_pushv(&cp->args, hook_cb->options->args.v);
+
+	/*
+	 * This pick_next_hook() will be called again, we're only
+	 * running one hook, so indicate that no more work will be
+	 * done.
+	 */
+	hook_cb->hook_path = NULL;
+
+	return 1;
+}
+
+static int notify_start_failure(struct strbuf *out UNUSED,
+				void *pp_cb,
+				void *pp_task_cp UNUSED)
+{
+	struct hook_cb_data *hook_cb = pp_cb;
+
+	hook_cb->rc |= 1;
+
+	return 1;
+}
+
+static int notify_hook_finished(int result,
+				struct strbuf *out UNUSED,
+				void *pp_cb,
+				void *pp_task_cb UNUSED)
+{
+	struct hook_cb_data *hook_cb = pp_cb;
+	struct run_hooks_opt *opt = hook_cb->options;
+
+	hook_cb->rc |= result;
+
+	if (opt->invoked_hook)
+		*opt->invoked_hook = 1;
+
+	return 0;
+}
+
+static void run_hooks_opt_clear(struct run_hooks_opt *options)
+{
+	strvec_clear(&options->env);
+	strvec_clear(&options->args);
+}
+
+int run_hooks_opt(struct repository *r, const char *hook_name,
+		  struct run_hooks_opt *options)
+{
+	struct strbuf abs_path = STRBUF_INIT;
+	struct hook_cb_data cb_data = {
+		.rc = 0,
+		.hook_name = hook_name,
+		.options = options,
+	};
+	const char *const hook_path = find_hook(r, hook_name);
+	int ret = 0;
+	const struct run_process_parallel_opts opts = {
+		.tr2_category = "hook",
+		.tr2_label = hook_name,
+
+		.processes = 1,
+		.ungroup = 1,
+
+		.get_next_task = pick_next_hook,
+		.start_failure = notify_start_failure,
+		.task_finished = notify_hook_finished,
+
+		.data = &cb_data,
 	};
 
-	argc = parse_options(argc, argv, NULL, builtin_hook_options,
-			     builtin_hook_usage, 0);
+	if (!options)
+		BUG("a struct run_hooks_opt must be provided to run_hooks");
 
-	return fn(argc, argv, prefix, repo);
+	if (options->invoked_hook)
+		*options->invoked_hook = 0;
+
+	if (!hook_path && !options->error_if_missing)
+		goto cleanup;
+
+	if (!hook_path) {
+		ret = error("cannot find a hook named %s", hook_name);
+		goto cleanup;
+	}
+
+	cb_data.hook_path = hook_path;
+	if (options->dir) {
+		strbuf_add_absolute_path(&abs_path, hook_path);
+		cb_data.hook_path = abs_path.buf;
+	}
+
+	run_processes_parallel(&opts);
+	ret = cb_data.rc;
+cleanup:
+	strbuf_release(&abs_path);
+	run_hooks_opt_clear(options);
+	return ret;
+}
+
+int run_hooks(struct repository *r, const char *hook_name)
+{
+	struct run_hooks_opt opt = RUN_HOOKS_OPT_INIT;
+
+	return run_hooks_opt(r, hook_name, &opt);
+}
+
+int run_hooks_l(struct repository *r, const char *hook_name, ...)
+{
+	struct run_hooks_opt opt = RUN_HOOKS_OPT_INIT;
+	va_list ap;
+	const char *arg;
+
+	va_start(ap, hook_name);
+	while ((arg = va_arg(ap, const char *)))
+		strvec_push(&opt.args, arg);
+	va_end(ap);
+
+	return run_hooks_opt(r, hook_name, &opt);
 }
