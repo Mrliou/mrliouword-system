@@ -107,7 +107,8 @@ program
     
     try {
       // 調用 Python TraceMiner
-      const scriptPath = path.join(__dirname, '..', 'reverse-engine', 'TraceMiner.py');
+      // From dist/cli/mrliou-runtime.js, go back to containers/reverse-engine
+      const scriptPath = path.join(__dirname, '..', '..', 'reverse-engine', 'TraceMiner.py');
       const pythonCmd = `python3 "${scriptPath}" "${options.traceFs}" "${options.traceOps}"`;
       
       const { stdout, stderr } = await exec(pythonCmd);
