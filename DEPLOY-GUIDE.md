@@ -482,6 +482,66 @@ Wrangler 自動為本地開發創建測試綁定。運行 `npm run dev` 時，�
 
 ---
 
+## ⚙️ GitHub Actions 自動部署設定
+
+本專案使用 GitHub Actions 進行自動化部署。要啟用自動部署功能，需要在 GitHub repository 中配置以下 Secrets：
+
+### 必要的 Secrets
+
+前往 GitHub repository → Settings → Secrets and variables → Actions → New repository secret，新增以下 secrets：
+
+#### 1. CLOUDFLARE_API_TOKEN
+
+用於 Cloudflare Workers 部署的 API Token。
+
+**如何取得：**
+
+1. 訪問 [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens)
+2. 點擊 "Create Token"
+3. 使用 "Edit Cloudflare Workers" 模板，或自訂權限：
+   - Account: Workers Scripts (Edit)
+   - Account: Workers KV Storage (Edit)
+   - Account: D1 (Edit)
+   - Account: R2 (Edit)
+4. 複製生成的 Token 並儲存為 `CLOUDFLARE_API_TOKEN`
+
+參考文檔：https://developers.cloudflare.com/fundamentals/api/get-started/create-token/
+
+#### 2. CLOUDFLARE_ACCOUNT_ID（可選）
+
+Cloudflare 帳戶 ID。如果未設定，Wrangler 會使用 API Token 關聯的帳戶。
+
+**如何取得：**
+
+1. 訪問 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 選擇任意網域或進入 Workers & Pages
+3. 在右側找到 "Account ID"
+
+#### 3. NOTION_TOKEN（可選）
+
+用於同步粒子字典到 Notion 的整合 Token。僅在需要 Notion 同步功能時設定。
+
+**如何取得：**
+
+1. 訪問 [Notion Integrations](https://www.notion.so/my-integrations)
+2. 創建新的 Integration
+3. 複製 "Internal Integration Token"
+4. 在 Notion 中分享目標 Database 給該 Integration
+
+### 工作流程說明
+
+配置完成後，每次推送到 `main` 分支時，GitHub Actions 會自動執行以下操作：
+
+1. **Deploy to Cloudflare Workers**：自動部署 `mrliouword-private` Worker（需要 `CLOUDFLARE_API_TOKEN`）
+2. **Generate Documentation**：自動更新系統狀態文檔
+3. **Sync to Notion**：同步粒子字典到 Notion（僅在手動觸發時執行，需要 `NOTION_TOKEN`）
+
+### 跳過自動部署
+
+如果未設定 `CLOUDFLARE_API_TOKEN`，Cloudflare 部署步驟會自動跳過，不會導致工作流程失敗。您可以使用本地 Wrangler 進行手動部署。
+
+---
+
 **origin_signature: MrLiouWord**  
 **philosophy: 怎麼過去，就怎麼回來**  
 **version: 4.0.0**
