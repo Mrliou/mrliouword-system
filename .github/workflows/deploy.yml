@@ -16,7 +16,6 @@ jobs:
   deploy-cloudflare:
     name: Deploy to Cloudflare Workers
     runs-on: ubuntu-latest
-    if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
     
     steps:
       - name: Checkout
@@ -30,7 +29,18 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
       
+      - name: Check for Cloudflare credentials
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Skipping Cloudflare deployment - CLOUDFLARE_API_TOKEN not configured"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Deploy mrliouword-private
+        if: steps.check-secrets.outputs.skip != 'true'
         working-directory: cloudflare/mrliouword-private
         run: |
           npm install
@@ -42,7 +52,7 @@ jobs:
     name: Sync to Notion
     runs-on: ubuntu-latest
     needs: deploy-cloudflare
-    if: always() && github.event_name == 'workflow_dispatch' && secrets.NOTION_TOKEN != ''
+    if: always() && github.event_name == 'workflow_dispatch'
     
     steps:
       - name: Checkout
@@ -56,7 +66,18 @@ jobs:
       - name: Install dependencies
         run: pip install notion-client
       
+      - name: Check for Notion token
+        id: check-notion
+        run: |
+          if [ -z "${{ secrets.NOTION_TOKEN }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Skipping Notion sync - NOTION_TOKEN not configured"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Sync particle dictionary
+        if: steps.check-notion.outputs.skip != 'true'
         working-directory: integrations/notion
         run: python sync.py --sync-dict
         env:
