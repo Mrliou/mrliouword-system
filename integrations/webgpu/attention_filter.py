@@ -16,7 +16,7 @@ Author: MR.liou
 
 import math
 import logging
-from typing import List, Dict, Tuple  # Dict preserved for future attention score structures
+from typing import List, Tuple
 from dataclasses import dataclass
 
 # Optional dependency: numpy (for vector operations)

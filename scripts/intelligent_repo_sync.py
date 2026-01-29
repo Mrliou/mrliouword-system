@@ -248,8 +248,6 @@ class IntelligentRepoSync:
         except Exception as e:
             logger.error(f"Attention error: {e}")
             self.errors.append(f"Attention computation error: {str(e)}")
-            # Maintain structure consistency even in error case
-            attention_scores = []
         
         # Step 4: Test particle access (7 tests)
         test_results = {}
