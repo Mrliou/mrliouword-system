@@ -238,10 +238,10 @@ class IntelligentRepoSync:
             # Architectural placeholder: Preserve attention scores for future
             # particle similarity analysis and world-model consistency
             attention_scores = self.attention_filter.filter_by_attention(
-            similar_pairs = self.attention_filter.filter_by_attention(
                 texts,
                 threshold=similarity_threshold
             )
+            similar_pairs = attention_scores
             
             logger.info(f"Found {len(similar_pairs)} similar pairs")
             
@@ -469,7 +469,6 @@ async def main():
     if args.limit is not None:
         if args.limit < 1 or args.limit > 100:
             parser.error("--limit must be an integer from 1 to 100 (inclusive)")
-            parser.error("--limit must be an integer between 1 and 100")
     
     # Sanitize and validate pattern if provided
     if args.pattern is not None:
@@ -478,8 +477,6 @@ async def main():
             parser.error("--pattern must not be empty or whitespace-only")
         # Check for control characters (ASCII < 32 or DEL = 127)
         if any(ord(ch) < 32 or ord(ch) == 127 for ch in sanitized_pattern):
-        # Basic control-character check to avoid malformed patterns
-        if any(ord(ch) < 32 for ch in sanitized_pattern):
             parser.error("--pattern contains invalid control characters")
         args.pattern = sanitized_pattern
     

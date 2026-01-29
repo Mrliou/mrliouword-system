@@ -566,7 +566,6 @@ class ParticleTestRecorder:
         try:
             # Create particles at different frequency layers
             target_freq = FREQ['L3']  # 20.50 Hz
-            target_freq = FREQ['L3']  # 18.60 Hz
             tolerance = 0.5
             
             # Create test particles
@@ -574,9 +573,6 @@ class ParticleTestRecorder:
                 ('L2', FREQ['L2']),  # 12.67 Hz - outside range
                 ('L3', FREQ['L3']),  # 20.50 Hz - exact match
                 ('L4', FREQ['L4']),  # 33.17 Hz - outside range
-                ('L2', FREQ['L2']),  # 11.49 Hz - outside range
-                ('L3', FREQ['L3']),  # 18.60 Hz - exact match
-                ('L4', FREQ['L4']),  # 30.09 Hz - outside range
             ]
             
             created = []
