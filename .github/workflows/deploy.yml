@@ -31,8 +31,10 @@ jobs:
       
       - name: Check for Cloudflare credentials
         id: check-secrets
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+          if [ -z "$CF_TOKEN" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "⚠️ Skipping Cloudflare deployment - CLOUDFLARE_API_TOKEN not configured"
           else
@@ -40,7 +42,7 @@ jobs:
           fi
       
       - name: Deploy mrliouword-private
-        if: steps.check-secrets.outputs.skip != 'true'
+        if: steps.check-secrets.outputs.skip == 'false'
         working-directory: cloudflare/mrliouword-private
         run: |
           npm install
@@ -68,8 +70,10 @@ jobs:
       
       - name: Check for Notion token
         id: check-notion
+        env:
+          NOTION_TOKEN_CHECK: ${{ secrets.NOTION_TOKEN }}
         run: |
-          if [ -z "${{ secrets.NOTION_TOKEN }}" ]; then
+          if [ -z "$NOTION_TOKEN_CHECK" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "⚠️ Skipping Notion sync - NOTION_TOKEN not configured"
           else
@@ -77,7 +81,7 @@ jobs:
           fi
       
       - name: Sync particle dictionary
-        if: steps.check-notion.outputs.skip != 'true'
+        if: steps.check-notion.outputs.skip == 'false'
         working-directory: integrations/notion
         run: python sync.py --sync-dict
         env:
