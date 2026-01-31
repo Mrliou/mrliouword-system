@@ -17,6 +17,7 @@ wrangler.toml.bak
 dist/
 build/
 containers/dist/
+mrliou_particle_plugin_runtime_v0.2_pack.js
 
 # Environment variables
 .env
