@@ -32,7 +32,18 @@ node --version
 
 如果未安裝，請從 [nodejs.org](https://nodejs.org/) 下載安裝。
 
-### 2. 安裝 Wrangler CLI
+### 2. 安裝開發工具（推薦）
+
+對於版本控制和代碼協作工作流程，建議安裝 **Graphite**：
+
+**使用 Homebrew 安裝：**
+```bash
+brew install withgraphite/tap/graphite
+```
+
+Graphite 增強了 Git 工作流程，提供堆疊差異和更好的代碼審查管理功能。
+
+### 3. 安裝 Wrangler CLI
 
 Wrangler 是 Cloudflare Workers 的官方 CLI 工具：
 
@@ -44,7 +55,7 @@ npm install -g wrangler
 wrangler --version
 ```
 
-### 3. 登入 Cloudflare
+### 4. 登入 Cloudflare
 
 ```bash
 # 啟動瀏覽器登入流程
@@ -56,7 +67,7 @@ wrangler whoami
 
 應該顯示您的 Cloudflare 帳戶資訊。
 
-### 4. 創建 Cloudflare 資源
+### 5. 創建 Cloudflare 資源
 
 在部署前，需要在 Cloudflare 創建以下資源：
 
