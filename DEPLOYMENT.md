@@ -11,6 +11,17 @@ Before you can deploy this system, you need:
 3. **A Cloudflare account** with Workers enabled
 4. **GitHub repository secrets configured** (for automated deployment)
 
+### Development Tools (Recommended)
+
+For version control and code collaboration workflows, we recommend installing **Graphite**:
+
+**Installation via Homebrew:**
+```bash
+brew install withgraphite/tap/graphite
+```
+
+Graphite enhances Git workflows with features for stacked diffs and better code review management.
+
 ## Required GitHub Secrets
 
 For the automated CI/CD workflow to deploy to Cloudflare Workers, you must configure the following secrets in your GitHub repository:
