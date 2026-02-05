@@ -72,5 +72,6 @@ The `gt` wrapper script allows you to use `gt` instead of `git`:
 ## Notes
 
 - The command uses `RUN_SETUP_GENTLY` which means it will work both inside and outside of a Git repository
-- The token is printed to stdout for demonstration purposes
-- In a production implementation, the token should be stored securely (e.g., in Git's credential system)
+- **Security Warning**: The current implementation prints the token to stdout for demonstration purposes. In a production implementation, the token should be stored securely using Git's credential system and never displayed in logs or terminal output
+- For production use, consider implementing secure token storage using `git-credential` helpers
+- Avoid exposing tokens in terminal history or logs

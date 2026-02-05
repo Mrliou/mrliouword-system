@@ -34,6 +34,6 @@ int cmd_auth(int argc,
 
 	/* Authentication logic */
 	printf("Authentication successful with token: %s\n", token);
-	
+
 	return 0;
 }
