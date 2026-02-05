@@ -41,7 +41,7 @@ node --version
 brew install withgraphite/tap/graphite
 ```
 
-Graphite 增強了 Git 工作流程，提供堆疊差異和更好的代碼審查管理功能。
+Graphite 增強了 Git 工作流程，提供堆疊式差異和更好的代碼審查管理功能。
 
 ### 3. 安裝 Wrangler CLI
 
