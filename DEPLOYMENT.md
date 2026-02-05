@@ -11,7 +11,7 @@ Before you can deploy this system, you need:
 3. **A Cloudflare account** with Workers enabled
 4. **GitHub repository secrets configured** (for automated deployment)
 
-### Development Tools
+### Development Tools (Recommended)
 
 For version control and code collaboration workflows, we recommend installing **Graphite**:
 
