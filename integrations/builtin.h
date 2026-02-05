@@ -118,6 +118,7 @@ int is_builtin(const char *s);
 int cmd_add(int argc, const char **argv, const char *prefix, struct repository *repo);
 int cmd_am(int argc, const char **argv, const char *prefix, struct repository *repo);
 int cmd_annotate(int argc, const char **argv, const char *prefix, struct repository *repo);
+int cmd_auth(int argc, const char **argv, const char *prefix, struct repository *repo);
 int cmd_apply(int argc, const char **argv, const char *prefix, struct repository *repo);
 int cmd_archive(int argc, const char **argv, const char *prefix, struct repository *repo);
 int cmd_backfill(int argc, const char **argv, const char *prefix, struct repository *repo);
