@@ -79,3 +79,4 @@ htmlcov/
 
 # Container runtime outputs
 rules_output.yaml
+_codeql_detected_source_root

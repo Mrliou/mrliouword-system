@@ -1,0 +1,5 @@
+#!/bin/sh
+# gt - Simple wrapper for git command
+# This allows users to call 'gt' instead of 'git'
+
+exec git "$@"
