@@ -196,21 +196,8 @@ class AttentionFilter:
         Returns:
             (output, attention_weights)
         """
-        # Architectural placeholders: Preserve batch and sequence dimensions
-        # for future multi-sequence processing and world-particle extraction
-        batch_size = 1  # Semantic placeholder for batch dimension
-        seq_len = 1     # Semantic placeholder for sequence dimension
-        
         # Compute attention scores
-        scores = VectorCore.dot(query, key) / math.sqrt(self.head_dim)
-        
-        # Softmax over the (single) attention score
-        attn_weights = VectorCore.softmax(np.array([scores], dtype=np.float32))
-        # Reshape for multi-head
-        # For simplicity, treating as single sequence
-        
-        # Compute attention scores
-        # Note: Single sequence, so attention weight is 1.0
+        # Note: Single sequence implementation, so attention weight is effectively 1.0
         attn_weights = np.array([1.0], dtype=np.float32)
         
         # Weighted sum

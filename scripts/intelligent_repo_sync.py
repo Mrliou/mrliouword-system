@@ -109,7 +109,13 @@ class IntelligentRepoSync:
             return self._default_config()
         
         with open(self.config_path, 'r') as f:
-            config = yaml.safe_load(f)
+            try:
+                config = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                logger.warning(
+                    f"Failed to parse YAML config {self.config_path}: {e}. Using defaults"
+                )
+                return self._default_config()
         
         logger.info(f"Loaded config from {self.config_path}")
         return config

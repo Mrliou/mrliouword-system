@@ -124,11 +124,15 @@ class MockMemory:
         keys = list(self.kv.keys())
         
         # Also scan files
-        for filename in os.listdir(self.storage_path):
-            if filename.endswith('.json'):
-                key = filename[:-5]
-                if key not in keys:
-                    keys.append(key)
+        try:
+            for filename in os.listdir(self.storage_path):
+                if filename.endswith('.json'):
+                    key = filename[:-5]
+                    if key not in keys:
+                        keys.append(key)
+        except FileNotFoundError:
+            # If the storage directory was removed, just return in-memory keys
+            pass
         
         if prefix:
             keys = [k for k in keys if k.startswith(prefix)]

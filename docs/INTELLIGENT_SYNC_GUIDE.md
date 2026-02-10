@@ -117,10 +117,10 @@ Particles are assigned to layers based on similarity scores:
 | Similarity | Layer | Frequency (Hz) | Quality |
 |-----------|-------|----------------|---------|
 | ≥ 0.9     | L1    | 7.83           | Highest |
-| ≥ 0.75    | L2    | 11.49          | High    |
-| ≥ 0.6     | L3    | 18.60          | Medium  |
-| ≥ 0.4     | L4    | 30.09          | Low     |
-| < 0.4     | L5    | 48.69          | Lowest  |
+| ≥ 0.75    | L2    | 12.67          | High    |
+| ≥ 0.6     | L3    | 20.50          | Medium  |
+| ≥ 0.4     | L4    | 33.17          | Low     |
+| < 0.4     | L5    | 53.68          | Lowest  |
 
 Frequencies are calculated as: **SCHUMANN (7.83 Hz) × PHI^n**
 

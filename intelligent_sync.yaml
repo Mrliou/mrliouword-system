@@ -81,12 +81,12 @@ particle_memory:
   frequencies:
     SCHUMANN: 7.83
     PHI: 1.618033988749895
-    L7: 127.45  # SCHUMANN * PHI^6
-    L6: 78.76   # SCHUMANN * PHI^5
-    L5: 48.69   # SCHUMANN * PHI^4
-    L4: 30.09   # SCHUMANN * PHI^3
-    L3: 18.60   # SCHUMANN * PHI^2
-    L2: 11.49   # SCHUMANN * PHI
+    L7: 140.50  # SCHUMANN * PHI^6
+    L6: 86.84   # SCHUMANN * PHI^5
+    L5: 53.68   # SCHUMANN * PHI^4
+    L4: 33.17   # SCHUMANN * PHI^3
+    L3: 20.50   # SCHUMANN * PHI^2
+    L2: 12.67   # SCHUMANN * PHI
     L1: 7.83    # SCHUMANN
     L0: 4.84    # SCHUMANN / PHI
   
