@@ -218,7 +218,7 @@ class IntelligentRepoSync:
                 )
                 
                 # Add source info
-                structure_dict = structure.to_dict()
+                structure_dict = structure
                 structure_dict['source_info'] = {
                     'repo': snippet.repo,
                     'path': snippet.path,
