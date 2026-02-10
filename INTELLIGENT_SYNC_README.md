@@ -149,18 +149,18 @@ Runs automatically every Monday at 00:00 UTC. Manual trigger available:
 ### Search & Extract
 ```python
 from scripts.global_github_search import GitHubSearchEngine
-from integrations.github.logical_extractor import LogicalExtractor
+from integrations.github.logical_extractor import LogicalStructureExtractor
 
 # Search GitHub
 engine = GitHubSearchEngine()
 snippets = engine.search_code("attention mechanism", limit=10)
 
 # Extract logical structure
-extractor = LogicalExtractor()
+extractor = LogicalStructureExtractor()
 for snippet in snippets:
-    structure = extractor.extract(snippet.code, snippet.language)
-    print(f"Patterns: {structure.patterns}")
-    print(f"Formula: {structure.formula}")
+    structure = extractor.extract_from_code(snippet.code, snippet.language)
+    print(f"Patterns: {structure['patterns']}")
+    print(f"Formula: {structure['formula']}")
 ```
 
 ### Store Particles
