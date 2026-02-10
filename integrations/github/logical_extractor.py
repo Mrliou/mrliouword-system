@@ -1,362 +1,554 @@
 #!/usr/bin/env python3
 """
-Logical Architecture Extractor
-===============================
+Logical Structure Extractor - 邏輯架構提取器
 
-Extracts logical concepts, patterns, and relationships from code.
+從代碼中提取邏輯架構：
+- 核心概念 (Core Concepts)
+- 因果關係 (Causal Relations)
+- 推理鏈 (Reasoning Chains)
+- 架構模式 (Architectural Patterns)
 
-Supported patterns:
-- Attention mechanisms
-- Memory systems  
-- Merkle trees
-- Particle systems
-- Flow pipelines
-- Layer hierarchies
+支援跨語言：Python, TypeScript, JavaScript, Shell, Markdown
 
 Author: MR.liou
 """
 
 import re
-import logging
-from typing import List, Dict
-from dataclasses import dataclass, field, asdict
+import os
+import ast
+import json
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, asdict
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 @dataclass
 class LogicalStructure:
-    """Extracted logical structure from code"""
-    concepts: List[str] = field(default_factory=list)
-    patterns: List[str] = field(default_factory=list)
-    relationships: Dict[str, List[str]] = field(default_factory=dict)
-    reasoning_chains: List[str] = field(default_factory=list)
-    formula: str = ""
-    confidence: float = 0.0
-    
-    def to_dict(self) -> Dict:
-        """Convert to dictionary"""
-        return asdict(self)
+    """邏輯架構"""
+    concepts: List[str]                    # 核心概念
+    patterns: Dict[str, List[str]]         # 架構模式
+    relationships: List[Dict]              # 因果關係
+    reasoning_chains: List[List[str]]      # 推理鏈
+    functions: List[Dict]                  # 函數/類定義
+    imports: List[str]                     # 依賴關係
+    keywords: set                          # 關鍵字
+    complexity: float                      # 複雜度分數
 
 
-class LogicalExtractor:
-    """Extract logical architecture from code"""
+class LogicalStructureExtractor:
+    """
+    邏輯架構提取器
     
-    # Pattern definitions
-    PATTERN_SIGNATURES = {
-        'attention': [
-            r'attention',
-            r'query.*key.*value',
-            r'softmax',
-            r'multi.*head',
-            r'self.*attention',
-            r'cross.*attention',
-            r'scaled.*dot.*product'
+    核心功能：
+    1. 提取代碼的邏輯架構
+    2. 識別架構模式（attention, memory, particle 等）
+    3. 分析因果關係和推理鏈
+    4. 支援多語言
+    """
+    
+    # 架構模式關鍵字
+    PATTERN_KEYWORDS = {
+        'attention_mechanism': [
+            'attention', 'query', 'key', 'value', 'qkv', 'multihead',
+            'self_attention', 'cross_attention', 'softmax', 'scaled_dot_product'
         ],
-        'memory': [
-            r'memory',
-            r'cache',
-            r'storage',
-            r'recall',
-            r'commit',
-            r'persist',
-            r'kv.*store'
+        'memory_system': [
+            'memory', 'cache', 'buffer', 'storage', 'persist', 'recall',
+            'remember', 'forget', 'merkle', 'chain', 'history'
         ],
-        'merkle': [
-            r'merkle',
-            r'hash.*tree',
-            r'root.*hash',
-            r'verify.*chain',
-            r'integrity',
-            r'tamper.*proof'
+        'particle_engine': [
+            'particle', 'atom', 'granular', 'simhash', 'fingerprint',
+            'vector', 'embedding', 'tensor', 'quantum'
         ],
-        'particle': [
-            r'particle',
-            r'quantum',
-            r'resonance',
-            r'frequency',
-            r'oscillat',
-            r'wave.*function'
+        'frequency_resonance': [
+            'frequency', 'resonance', 'harmonic', 'wave', 'oscillation',
+            'schumann', 'phi', 'golden_ratio', 'vibration'
         ],
-        'flow': [
-            r'pipeline',
-            r'stream',
-            r'flow',
-            r'orchestrat',
-            r'workflow',
-            r'dag',
-            r'dataflow'
+        'merkle_chain': [
+            'merkle', 'hash', 'chain', 'tree', 'verification', 'integrity',
+            'proof', 'root', 'leaf'
         ],
-        'layer': [
-            r'layer',
-            r'hierarchi',
-            r'stack',
-            r'level',
-            r'tier',
-            r'stratif'
-        ],
-        'chain': [
-            r'chain',
-            r'linked.*list',
-            r'prev.*next',
-            r'sequence',
-            r'blockchain'
+        'logical_reasoning': [
+            'infer', 'deduce', 'reason', 'logic', 'causal', 'consequence',
+            'therefore', 'because', 'if', 'then', 'implies'
         ]
     }
     
-    # Concept keywords
-    CONCEPT_KEYWORDS = {
-        'distributed': ['distributed', 'decentralized', 'peer', 'cluster', 'federation'],
-        'concurrent': ['concurrent', 'parallel', 'async', 'thread', 'goroutine'],
-        'reactive': ['reactive', 'observer', 'event', 'stream', 'publish'],
-        'functional': ['functional', 'pure', 'immutable', 'map', 'reduce', 'filter'],
-        'graph': ['graph', 'node', 'edge', 'vertex', 'dag', 'network'],
-        'state': ['state', 'fsm', 'stateful', 'transition', 'machine'],
-        'vector': ['vector', 'embedding', 'dimension', 'tensor', 'matrix'],
-        'neural': ['neural', 'network', 'layer', 'weights', 'activation'],
-        'crypto': ['crypto', 'encrypt', 'decrypt', 'hash', 'signature'],
-        'consensus': ['consensus', 'raft', 'paxos', 'vote', 'quorum']
-    }
-    
     def __init__(self):
-        """Initialize extractor"""
-        pass
+        self.language_extractors = {
+            'python': self._extract_python,
+            'typescript': self._extract_typescript,
+            'javascript': self._extract_javascript,
+            'shell': self._extract_shell,
+            'markdown': self._extract_markdown
+        }
     
-    def extract(self, code: str, language: str = "unknown") -> LogicalStructure:
+    def extract_from_code(
+        self,
+        code: str,
+        language: str,
+        file_path: Optional[str] = None
+    ) -> Dict:
         """
-        Extract logical structure from code
+        提取代碼的邏輯架構
         
         Args:
-            code: Source code
-            language: Programming language
+            code: 代碼內容
+            language: 編程語言
+            file_path: 可選檔案路徑
             
         Returns:
-            Extracted logical structure
+            邏輯架構字典
         """
-        structure = LogicalStructure()
+        language = language.lower()
         
-        # Normalize code
-        normalized = code.lower()
+        # 選擇對應的提取器
+        extractor = self.language_extractors.get(language, self._extract_generic)
         
-        # Extract patterns
-        structure.patterns = self._extract_patterns(normalized)
+        # 提取基礎結構
+        structure = extractor(code, file_path)
         
-        # Extract concepts
-        structure.concepts = self._extract_concepts(normalized)
+        # 識別架構模式
+        structure['patterns'] = self._identify_patterns(code, structure)
         
-        # Extract relationships
-        structure.relationships = self._extract_relationships(code, normalized)
+        # 提取推理鏈
+        structure['reasoning_chains'] = self._extract_reasoning_chains(code, structure)
         
-        # Build reasoning chains
-        structure.reasoning_chains = self._build_reasoning_chains(structure)
-        
-        # Generate formula
-        structure.formula = self._generate_formula(structure)
-        
-        # Calculate confidence
-        structure.confidence = self._calculate_confidence(structure, code)
-        
-        logger.info(f"Extracted: {len(structure.patterns)} patterns, "
-                   f"{len(structure.concepts)} concepts, "
-                   f"confidence={structure.confidence:.2f}")
+        # 計算複雜度
+        structure['complexity'] = self._compute_complexity(structure)
         
         return structure
     
-    def _extract_patterns(self, normalized: str) -> List[str]:
-        """Extract architectural patterns"""
-        patterns = []
+    def _extract_python(self, code: str, file_path: Optional[str]) -> Dict:
+        """提取 Python 代碼結構"""
+        structure = {
+            'concepts': [],
+            'functions': [],
+            'imports': [],
+            'relationships': [],
+            'keywords': set()
+        }
         
-        for pattern_name, signatures in self.PATTERN_SIGNATURES.items():
-            matches = 0
-            for sig in signatures:
-                if re.search(sig, normalized):
-                    matches += 1
+        try:
+            tree = ast.parse(code)
             
-            # Pattern detected if >= 2 signatures match
-            if matches >= 2:
-                patterns.append(pattern_name)
+            # 提取導入
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        structure['imports'].append(alias.name)
+                elif isinstance(node, ast.ImportFrom):
+                    module = node.module or ''
+                    for alias in node.names:
+                        if module:
+                            structure['imports'].append(f"{module}.{alias.name}")
+                        else:
+                            structure['imports'].append(alias.name)
+                
+                # 提取函數和類
+                elif isinstance(node, ast.FunctionDef):
+                    func_info = {
+                        'type': 'function',
+                        'name': node.name,
+                        'args': [arg.arg for arg in node.args.args],
+                        'lineno': node.lineno,
+                        'docstring': ast.get_docstring(node) or ''
+                    }
+                    structure['functions'].append(func_info)
+                    structure['concepts'].append(node.name)
+                    
+                elif isinstance(node, ast.ClassDef):
+                    class_info = {
+                        'type': 'class',
+                        'name': node.name,
+                        'bases': [self._get_name(base) for base in node.bases],
+                        'lineno': node.lineno,
+                        'docstring': ast.get_docstring(node) or ''
+                    }
+                    structure['functions'].append(class_info)
+                    structure['concepts'].append(node.name)
+                    
+                    # 提取類中的方法
+                    for item in node.body:
+                        if isinstance(item, ast.FunctionDef):
+                            method_info = {
+                                'type': 'method',
+                                'class': node.name,
+                                'name': item.name,
+                                'args': [arg.arg for arg in item.args.args],
+                                'lineno': item.lineno
+                            }
+                            structure['functions'].append(method_info)
+            
+            # 提取關鍵字（變數名、函數調用等）
+            structure['keywords'] = self._extract_keywords(code)
+            
+            # 提取因果關係（if-then, try-except 等）
+            structure['relationships'] = self._extract_relationships_python(tree)
+            
+        except SyntaxError as e:
+            print(f"Python 語法錯誤: {e}")
+        
+        return structure
+    
+    def _extract_typescript(self, code: str, file_path: Optional[str]) -> Dict:
+        """提取 TypeScript/JavaScript 代碼結構"""
+        structure = {
+            'concepts': [],
+            'functions': [],
+            'imports': [],
+            'relationships': [],
+            'keywords': set()
+        }
+        
+        # 提取導入
+        import_pattern = r'import\s+(?:{[^}]+}|[\w]+)\s+from\s+["\']([^"\']+)["\']'
+        for match in re.finditer(import_pattern, code):
+            structure['imports'].append(match.group(1))
+        
+        # 提取函數定義
+        func_patterns = [
+            r'function\s+(\w+)\s*\(',
+            r'const\s+(\w+)\s*=\s*\([^)]*\)\s*=>',
+            r'(\w+)\s*\([^)]*\)\s*{',  # 類方法
+        ]
+        
+        for pattern in func_patterns:
+            for match in re.finditer(pattern, code):
+                func_name = match.group(1)
+                structure['functions'].append({
+                    'type': 'function',
+                    'name': func_name,
+                    'lineno': code[:match.start()].count('\n') + 1
+                })
+                structure['concepts'].append(func_name)
+        
+        # 提取類定義
+        class_pattern = r'class\s+(\w+)(?:\s+extends\s+(\w+))?'
+        for match in re.finditer(class_pattern, code):
+            class_name = match.group(1)
+            base_class = match.group(2)
+            structure['functions'].append({
+                'type': 'class',
+                'name': class_name,
+                'bases': [base_class] if base_class else [],
+                'lineno': code[:match.start()].count('\n') + 1
+            })
+            structure['concepts'].append(class_name)
+        
+        # 提取關鍵字
+        structure['keywords'] = self._extract_keywords(code)
+        
+        # 提取因果關係
+        structure['relationships'] = self._extract_relationships_generic(code)
+        
+        return structure
+    
+    def _extract_javascript(self, code: str, file_path: Optional[str]) -> Dict:
+        """JavaScript 使用與 TypeScript 相同的提取器"""
+        return self._extract_typescript(code, file_path)
+    
+    def _extract_shell(self, code: str, file_path: Optional[str]) -> Dict:
+        """提取 Shell 腳本結構"""
+        structure = {
+            'concepts': [],
+            'functions': [],
+            'imports': [],
+            'relationships': [],
+            'keywords': set()
+        }
+        
+        # 提取函數定義
+        func_pattern = r'function\s+(\w+)|(\w+)\s*\(\)\s*{'
+        for match in re.finditer(func_pattern, code):
+            func_name = match.group(1) or match.group(2)
+            structure['functions'].append({
+                'type': 'function',
+                'name': func_name,
+                'lineno': code[:match.start()].count('\n') + 1
+            })
+            structure['concepts'].append(func_name)
+        
+        # 提取外部命令（視為依賴）
+        command_pattern = r'\b(git|npm|pip|docker|kubectl|curl|wget)\s+'
+        for match in re.finditer(command_pattern, code):
+            structure['imports'].append(match.group(1))
+        
+        structure['keywords'] = self._extract_keywords(code)
+        structure['relationships'] = self._extract_relationships_generic(code)
+        
+        return structure
+    
+    def _extract_markdown(self, code: str, file_path: Optional[str]) -> Dict:
+        """從 Markdown 文檔提取概念"""
+        structure = {
+            'concepts': [],
+            'functions': [],
+            'imports': [],
+            'relationships': [],
+            'keywords': set()
+        }
+        
+        # 提取標題作為概念
+        heading_pattern = r'^#+\s+(.+)$'
+        for match in re.finditer(heading_pattern, code, re.MULTILINE):
+            concept = match.group(1).strip()
+            structure['concepts'].append(concept)
+        
+        # 提取代碼塊
+        code_block_pattern = r'```(\w+)?\n(.*?)```'
+        for match in re.finditer(code_block_pattern, code, re.DOTALL):
+            lang = match.group(1) or 'unknown'
+            if lang in self.language_extractors:
+                # 遞歸提取代碼塊內容
+                block_code = match.group(2)
+                block_structure = self.extract_from_code(block_code, lang)
+                structure['functions'].extend(block_structure['functions'])
+                structure['imports'].extend(block_structure['imports'])
+        
+        structure['keywords'] = self._extract_keywords(code)
+        
+        return structure
+    
+    def _extract_generic(self, code: str, file_path: Optional[str]) -> Dict:
+        """通用提取器（未知語言）"""
+        return {
+            'concepts': [],
+            'functions': [],
+            'imports': [],
+            'relationships': [],
+            'keywords': self._extract_keywords(code)
+        }
+    
+    def _extract_keywords(self, code: str) -> set:
+        """提取關鍵字（識別符、常量名等）"""
+        # 提取識別符（變數名、函數名等）
+        identifier_pattern = r'\b([a-z_][a-z0-9_]*)\b'
+        keywords = set(re.findall(identifier_pattern, code.lower()))
+        
+        # 過濾常見停用詞
+        stopwords = {
+            'if', 'else', 'for', 'while', 'return', 'const', 'let', 'var',
+            'function', 'class', 'import', 'from', 'as', 'is', 'in', 'and',
+            'or', 'not', 'true', 'false', 'null', 'undefined', 'this', 'self'
+        }
+        
+        return keywords - stopwords
+    
+    def _identify_patterns(self, code: str, structure: Dict) -> Dict[str, List[str]]:
+        """識別架構模式"""
+        patterns = {}
+        
+        code_lower = code.lower()
+        all_keywords = structure['keywords'] | {
+            func['name'].lower() for func in structure['functions']
+        } | {
+            concept.lower() for concept in structure['concepts']
+        }
+        
+        for pattern_name, pattern_keywords in self.PATTERN_KEYWORDS.items():
+            matches = []
+            for keyword in pattern_keywords:
+                # 檢查關鍵字是否出現在代碼中
+                if keyword in code_lower or keyword in all_keywords:
+                    matches.append(keyword)
+            
+            if matches:
+                patterns[pattern_name] = matches
         
         return patterns
     
-    def _extract_concepts(self, normalized: str) -> List[str]:
-        """Extract logical concepts"""
-        concepts = []
+    def _extract_relationships_python(self, tree: ast.AST) -> List[Dict]:
+        """提取 Python 代碼的因果關係"""
+        relationships = []
         
-        for concept, keywords in self.CONCEPT_KEYWORDS.items():
-            matches = sum(1 for kw in keywords if kw in normalized)
-            if matches >= 2:
-                concepts.append(concept)
-        
-        return concepts
-    
-    def _extract_relationships(self, code: str, normalized: str) -> Dict[str, List[str]]:
-        """Extract relationships between components"""
-        relationships = {}
-        
-        # Extract class/function relationships
-        classes = re.findall(r'class\s+(\w+)', code, re.IGNORECASE)
-        functions = re.findall(r'(?:def|function|func)\s+(\w+)', code, re.IGNORECASE)
-        
-        if classes:
-            relationships['classes'] = list(set(classes))[:10]
-        if functions:
-            relationships['functions'] = list(set(functions))[:10]
-        
-        # Extract imports/dependencies
-        imports = re.findall(r'(?:import|from|require|use)\s+[\w.]+', code, re.IGNORECASE)
-        if imports:
-            relationships['imports'] = list(set(imports))[:10]
-        
-        # Extract data flow patterns
-        assigns = re.findall(r'(\w+)\s*[=:]\s*(\w+)', code)
-        if assigns:
-            data_flow = [f"{a}->{b}" for a, b in assigns[:10]]
-            relationships['data_flow'] = data_flow
+        for node in ast.walk(tree):
+            # if-else 關係
+            if isinstance(node, ast.If):
+                condition = ast.unparse(node.test) if hasattr(ast, 'unparse') else 'condition'
+                relationships.append({
+                    'type': 'conditional',
+                    'condition': condition,
+                    'lineno': node.lineno
+                })
+            
+            # try-except 關係
+            elif isinstance(node, ast.Try):
+                relationships.append({
+                    'type': 'error_handling',
+                    'lineno': node.lineno
+                })
+            
+            # 函數調用關係
+            elif isinstance(node, ast.Call):
+                func_name = self._get_name(node.func)
+                relationships.append({
+                    'type': 'function_call',
+                    'function': func_name,
+                    'lineno': node.lineno
+                })
         
         return relationships
     
-    def _build_reasoning_chains(self, structure: LogicalStructure) -> List[str]:
-        """Build reasoning chains from patterns and concepts"""
+    def _extract_relationships_generic(self, code: str) -> List[Dict]:
+        """提取通用因果關係（基於模式匹配）"""
+        relationships = []
+        
+        # if-then 模式
+        if_pattern = r'\bif\s*\('
+        for match in re.finditer(if_pattern, code):
+            relationships.append({
+                'type': 'conditional',
+                'lineno': code[:match.start()].count('\n') + 1
+            })
+        
+        # try-catch 模式
+        try_pattern = r'\btry\s*{'
+        for match in re.finditer(try_pattern, code):
+            relationships.append({
+                'type': 'error_handling',
+                'lineno': code[:match.start()].count('\n') + 1
+            })
+        
+        return relationships
+    
+    def _extract_reasoning_chains(
+        self,
+        code: str,
+        structure: Dict
+    ) -> List[List[str]]:
+        """
+        提取推理鏈
+        
+        根據函數調用順序、因果關係等構建推理鏈
+        """
         chains = []
         
-        # Pattern-based reasoning
-        if 'attention' in structure.patterns:
-            chains.append("attention -> query/key/value -> similarity -> weighted_sum")
-        
-        if 'memory' in structure.patterns:
-            chains.append("input -> encode -> store -> recall -> decode -> output")
-        
-        if 'merkle' in structure.patterns:
-            chains.append("data -> hash -> tree -> root -> verify")
-        
-        if 'particle' in structure.patterns:
-            chains.append("state -> frequency -> resonance -> collapse")
-        
-        if 'flow' in structure.patterns:
-            chains.append("source -> transform -> sink")
-        
-        if 'layer' in structure.patterns:
-            chains.append("L1 -> L2 -> ... -> Ln")
-        
-        # Concept-based reasoning
-        if 'distributed' in structure.concepts:
-            chains.append("local -> sync -> global -> consensus")
-        
-        if 'reactive' in structure.concepts:
-            chains.append("event -> react -> update -> notify")
+        # 簡單實現：根據函數定義順序構建鏈
+        functions = [func['name'] for func in structure['functions']]
+        if len(functions) >= 2:
+            # 每連續 3 個函數構成一個推理鏈
+            for i in range(len(functions) - 2):
+                chain = functions[i:i+3]
+                chains.append(chain)
         
         return chains
     
-    def _generate_formula(self, structure: LogicalStructure) -> str:
-        """Generate mathematical formula representation"""
-        formulas = []
-        
-        # Pattern formulas
-        if 'attention' in structure.patterns:
-            formulas.append("Attention(Q,K,V) = softmax(QK^T/√d)V")
-        
-        if 'memory' in structure.patterns:
-            formulas.append("M(t) = f(M(t-1), input(t))")
-        
-        if 'merkle' in structure.patterns:
-            formulas.append("root = H(H(L₁,L₂), H(L₃,L₄))")
-        
-        if 'particle' in structure.patterns:
-            formulas.append("ψ(t) = Σ αᵢe^(iωᵢt)")
-        
-        if 'layer' in structure.patterns:
-            formulas.append("y = f_n(...f_2(f_1(x)))")
-        
-        return " | ".join(formulas) if formulas else "f: X -> Y"
-    
-    def _calculate_confidence(self, structure: LogicalStructure, code: str) -> float:
-        """Calculate extraction confidence score"""
-        # Pattern confidence
-        pattern_score = min(len(structure.patterns) * 0.15, 0.45)
-        
-        # Concept confidence
-        concept_score = min(len(structure.concepts) * 0.10, 0.30)
-        
-        # Relationship confidence
-        rel_count = sum(len(v) for v in structure.relationships.values())
-        rel_score = min(rel_count * 0.02, 0.20)
-        
-        # Code quality indicators
-        code_len = len(code)
-        quality_score = 0.0
-        if code_len > 1000:
-            quality_score = 0.05
-        
-        score = pattern_score + concept_score + rel_score + quality_score
-        
-        return min(score, 1.0)
-    
-    def extract_multi_language(
-        self,
-        snippets: List[tuple]
-    ) -> List[LogicalStructure]:
+    def _compute_complexity(self, structure: Dict) -> float:
         """
-        Extract from multiple code snippets
+        計算代碼複雜度分數（0-1）
+        
+        考慮因素：
+        - 函數數量
+        - 關係數量
+        - 導入數量
+        - 概念數量
+        """
+        num_functions = len(structure.get('functions', []))
+        num_relationships = len(structure.get('relationships', []))
+        num_imports = len(structure.get('imports', []))
+        num_concepts = len(structure.get('concepts', []))
+        
+        # 加權計算
+        complexity = (
+            num_functions * 0.3 +
+            num_relationships * 0.25 +
+            num_imports * 0.15 +
+            num_concepts * 0.3
+        ) / 100.0  # 正規化到 0-1
+        
+        return min(complexity, 1.0)
+    
+    def _get_name(self, node) -> str:
+        """獲取 AST 節點名稱"""
+        if isinstance(node, ast.Name):
+            return node.id
+        elif isinstance(node, ast.Attribute):
+            return f"{self._get_name(node.value)}.{node.attr}"
+        elif isinstance(node, ast.Call):
+            return self._get_name(node.func)
+        else:
+            return str(type(node).__name__)
+    
+    def match_logical_patterns(
+        self,
+        local_structures: List[Dict],
+        remote_structures: List[Dict],
+        similarity_threshold: float = 0.5
+    ) -> List[Dict]:
+        """
+        匹配本地和遠端的邏輯架構模式
         
         Args:
-            snippets: List of (code, language) tuples
+            local_structures: 本地代碼結構列表
+            remote_structures: 遠端代碼結構列表
+            similarity_threshold: 相似度閾值
             
         Returns:
-            List of logical structures
+            匹配結果列表
         """
-        structures = []
+        matches = []
         
-        for code, language in snippets:
-            structure = self.extract(code, language)
-            structures.append(structure)
+        for remote in remote_structures:
+            remote_patterns = set(remote.get('patterns', {}).keys())
+            
+            for local in local_structures:
+                local_patterns = set(local.get('patterns', {}).keys())
+                
+                # 計算模式重疊度
+                if not remote_patterns or not local_patterns:
+                    continue
+                
+                overlap = len(remote_patterns & local_patterns)
+                total = len(remote_patterns | local_patterns)
+                similarity = overlap / total if total > 0 else 0
+                
+                if similarity >= similarity_threshold:
+                    matches.append({
+                        'local': local,
+                        'remote': remote,
+                        'similarity': similarity,
+                        'shared_patterns': list(remote_patterns & local_patterns)
+                    })
         
-        return structures
+        # 按相似度排序
+        matches.sort(key=lambda x: x['similarity'], reverse=True)
+        
+        return matches
 
 
-# CLI Interface
+# 測試
 if __name__ == '__main__':
-    # Test with sample code
-    test_code = """
-    class AttentionLayer:
-        def forward(self, query, key, value):
-            # Compute attention scores
-            scores = torch.matmul(query, key.transpose(-2, -1))
-            scores = scores / math.sqrt(self.d_k)
-            
-            # Apply softmax
-            attn = F.softmax(scores, dim=-1)
-            
-            # Weighted sum
-            output = torch.matmul(attn, value)
-            return output
+    extractor = LogicalStructureExtractor()
     
-    class MemoryBank:
-        def __init__(self):
-            self.storage = {}
-            self.merkle_chain = []
-        
-        def commit(self, key, value):
-            # Store in memory
-            self.storage[key] = value
-            
-            # Update merkle chain
-            prev_hash = self.merkle_chain[-1] if self.merkle_chain else "0"
-            new_hash = sha256(key + value + prev_hash)
-            self.merkle_chain.append(new_hash)
-        
-        def verify(self):
-            # Verify merkle chain integrity
-            for i in range(1, len(self.merkle_chain)):
-                # Verify link
-                pass
-    """
+    # 測試 Python 代碼
+    python_code = """
+import numpy as np
+from typing import List
+
+class AttentionMechanism:
+    '''多頭注意力機制'''
     
-    extractor = LogicalExtractor()
-    structure = extractor.extract(test_code, "Python")
+    def __init__(self, dim: int, num_heads: int):
+        self.dim = dim
+        self.num_heads = num_heads
+    
+    def forward(self, query, key, value):
+        # 計算注意力分數
+        scores = query @ key.T
+        weights = self.softmax(scores)
+        return weights @ value
+    
+    def softmax(self, x):
+        exp_x = np.exp(x - np.max(x))
+        return exp_x / exp_x.sum()
+"""
+    
+    structure = extractor.extract_from_code(python_code, 'python')
     
     print("=== Logical Structure ===")
-    print(f"Patterns: {structure.patterns}")
-    print(f"Concepts: {structure.concepts}")
-    print(f"Reasoning: {structure.reasoning_chains}")
-    print(f"Formula: {structure.formula}")
-    print(f"Confidence: {structure.confidence:.2%}")
+    print(json.dumps({
+        'concepts': structure['concepts'],
+        'patterns': structure['patterns'],
+        'functions': structure['functions'],
+        'complexity': structure['complexity']
+    }, indent=2, ensure_ascii=False))
