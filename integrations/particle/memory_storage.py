@@ -191,11 +191,10 @@ class ParticleMemoryStorage:
         if not candidates:
             candidate_items = self.simhash_index.items()
         else:
-            # Map candidate IDs back to their simhashes using the primary index.
-            reverse_index: Dict[str, str] = {
-                pid: sh for sh, pid in self.simhash_index.items() if pid in candidates
-            }
-            candidate_items = reverse_index.items()
+            # Build (simhash, particle_id) pairs only for the candidate IDs.
+            candidate_items = [
+                (sh, pid) for sh, pid in self.simhash_index.items() if pid in candidates
+            ]
 
         similar: List[str] = []
         for existing_hash, particle_id in candidate_items:
