@@ -15,7 +15,7 @@ import argparse
 import json
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 import hashlib
@@ -36,7 +36,7 @@ class ClosureSyncManager:
         self.merkle_trees = {}
         self.state = {
             'phase': 'init',
-            'timestamp': datetime.now(datetime.UTC).isoformat().replace('+00:00', 'Z'),
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             'source': str(self.source),
             'targets': [str(t) for t in self.targets]
         }
@@ -137,12 +137,19 @@ class ClosureSyncManager:
         for target_path, target_state in self.observations['targets'].items():
             target_particles = set(target_state.get('particles', []))
             
-            # Find particles missing in source
+            # Find particles missing in source (bidirectional sync support)
             missing_in_source = target_particles - source_particles
             if missing_in_source:
                 resolution['missing_in_source'].extend([
                     {'file': f, 'source': target_path} for f in missing_in_source
                 ])
+                # Add action to copy from target to source for bidirectional sync
+                resolution['action_plan'].append({
+                    'action': 'copy_to_source',
+                    'files': list(missing_in_source),
+                    'source': target_path,
+                    'note': 'Bidirectional sync - files from target to source'
+                })
             
             # Find particles missing in target
             missing_in_target = source_particles - target_particles
@@ -198,6 +205,33 @@ class ClosureSyncManager:
                         'source': str(src_file),
                         'destination': str(dst_file),
                         'dry_run': dry_run
+                    })
+            
+            elif action['action'] == 'copy_to_source':
+                # Bidirectional sync: copy from target to source
+                source_path = Path(action['source'])
+                
+                for file_rel in action['files']:
+                    src_file = source_path / file_rel
+                    dst_file = self.source / file_rel
+                    
+                    if not src_file.exists():
+                        print(f"  ⚠️  Source file not found: {src_file}")
+                        continue
+                    
+                    # Create parent directory
+                    if not dry_run:
+                        dst_file.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(src_file, dst_file)
+                    
+                    print(f"  {'[DRY]' if dry_run else '⬅️ '} Bidirectional: {file_rel} <- {source_path.name}")
+                    mirror_result['files_copied'] += 1
+                    mirror_result['operations'].append({
+                        'type': 'copy_to_source',
+                        'source': str(src_file),
+                        'destination': str(dst_file),
+                        'dry_run': dry_run,
+                        'bidirectional': True
                     })
         
         self.mirror_result = mirror_result
@@ -277,7 +311,7 @@ class ClosureSyncManager:
     def generate_report(self) -> Dict[str, Any]:
         """Generate comprehensive sync report"""
         report = {
-            'timestamp': datetime.now(datetime.UTC).isoformat().replace('+00:00', 'Z'),
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             'state': self.state,
             'observations': getattr(self, 'observations', {}),
             'resolution': getattr(self, 'resolution', {}),

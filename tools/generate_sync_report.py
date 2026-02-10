@@ -6,7 +6,7 @@ Generate comprehensive sync reports
 
 import argparse
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any
 
@@ -20,7 +20,7 @@ def generate_sync_report(source_repo: Path, target_repos: list,
     print("📊 Generating sync report...")
     
     report = {
-        'timestamp': datetime.now(datetime.UTC).isoformat().replace('+00:00', 'Z'),
+        'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'source': str(source_repo),
         'targets': [str(t) for t in target_repos],
         'summary': {},

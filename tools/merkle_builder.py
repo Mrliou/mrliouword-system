@@ -142,9 +142,8 @@ class ParticleMerkleTree:
     
     def save(self, output_path: Path):
         """Save Merkle tree to JSON file"""
-        import os
         output_path = Path(output_path)
-        os.makedirs(output_path.parent, exist_ok=True)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
     
