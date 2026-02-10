@@ -36,7 +36,7 @@ class ClosureSyncManager:
         self.merkle_trees = {}
         self.state = {
             'phase': 'init',
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'timestamp': datetime.now(datetime.UTC).isoformat().replace('+00:00', 'Z'),
             'source': str(self.source),
             'targets': [str(t) for t in self.targets]
         }
@@ -107,7 +107,7 @@ class ClosureSyncManager:
         if particles:
             tree.build_from_particles(particles)
             state['merkle_root'] = tree.merkle_root
-            state['merkle_tree'] = tree
+            # Don't store tree object in state for JSON serialization
             self.merkle_trees[str(repo_path)] = tree
         
         return state
@@ -277,7 +277,7 @@ class ClosureSyncManager:
     def generate_report(self) -> Dict[str, Any]:
         """Generate comprehensive sync report"""
         report = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'timestamp': datetime.now(datetime.UTC).isoformat().replace('+00:00', 'Z'),
             'state': self.state,
             'observations': getattr(self, 'observations', {}),
             'resolution': getattr(self, 'resolution', {}),

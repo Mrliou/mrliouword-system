@@ -20,7 +20,7 @@ def generate_sync_report(source_repo: Path, target_repos: list,
     print("📊 Generating sync report...")
     
     report = {
-        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'timestamp': datetime.now(datetime.UTC).isoformat().replace('+00:00', 'Z'),
         'source': str(source_repo),
         'targets': [str(t) for t in target_repos],
         'summary': {},
