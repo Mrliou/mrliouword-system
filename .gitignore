@@ -1,3 +1,34 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log*
+
+# Wrangler
+.wrangler/
+.dev.vars
+wrangler.toml.bak
+
+# TypeScript
+*.tsbuildinfo
+dist/
+build/
+containers/dist/
+mrliou_particle_plugin_runtime_v0.2_pack.js
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Credentials
+config/credentials/*.env
+clickhouse_credentials*.txt
+*.credentials
+
 # Particle system runtime
 particle_memory/
 naming_history/
@@ -19,6 +50,16 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+develop-eggs/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg
 
 # Virtual environments
 venv/
@@ -30,16 +71,39 @@ ENV/
 .idea/
 *.swp
 *.swo
+*~
 
 # Logs
 *.log
 intelligent_sync.log
+logs/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Test outputs
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+*.zip
+*.tar.gz
+!*.tar.gz.sha256
+
+# Test and particle memory
+test_chain/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Container runtime outputs
+rules_output.yaml
+_codeql_detected_source_root
+
+# Sync logs and temporary reports
+.mrliou/sync.log
+.mrliou/sync_report.json
+.mrliou/verification_report.json
+.mrliou/final_sync_report.json
