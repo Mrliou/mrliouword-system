@@ -1,0 +1,31 @@
+{
+  "sync_protocol": "MrLiou.Closure.Sync",
+  "version": "v1.0",
+  "rules": {
+    "conflict_resolution": "merkle_root_comparison",
+    "missing_node_recovery": "multi_source_restoration",
+    "hash_algorithm": "sha256"
+  },
+  "sync_paths": [
+    {
+      "path": "core/particles/**/*.json",
+      "sync_mode": "full",
+      "bidirectional": true,
+      "conflict_strategy": "newest_merkle_wins"
+    },
+    {
+      "path": "docs/particle-dictionary/**/*.md",
+      "sync_mode": "full",
+      "bidirectional": true,
+      "conflict_strategy": "manual_review"
+    },
+    {
+      "path": ".mrliou/**/*.json",
+      "sync_mode": "full",
+      "bidirectional": true,
+      "conflict_strategy": "manual_review"
+    }
+  ],
+  "checksum_verification": true,
+  "auto_heal": true
+}
