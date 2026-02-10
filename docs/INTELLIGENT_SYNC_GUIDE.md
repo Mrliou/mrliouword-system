@@ -274,18 +274,18 @@ snippets = engine.search_code(
 ### Logical Extractor
 
 ```python
-from integrations.github.logical_extractor import LogicalExtractor
+from integrations.github.logical_structure_extractor import LogicalStructureExtractor
 
-extractor = LogicalExtractor()
+extractor = LogicalStructureExtractor()
 
-structure = extractor.extract(code="...", language="Python")
+structure = extractor.extract_from_code(code="...", language="Python")
 
-# structure.patterns: ['attention', 'memory']
-# structure.concepts: ['vector', 'neural']
-# structure.relationships: {'classes': [...], 'functions': [...]}
-# structure.reasoning_chains: ['query -> key -> value -> softmax']
-# structure.formula: 'Attention(Q,K,V) = softmax(QK^T/√d)V'
-# structure.confidence: 0.85
+# structure['patterns']: ['attention', 'memory']
+# structure['concepts']: ['vector', 'neural']
+# structure['relationships']: {'classes': [...], 'functions': [...]}
+# structure['reasoning_chains']: ['query -> key -> value -> softmax']
+# structure['formula']: 'Attention(Q,K,V) = softmax(QK^T/√d)V'
+# structure['confidence']: 0.85
 ```
 
 ### Attention Filter
