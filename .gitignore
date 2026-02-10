@@ -24,6 +24,11 @@ mrliou_particle_plugin_runtime_v0.2_pack.js
 .env.local
 .env.*.local
 
+# Credentials
+config/credentials/*.env
+clickhouse_credentials*.txt
+*.credentials
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -80,3 +85,9 @@ htmlcov/
 # Container runtime outputs
 rules_output.yaml
 _codeql_detected_source_root
+
+# Sync logs and temporary reports
+.mrliou/sync.log
+.mrliou/sync_report.json
+.mrliou/verification_report.json
+.mrliou/final_sync_report.json

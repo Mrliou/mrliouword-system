@@ -1,0 +1,22 @@
+{
+  "version": "v1.0",
+  "repos": {
+    "dofaromg/mrliouword-system": {
+      "status": "source_of_truth",
+      "last_sync": "",
+      "merkle_root": ""
+    },
+    "dofaromg/flow-tasks": {
+      "status": "target",
+      "last_sync": "",
+      "merkle_root": "",
+      "consistency": "unknown"
+    },
+    "dofaromg/flow-tasks-01": {
+      "status": "target",
+      "last_sync": "",
+      "merkle_root": "",
+      "consistency": "unknown"
+    }
+  }
+}

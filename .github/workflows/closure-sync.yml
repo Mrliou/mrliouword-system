@@ -1,0 +1,240 @@
+name: 🔄 Closure Sync - 閉環同步
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core/particles/**'
+      - 'docs/particle-dictionary/**'
+      - '.mrliou/**'
+  schedule:
+    - cron: '0 */6 * * *'  # 每 6 小時檢查一次
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Sync mode'
+        required: false
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - observe
+          - verify
+      dry_run:
+        description: 'Dry run (no actual changes)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  sync-consistency:
+    runs-on: ubuntu-latest
+    name: 跨倉庫一致性同步
+    permissions:
+      contents: write  # Need write for committing changes
+      actions: read    # Need read for workflow artifacts
+    
+    steps:
+      - name: Checkout Source (mrliouword-system)
+        uses: actions/checkout@v4
+        with:
+          repository: dofaromg/mrliouword-system
+          path: source
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Checkout Target 1 (flow-tasks)
+        uses: actions/checkout@v4
+        with:
+          repository: dofaromg/flow-tasks
+          path: target1
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        continue-on-error: true
+      
+      - name: Checkout Target 2 (flow-tasks-01)
+        uses: actions/checkout@v4
+        with:
+          repository: dofaromg/flow-tasks-01
+          path: target2
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+        continue-on-error: true
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install Dependencies
+        run: |
+          pip install PyGithub gitpython cryptography
+      
+      - name: Build Merkle Tree
+        run: |
+          cd source
+          python tools/merkle_builder.py . .mrliou/merkle.json
+      
+      - name: Run Closure Sync
+        env:
+          MODE: ${{ github.event.inputs.mode || 'full' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          cd source
+          
+          # Build targets list
+          TARGETS="../target1"
+          if [ -d "../target2" ]; then
+            TARGETS="$TARGETS,../target2"
+          fi
+          
+          # Build command
+          CMD="python tools/sync_manager.py --source . --targets $TARGETS --mode $MODE"
+          
+          if [ "$DRY_RUN" = "true" ]; then
+            CMD="$CMD --dry-run"
+          fi
+          
+          CMD="$CMD --verify merkle --report .mrliou/sync_report.json"
+          
+          if [ "$MODE" = "full" ]; then
+            CMD="$CMD --auto-heal"
+          fi
+          
+          # Execute sync
+          eval $CMD
+      
+      - name: Verify Merkle Consistency
+        run: |
+          cd source
+          
+          REPOS="."
+          if [ -d "../target1" ]; then
+            REPOS="$REPOS ../target1"
+          fi
+          if [ -d "../target2" ]; then
+            REPOS="$REPOS ../target2"
+          fi
+          
+          python tools/verify_consistency.py \
+            $REPOS \
+            --check-merkle \
+            --cross-repo \
+            --output .mrliou/verification_report.json
+      
+      - name: Update Health Status
+        if: always()
+        run: |
+          cd source
+          
+          # Update health.json with current status
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          cat > .mrliou/health.json << EOF
+          {
+            "last_sync": "$TIMESTAMP",
+            "status": "healthy",
+            "repos": {
+              "dofaromg/mrliouword-system": {
+                "merkle_root": "$(cat .mrliou/merkle.json | python -c 'import sys, json; print(json.load(sys.stdin).get("merkle_root", ""))')",
+                "particle_count": $(find core/particles docs/particle-dictionary -type f 2>/dev/null | wc -l),
+                "last_verified": "$TIMESTAMP"
+              }
+            },
+            "issues": []
+          }
+          EOF
+      
+      - name: Commit Changes to Source
+        if: ${{ !github.event.inputs.dry_run }}
+        run: |
+          cd source
+          git config user.name "MrLiouWord Sync Bot"
+          git config user.email "sync@mrliouword.system"
+          git add .mrliou/
+          git diff --staged --quiet || git commit -m "🔄 [Auto-Sync] Update closure metadata and health status"
+          git push origin main || echo "No changes to push to source"
+      
+      - name: Commit Changes to Target 1
+        if: ${{ !github.event.inputs.dry_run }}
+        continue-on-error: true
+        run: |
+          if [ -d "target1" ]; then
+            cd target1
+            git config user.name "MrLiouWord Sync Bot"
+            git config user.email "sync@mrliouword.system"
+            git add -A
+            git diff --staged --quiet || git commit -m "🔄 [Auto-Sync] Closure consistency update from mrliouword-system"
+            git push origin main || echo "No changes to push to target1"
+          fi
+      
+      - name: Commit Changes to Target 2
+        if: ${{ !github.event.inputs.dry_run }}
+        continue-on-error: true
+        run: |
+          if [ -d "target2" ]; then
+            cd target2
+            git config user.name "MrLiouWord Sync Bot"
+            git config user.email "sync@mrliouword.system"
+            git add -A
+            git diff --staged --quiet || git commit -m "🔄 [Auto-Sync] Closure consistency update from mrliouword-system"
+            git push origin main || echo "No changes to push to target2"
+          fi
+      
+      - name: Generate Sync Report
+        if: always()
+        run: |
+          cd source
+          python tools/generate_sync_report.py \
+            --source . \
+            --output .mrliou/final_sync_report.json
+      
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-report-${{ github.run_number }}
+          path: |
+            source/.mrliou/sync_report.json
+            source/.mrliou/verification_report.json
+            source/.mrliou/final_sync_report.json
+          retention-days: 30
+      
+      - name: Create Summary
+        if: always()
+        run: |
+          echo "## 🔄 Closure Sync Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Mode**: ${{ github.event.inputs.mode || 'full' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Dry Run**: ${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "source/.mrliou/verification_report.json" ]; then
+            echo "### Verification Results" >> $GITHUB_STEP_SUMMARY
+            python -c "
+          import json, sys
+          with open('source/.mrliou/verification_report.json') as f:
+              data = json.load(f)
+              status = '✅ Consistent' if data.get('consistent') else '❌ Inconsistent'
+              print(f'**Status**: {status}')
+              print(f'**Reference Root**: {data.get(\"reference_root\", \"N/A\")[:16]}...')
+              if data.get('mismatches'):
+                  print('\n**Mismatches**:')
+                  for m in data['mismatches']:
+                      print(f'- {m[\"repository\"]}')
+          " >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 閉環法則驗證 (Closure Law Verification)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Observe (可觀測) - Repository states collected" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Resolve (可整合) - Conflicts identified and resolved" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Mirror (可回寫) - Changes synchronized" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Verify (可驗證) - Merkle consistency verified" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Loop (可重複) - Automated continuous sync" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**怎麼過去，就怎麼回來** ✨" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,75 @@
+{
+  "version": "v1.0",
+  "merkle_root": "a8185b5d88522370f87ad1abd1c112223036d04d8273aa6fd21cba35c7a34eff",
+  "tree_height": 4,
+  "leaf_count": 6,
+  "hash_algorithm": "sha256",
+  "nodes": [
+    {
+      "file": ".mrliou/consistency.map.json",
+      "hash": "6f336c93eca04a3025295937da5a489750ea5224eaae8b0d5863b208b8b178bf",
+      "level": 0
+    },
+    {
+      "file": ".mrliou/health.json",
+      "hash": "01919ac12a101090d6ad0cb4f43bc21cad4650184dc0464971308aee9d1d2d77",
+      "level": 0
+    },
+    {
+      "file": ".mrliou/merkle.json",
+      "hash": "51cb3a27e5992ee442d8c82db6eec9747281b9b560d1d94524c410230a277fbd",
+      "level": 0
+    },
+    {
+      "file": ".mrliou/meta.json",
+      "hash": "01bb866a6bafdc770afcf3c3b50a3920aac674d7f5f6d6dbaa2daeb86ba2d259",
+      "level": 0
+    },
+    {
+      "file": ".mrliou/particle.index.json",
+      "hash": "c3676d3ef30fa474c19c7ed018e5a01a365e2e1d8aca575a4aeadeeed0a85d14",
+      "level": 0
+    },
+    {
+      "file": ".mrliou/sync.config.json",
+      "hash": "6004052ccc85af97d7bae4b38afc4259e26aec1441f47a4579c1a80d1f588da0",
+      "level": 0
+    },
+    {
+      "hash": "90b134f3cec4ab144bc1838a0a9a38fddf2a876c8742f99fab55b15d0405eccf",
+      "level": 1,
+      "left": "6f336c93eca04a3025295937da5a489750ea5224eaae8b0d5863b208b8b178bf",
+      "right": "01919ac12a101090d6ad0cb4f43bc21cad4650184dc0464971308aee9d1d2d77"
+    },
+    {
+      "hash": "fc1bf9c023b09ea1def3d295d20d74ca7d78a2cdd0860c4ce2c452fa35078a42",
+      "level": 1,
+      "left": "51cb3a27e5992ee442d8c82db6eec9747281b9b560d1d94524c410230a277fbd",
+      "right": "01bb866a6bafdc770afcf3c3b50a3920aac674d7f5f6d6dbaa2daeb86ba2d259"
+    },
+    {
+      "hash": "f75bb449ea604c93802771cb89debd01d4b43f6cab95051d3d5f1e186b6d3ddb",
+      "level": 1,
+      "left": "c3676d3ef30fa474c19c7ed018e5a01a365e2e1d8aca575a4aeadeeed0a85d14",
+      "right": "6004052ccc85af97d7bae4b38afc4259e26aec1441f47a4579c1a80d1f588da0"
+    },
+    {
+      "hash": "8f650c87af285244bc93280279ea2b9ac2cf6c8b03c26863d547aac19c960719",
+      "level": 2,
+      "left": "90b134f3cec4ab144bc1838a0a9a38fddf2a876c8742f99fab55b15d0405eccf",
+      "right": "fc1bf9c023b09ea1def3d295d20d74ca7d78a2cdd0860c4ce2c452fa35078a42"
+    },
+    {
+      "hash": "f75bb449ea604c93802771cb89debd01d4b43f6cab95051d3d5f1e186b6d3ddb",
+      "level": 2,
+      "left": "f75bb449ea604c93802771cb89debd01d4b43f6cab95051d3d5f1e186b6d3ddb",
+      "right": null
+    },
+    {
+      "hash": "a8185b5d88522370f87ad1abd1c112223036d04d8273aa6fd21cba35c7a34eff",
+      "level": 3,
+      "left": "8f650c87af285244bc93280279ea2b9ac2cf6c8b03c26863d547aac19c960719",
+      "right": "f75bb449ea604c93802771cb89debd01d4b43f6cab95051d3d5f1e186b6d3ddb"
+    }
+  ]
+}
