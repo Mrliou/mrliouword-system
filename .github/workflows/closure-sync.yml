@@ -33,6 +33,9 @@ jobs:
   sync-consistency:
     runs-on: ubuntu-latest
     name: 跨倉庫一致性同步
+    permissions:
+      contents: write  # Need write for committing changes
+      actions: read    # Need read for workflow artifacts
     
     steps:
       - name: Checkout Source (mrliouword-system)
