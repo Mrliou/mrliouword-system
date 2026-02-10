@@ -138,12 +138,69 @@ class ParticleMemoryStorage:
         Returns:
             List of similar particle IDs
         """
-        similar = []
-        
-        for existing_hash, particle_id in self.simhash_index.items():
+        # Lazily build a simple LSH-style band index over the existing simhash_index
+        # to avoid a full linear scan for every query.
+        #
+        # We split the 64-bit simhash (hex string) into 4 bands of 16 bits each and
+        # index particles by these band keys. Candidates that share at least one band
+        # with the query are then checked with exact Hamming distance.
+
+        def _bands_from_simhash(hash_str: str, num_bands: int = 4) -> List[int]:
+            """Convert hex simhash string into a list of integer band keys."""
+            try:
+                value = int(hash_str, 16)
+            except (TypeError, ValueError):
+                # Fallback: no bands if the simhash is malformed
+                return []
+            bits = 64
+            band_size = bits // num_bands
+            bands: List[int] = []
+            for band in range(num_bands):
+                shift = bits - (band + 1) * band_size
+                mask = (1 << band_size) - 1
+                bands.append((value >> shift) & mask)
+            return bands
+
+        # Rebuild the LSH index if it does not exist or if the underlying index size changed.
+        index_size = len(self.simhash_index)
+        if not hasattr(self, "_lsh_bands") or getattr(self, "_lsh_index_size", -1) != index_size:
+            lsh_bands: Dict[Tuple[int, int], List[str]] = {}
+            num_bands = 4
+            for existing_hash, particle_id in self.simhash_index.items():
+                for band_idx, band_val in enumerate(_bands_from_simhash(existing_hash, num_bands=num_bands)):
+                    key = (band_idx, band_val)
+                    bucket = lsh_bands.get(key)
+                    if bucket is None:
+                        bucket = []
+                        lsh_bands[key] = bucket
+                    bucket.append(particle_id)
+            self._lsh_bands = lsh_bands
+            self._lsh_index_size = index_size
+
+        # Collect candidate particle IDs that share at least one band with the query.
+        candidates: set = set()
+        num_bands = 4
+        for band_idx, band_val in enumerate(_bands_from_simhash(simhash, num_bands=num_bands)):
+            key = (band_idx, band_val)
+            bucket = self._lsh_bands.get(key)
+            if bucket:
+                candidates.update(bucket)
+
+        # If no candidates found via LSH (e.g., malformed simhash or very small index),
+        # fall back to checking all entries.
+        if not candidates:
+            candidate_items = self.simhash_index.items()
+        else:
+            # Map candidate IDs back to their simhashes using the primary index.
+            reverse_index: Dict[str, str] = {
+                pid: sh for sh, pid in self.simhash_index.items() if pid in candidates
+            }
+            candidate_items = reverse_index.items()
+
+        similar: List[str] = []
+        for existing_hash, particle_id in candidate_items:
             if hamming_distance(simhash, existing_hash) <= threshold:
                 similar.append(particle_id)
-        
         return similar
     
     def _calculate_similarity_score(self, hash_a: str, hash_b: str) -> float:
