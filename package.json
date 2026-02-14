@@ -5,26 +5,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "jest",
-    "test:integration": "bash test.sh",
-    "build:containers": "tsc -p containers/tsconfig.json",
-    "cli": "node containers/cli/mrliou-runtime.js"
-  },
-  "dependencies": {
-    "adm-zip": "^0.5.10",
-    "commander": "^11.1.0"
+    "test": "bash test.sh"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
-    "@types/adm-zip": "^0.5.5",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^20.10.0",
-    "jest": "^30.2.0",
-    "ts-jest": "^29.4.6",
     "typescript": "^5.3.0",
     "wrangler": "^4.59.2"
-  },
-  "bin": {
-    "mrliou-runtime": "./containers/dist/cli/mrliou-runtime.js"
   }
 }

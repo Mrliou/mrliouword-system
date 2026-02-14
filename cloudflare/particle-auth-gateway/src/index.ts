@@ -137,7 +137,7 @@ export default {
       if (路徑 === "/" && request.method === "GET") {
         return new Response(JSON.stringify({
           name: "Particle Auth Gateway",
-          version: "4.0.0",
+          version: "1.0.0",
           philosophy: "怎麼過去，就怎麼回來",
           endpoints: {
             "POST /init": "初始化系統",

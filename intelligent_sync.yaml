@@ -1,95 +1,218 @@
-# MrLiouWord Intelligent Repository Sync Configuration
-# 智能倉庫同步配置檔案
-# 
-# 哲學：怎麼過去，就怎麼回來
-# 基於邏輯架構原理的全域智能同步
+# Intelligent GitHub Synchronization Configuration
+# ==============================================
+# MrLiouWord Global Logical Architecture Sync System
+#
+# Philosophy: 怎麼過去，就怎麼回來 (What goes around, comes around)
 
-settings:
-  # 基礎設定
-  scan_mode: "global"  # global | targeted - 全域掃描或目標檔案
-  sync_strategy: "logical_pattern"  # logical_pattern | file_based - 邏輯模式或檔案匹配
+# GitHub Search Configuration
+github:
+  # Minimum repository stars
+  min_stars: 10
   
-  # 邏輯架構匹配
-  pattern_matching:
-    enabled: true
-    patterns:
-      - "attention_mechanism"      # 注意力機制
-      - "memory_system"            # 記憶系統
-      - "particle_engine"          # 粒子引擎
-      - "frequency_resonance"      # 頻率共振
-      - "merkle_chain"             # Merkle 鏈
-      - "logical_reasoning"        # 邏輯推理
-    
-  # 粒子化記憶
-  particle_memory:
-    enabled: true
-    storage_path: "./particle_memory"  # 粒子存儲路徑
-    simhash_threshold: 3               # Hamming 距離閾值（0-64）
-    layer_mapping:
-      concepts: "L1"      # 概念 -> L1 原子粒子層
-      patterns: "L2"      # 模式 -> L2 原型模組層
-      functions: "L3"     # 函數 -> L3 封裝層
-      reasoning: "L4"     # 推理 -> L4 拓撲跳點層
+  # Languages to search
+  languages:
+    - Python
+    - TypeScript
+    - JavaScript
+    - Go
+    - Rust
+    - Java
   
-  # 注意力機制
-  attention:
+  # Exclude forked repositories
+  exclude_forks: true
+  
+  # Maximum results per pattern
+  max_results: 30
+  
+  # Rate limit handling
+  rate_limit:
     enabled: true
-    dimension: 64                # 向量維度
-    num_heads: 8                 # 多頭注意力頭數
-    similarity_threshold: 0.75   # 相似度閾值（0-1）
-    use_frequency_resonance: true  # 啟用頻率共振匹配
+    max_requests_per_minute: 30
 
-# 倉庫配置
-repositories:
-  # 示例：flow-tasks 粒子核心
-  - name: "flow-tasks-particle-core"
-    url: "https://github.com/dofaromg/flow-tasks.git"
-    branch: "main"
+# Patterns to Search
+patterns:
+  # Attention mechanisms
+  - "attention mechanism"
+  - "multi-head attention"
+  - "self-attention"
+  
+  # Memory systems
+  - "memory system"
+  - "cache mechanism"
+  - "key-value store"
+  
+  # Merkle trees
+  - "merkle tree"
+  - "hash tree"
+  - "blockchain verification"
+  
+  # Particle systems
+  - "particle system"
+  - "quantum computing"
+  - "wave function"
+  
+  # Flow systems
+  - "data pipeline"
+  - "workflow orchestration"
+  - "stream processing"
+  
+  # Layer architectures
+  - "layered architecture"
+  - "hierarchical system"
+  - "multi-tier"
+
+# Particle Memory Configuration
+particle_memory:
+  # Storage path
+  storage_path: "./particle_memory"
+  
+  # SimHash deduplication threshold (Hamming distance)
+  simhash_threshold: 3
+  
+  # Layer assignment by similarity score
+  layer_assignment:
+    L1: 0.9   # ≥0.9 → L1 (highest quality)
+    L2: 0.75  # ≥0.75 → L2
+    L3: 0.6   # ≥0.6 → L3
+    L4: 0.4   # ≥0.4 → L4
+    L5: 0.0   # <0.4 → L5 (lowest quality)
+  
+  # Frequency constants (Hz)
+  frequencies:
+    SCHUMANN: 7.83
+    PHI: 1.618033988749895
+    L7: 140.50  # SCHUMANN * PHI^6
+    L6: 86.84   # SCHUMANN * PHI^5
+    L5: 53.68   # SCHUMANN * PHI^4
+    L4: 33.17   # SCHUMANN * PHI^3
+    L3: 20.50   # SCHUMANN * PHI^2
+    L2: 12.67   # SCHUMANN * PHI
+    L1: 7.83    # SCHUMANN
+    L0: 4.84    # SCHUMANN / PHI
+  
+  # Merkle chain configuration
+  merkle:
     enabled: true
-    
-    # 邏輯架構匹配（不指定具體檔案，全域掃描）
-    logical_patterns:
-      - pattern: "attention_mechanism"
-        description: "注意力機制相關實現"
-        target_layer: "L2"
-      
-      - pattern: "logical_reasoning"
-        description: "邏輯結構提取器"
-        target_layer: "L4"
-      
-      - pattern: "particle_engine"
-        description: "粒子引擎核心"
-        target_layer: "L1"
-      
-      - pattern: "memory_system"
-        description: "記憶系統實現"
-        target_layer: "L3"
+    verify_on_commit: true
 
-  # 示例：其他倉庫（預設禁用）
-  - name: "example-repo"
-    url: "https://github.com/example/repo.git"
-    branch: "main"
-    enabled: false
-    
-    logical_patterns:
-      - pattern: "frequency_resonance"
-        description: "頻率共振相關代碼"
-        target_layer: "L5"
+# Testing Configuration
+testing:
+  # Enable particle testing
+  enabled: true
+  
+  # Test storage path
+  storage_path: "./test_results"
+  
+  # 7 Critical Tests
+  tests:
+    - write_test          # Test 1: Write verification
+    - read_test           # Test 2: Read verification
+    - simhash_collision   # Test 3: SimHash collision detection
+    - merkle_integrity    # Test 4: Merkle chain integrity
+    - layer_retrieval     # Test 5: Layer-based retrieval
+    - tag_search          # Test 6: Tag-based search
+    - frequency_resonance # Test 7: Frequency resonance
+  
+  # Run tests on sync
+  run_on_sync: true
 
-# 進階設定
+# Naming Configuration
+naming:
+  # Naming history storage
+  storage_path: "./naming_history"
+  
+  # Auto-version on conflicts
+  auto_version: true
+  
+  # Naming rules (pattern -> particle type)
+  rules:
+    attention: "fx.pattern.attention"
+    memory: "fx.pattern.memory"
+    merkle: "fx.pattern.chain"
+    chain: "fx.pattern.chain"
+    particle: "fx.pattern.particle"
+    flow: "fx.flow.pipeline"
+    layer: "fx.pattern.hierarchical"
+    
+    # Concept-based rules
+    distributed: "fx.system.distributed"
+    concurrent: "fx.system.concurrent"
+    reactive: "fx.pattern.reactive"
+    functional: "fx.paradigm.functional"
+    graph: "fx.structure.graph"
+    state: "fx.pattern.state"
+    vector: "fx.math.vector"
+    neural: "fx.ai.neural"
+    crypto: "fx.security.crypto"
+    consensus: "fx.protocol.consensus"
+  
+  # Default type
+  default_type: "fx.logic.general"
+
+# Attention Filter Configuration
+attention:
+  # Embedding dimension
+  embedding_dim: 128
+  
+  # Number of attention heads
+  num_heads: 4
+  
+  # Similarity threshold
+  similarity_threshold: 0.5
+  
+  # Frequency-based embedding
+  use_frequency_embedding: true
+  base_frequency: 7.83  # Schumann resonance
+
+# Sync Scheduling
+schedule:
+  # Enable scheduled sync
+  enabled: true
+  
+  # Cron expression (weekly on Monday at 00:00 UTC)
+  cron: "0 0 * * 1"
+  
+  # Timezone
+  timezone: "UTC"
+
+# Reporting
+reporting:
+  # Report output directory
+  output_dir: "./sync_reports"
+  
+  # Report format
+  format: "json"
+  
+  # Include detailed logs
+  include_logs: true
+  
+  # Upload to GitHub as artifact
+  upload_artifact: true
+
+# Logging
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"
+  
+  # Log file
+  file: "./intelligent_sync.log"
+  
+  # Console output
+  console: true
+
+# Advanced Settings
 advanced:
-  # 備份設定
-  backup:
+  # Parallel processing
+  parallel:
     enabled: true
-    path: "./backups"
-    keep_last: 10  # 保留最近 10 次備份
+    max_workers: 4
   
-  # 日誌設定
-  logging:
-    level: "INFO"  # DEBUG | INFO | WARNING | ERROR
-    file: "./logs/sync.log"
+  # Cache settings
+  cache:
+    enabled: true
+    ttl_seconds: 3600
   
-  # 並發設定
-  concurrency:
-    max_workers: 4  # 最大並發數
-    timeout: 300    # 超時時間（秒）
+  # Retry settings
+  retry:
+    max_attempts: 3
+    backoff_seconds: 5

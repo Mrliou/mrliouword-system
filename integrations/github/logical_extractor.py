@@ -14,10 +14,9 @@ Author: MR.liou
 """
 
 import re
-import os
 import ast
 import json
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 
 
@@ -30,7 +29,7 @@ class LogicalStructure:
     reasoning_chains: List[List[str]]      # 推理鏈
     functions: List[Dict]                  # 函數/類定義
     imports: List[str]                     # 依賴關係
-    keywords: Set[str]                     # 關鍵字
+    keywords: set                          # 關鍵字
     complexity: float                      # 複雜度分數
 
 
@@ -319,7 +318,7 @@ class LogicalStructureExtractor:
             'keywords': self._extract_keywords(code)
         }
     
-    def _extract_keywords(self, code: str) -> Set[str]:
+    def _extract_keywords(self, code: str) -> set:
         """提取關鍵字（識別符、常量名等）"""
         # 提取識別符（變數名、函數名等）
         identifier_pattern = r'\b([a-z_][a-z0-9_]*)\b'

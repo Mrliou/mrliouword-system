@@ -1,642 +1,538 @@
-# MrLiouWord Intelligent Repository Sync Guide
+# Intelligent Synchronization Guide
 
-> 基於邏輯架構原理的全域智能同步系統
-> 
-> 哲學：**怎麼過去，就怎麼回來**
-
-## 📚 目錄
-
-1. [系統概述](#系統概述)
-2. [快速開始](#快速開始)
-3. [配置說明](#配置說明)
-4. [架構原理](#架構原理)
-5. [API 參考](#api-參考)
-6. [範例](#範例)
-7. [常見問題](#常見問題)
+> **Philosophy:** 怎麼過去，就怎麼回來 (What goes around, comes around)
 
 ---
 
-## 系統概述
+## Table of Contents
 
-### 為什麼需要邏輯架構感知同步？
-
-傳統的檔案同步工具只是**盲目複製**，無法理解代碼的**語意和邏輯**。
-
-MrLiouWord 智能同步系統實現了：
-
-```
-傳統同步：檔案 A → 複製 → 檔案 A'
-             ↓
-        只看表面，不懂內涵
-
-智能同步：代碼 → 邏輯架構提取 → 粒子化記憶 → 語意去重 → 完整性驗證
-             ↓            ↓            ↓           ↓
-         理解原理      記憶形式      避免重複    可驗證還原
-```
-
-### 核心特性
-
-#### 🧬 邏輯架構提取
-
-不只看代碼**長什麼樣子**，而是理解它**在做什麼**：
-
-- **核心概念**：提取函數名、類名、重要變數
-- **因果關係**：識別 if-then、try-catch 等邏輯
-- **推理鏈**：追蹤函數調用順序和數據流
-- **架構模式**：識別注意力機制、記憶系統、粒子引擎等高層模式
-
-#### 🌀 粒子化記憶系統
-
-將代碼片段轉換為**可驗證的記憶粒子**：
-
-```python
-代碼片段 → CodeParticle {
-    simhash: "a1b2c3..."     # SimHash64 語意指紋
-    merkle: "d4e5f6..."      # Merkle 驗證雜湊
-    layer: "L2"              # 七層記憶（L1-L7）
-    patterns: ["attention"]  # 邏輯模式標籤
-    importance: 0.85         # 重要性分數
-}
-```
-
-**七層記憶架構**：
-
-| 層級 | 頻率 (Hz) | 存儲內容 | 範例 |
-|------|-----------|----------|------|
-| L1 | 7.83 | 原子粒子 | 常量、基本資料 |
-| L2 | 12.67 | 原型模組 | 函數、類定義 |
-| L3 | 12.94 | 封裝層 | Package、模組 |
-| L4 | 20.94 | 拓撲跳點 | 配置檔、拓撲 |
-| L5 | 33.88 | 人格策略 | 人格檔、策略 |
-| L6 | 54.82 | 系統映像 | Docker、映像 |
-| L7 | 88.71 | 語意記憶 | 文檔、語意網格 |
-
-基於 **Schumann 共振 (7.83Hz)** 和 **黃金比例 (φ)** 的頻率系統。
-
-#### 🎯 注意力機制
-
-使用**多頭注意力**篩選重要粒子：
-
-- **向量相似度**：計算粒子間的語意相似度
-- **頻率共振**：同層級粒子共振度更高
-- **重要性排序**：根據被注意程度排序
-- **關鍵時刻識別**：找出高注意力的核心代碼
-
-#### ✅ 完整性保證
-
-- **SimHash64 去重**：Hamming 距離 ≤ 3 視為重複
-- **Merkle Chain 驗證**：每個粒子連結到前一狀態
-- **可還原性**：怎麼過去，就怎麼回來
+1. [System Overview](#system-overview)
+2. [Quick Start](#quick-start)
+3. [Configuration Guide](#configuration-guide)
+4. [Architecture Details](#architecture-details)
+5. [API Reference](#api-reference)
+6. [Use Cases](#use-cases)
+7. [FAQ](#faq)
 
 ---
 
-## 快速開始
+## System Overview
 
-### 環境要求
+The **MrLiouWord Intelligent Synchronization System** is a comprehensive GitHub Global Logical Architecture Synchronization platform that:
 
-- Python 3.11+
-- Git
-- 依賴：`pyyaml`, `numpy`
+- 🔍 **Searches** GitHub globally for logical architecture patterns
+- 🧠 **Extracts** logical concepts, patterns, and relationships from code
+- 🎯 **Filters** using attention-based similarity (inspired by WebGPU)
+- ✅ **Tests** particle system with 7 critical verification tests
+- 🏷️ **Names** particles automatically based on logical understanding
+- 💾 **Stores** as particles with SimHash deduplication and Merkle verification
+- 📊 **Reports** comprehensive synchronization results
 
-### 安裝
+### Key Features
 
-```bash
-# 克隆倉庫
-git clone https://github.com/dofaromg/mrliouword-system.git
-cd mrliouword-system
-
-# 安裝依賴
-pip install pyyaml numpy
-```
-
-### 基本使用
-
-#### 1. 配置檔案
-
-編輯 `intelligent_sync.yaml`：
-
-```yaml
-settings:
-  scan_mode: "global"
-  sync_strategy: "logical_pattern"
-  
-  pattern_matching:
-    enabled: true
-    patterns:
-      - "attention_mechanism"
-      - "memory_system"
-
-repositories:
-  - name: "my-repo"
-    url: "https://github.com/user/repo.git"
-    branch: "main"
-    enabled: true
-    
-    logical_patterns:
-      - pattern: "attention_mechanism"
-        description: "注意力機制"
-        target_layer: "L2"
-```
-
-#### 2. 驗證配置
-
-```bash
-python scripts/sync_config_validator.py intelligent_sync.yaml
-```
-
-#### 3. 執行同步
-
-```bash
-# 同步所有倉庫
-python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml
-
-# 同步特定倉庫
-python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml --repo my-repo
-
-# 同步特定模式
-python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml --pattern attention_mechanism
-```
-
-#### 4. 查看統計
-
-```bash
-python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml --stats
-```
+- **Multi-language support**: Python, TypeScript, Go, Rust, Java, JavaScript
+- **Pattern detection**: Attention, Memory, Merkle, Particle, Flow, Layer architectures
+- **Deduplication**: SimHash64 with Hamming distance ≤ 3
+- **Integrity verification**: Merkle chain for tamper-proof memory
+- **Layer assignment**: L1-L7 based on similarity scores
+- **Frequency resonance**: Schumann (7.83Hz) × Phi-based frequencies
 
 ---
 
-## 配置說明
+## Quick Start
 
-### settings 區塊
+### Prerequisites
 
-#### scan_mode
+```bash
+# Python 3.10+
+python --version
 
-- `global`: 全域掃描整個倉庫
-- `targeted`: 只掃描指定檔案
-
-#### sync_strategy
-
-- `logical_pattern`: 基於邏輯模式匹配
-- `file_based`: 傳統檔案匹配
-
-#### pattern_matching
-
-```yaml
-pattern_matching:
-  enabled: true
-  patterns:
-    - "attention_mechanism"      # 注意力機制
-    - "memory_system"            # 記憶系統
-    - "particle_engine"          # 粒子引擎
-    - "frequency_resonance"      # 頻率共振
-    - "merkle_chain"             # Merkle 鏈
-    - "logical_reasoning"        # 邏輯推理
+# Required packages
+pip install requests pyyaml numpy
 ```
 
-#### particle_memory
+### Basic Usage
+
+```bash
+# 1. Set GitHub token
+export GITHUB_TOKEN="your_github_token"
+
+# 2. Run sync for a specific pattern
+python scripts/intelligent_repo_sync.py --pattern "attention mechanism" --limit 10
+
+# 3. Run sync for all patterns in config
+python scripts/intelligent_repo_sync.py --all
+
+# 4. Run particle tests
+python integrations/particle/test_recorder.py
+```
+
+### GitHub Actions
+
+The system runs automatically every Monday at 00:00 UTC via GitHub Actions. You can also trigger manually:
+
+1. Go to **Actions** → **Intelligent GitHub Sync**
+2. Click **Run workflow**
+3. Enter optional pattern and limit
+4. Click **Run workflow**
+
+---
+
+## Configuration Guide
+
+Edit `intelligent_sync.yaml` to customize behavior:
 
 ```yaml
+github:
+  min_stars: 10          # Minimum repository stars
+  languages:             # Languages to search
+    - Python
+    - TypeScript
+  max_results: 30        # Max results per pattern
+
+patterns:                # Patterns to search
+  - "attention mechanism"
+  - "merkle tree"
+
 particle_memory:
-  enabled: true
-  storage_path: "./particle_memory"
-  simhash_threshold: 3  # Hamming 距離（0-64）
-  layer_mapping:
-    concepts: "L1"      # 概念 → L1
-    patterns: "L2"      # 模式 → L2
-    functions: "L3"     # 函數 → L3
-    reasoning: "L4"     # 推理 → L4
+  simhash_threshold: 3   # Hamming distance for dedup
+  layer_assignment:      # Similarity → Layer mapping
+    L1: 0.9             # ≥0.9 → L1 (highest quality)
+    L2: 0.75
+    L3: 0.6
+    L4: 0.4
+
+testing:
+  enabled: true          # Run 7 particle tests
+  run_on_sync: true
+
+naming:
+  auto_version: true     # Handle conflicts with versioning
 ```
 
-#### attention
+### Layer Assignment
 
-```yaml
-attention:
-  enabled: true
-  dimension: 64                # 向量維度
-  num_heads: 8                 # 注意力頭數
-  similarity_threshold: 0.75   # 相似度閾值
-  use_frequency_resonance: true
-```
+Particles are assigned to layers based on similarity scores:
 
-### repositories 區塊
+| Similarity | Layer | Frequency (Hz) | Quality |
+|-----------|-------|----------------|---------|
+| ≥ 0.9     | L1    | 7.83           | Highest |
+| ≥ 0.75    | L2    | 12.67          | High    |
+| ≥ 0.6     | L3    | 20.50          | Medium  |
+| ≥ 0.4     | L4    | 33.17          | Low     |
+| < 0.4     | L5    | 53.68          | Lowest  |
 
-```yaml
-repositories:
-  - name: "倉庫名稱"
-    url: "https://github.com/user/repo.git"
-    branch: "main"
-    enabled: true
-    
-    logical_patterns:
-      - pattern: "模式名稱"
-        description: "模式描述"
-        target_layer: "目標層級（L1-L7）"
-```
+Frequencies are calculated as: **SCHUMANN (7.83 Hz) × PHI^n**
 
 ---
 
-## 架構原理
+## Architecture Details
 
-### 系統流程圖
+### System Flow
 
 ```
-┌─────────────┐
-│ 遠端倉庫    │
-└──────┬──────┘
-       │ git clone
-       ↓
-┌─────────────────────┐
-│ 全域掃描            │
-│ - Python (.py)      │
-│ - TypeScript (.ts)  │
-│ - JavaScript (.js)  │
-│ - Shell (.sh)       │
-│ - Markdown (.md)    │
-└──────┬──────────────┘
-       │ LogicalStructureExtractor
-       ↓
-┌─────────────────────┐
-│ 邏輯架構            │
-│ - concepts: [...]   │
-│ - patterns: {...}   │
-│ - relationships     │
-│ - reasoning_chains  │
-└──────┬──────────────┘
-       │ pattern matching
-       ↓
-┌─────────────────────┐
-│ 本地架構匹配        │
-│ similarity >= 0.5   │
-└──────┬──────────────┘
-       │ particlize
-       ↓
-┌─────────────────────┐
-│ 粒子列表            │
-│ [Particle1, ...]    │
-└──────┬──────────────┘
-       │ SimHash64 dedupe
-       ↓
-┌─────────────────────┐
-│ 唯一粒子            │
-│ Hamming dist <= 3   │
-└──────┬──────────────┘
-       │ AttentionFilter
-       ↓
-┌─────────────────────┐
-│ 高重要性粒子        │
-│ importance >= 0.75  │
-└──────┬──────────────┘
-       │ store + Merkle commit
-       ↓
-┌─────────────────────┐
-│ 粒子記憶            │
-│ L1/ L2/ ... L7/     │
-│ + Merkle Chain      │
-└─────────────────────┘
+┌─────────────────┐
+│ GitHub Search   │ ──► Search code globally
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Logical Extract │ ──► Extract patterns, concepts, reasoning
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Attention Filter│ ──► Compute similarity matrix
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Particle Tests  │ ──► Run 7 verification tests
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Naming Engine   │ ──► Auto-generate particle names
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Memory Storage  │ ──► Store with dedup & Merkle
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Sync Report     │ ──► Generate comprehensive report
+└─────────────────┘
 ```
 
-### 核心類架構
+### Components
 
-#### LogicalStructureExtractor
+#### 1. GitHub Search Engine
+**File:** `scripts/global_github_search.py`
 
-```python
-class LogicalStructureExtractor:
-    """邏輯架構提取器"""
-    
-    def extract_from_code(code: str, language: str) -> Dict:
-        """
-        提取代碼邏輯架構
-        
-        Returns:
-        {
-            'concepts': ['Attention', 'Query', ...],
-            'patterns': {
-                'attention_mechanism': ['attention', 'query', 'key']
-            },
-            'relationships': [...],
-            'reasoning_chains': [...],
-            'functions': [...],
-            'imports': [...],
-            'keywords': {...},
-            'complexity': 0.65
-        }
-        """
-```
+- GitHub Code Search API integration
+- Semantic query builder
+- Multi-language support
+- Rate limit handling
 
-支援語言：
-- Python (AST 解析)
-- TypeScript/JavaScript (正則表達式)
-- Shell (函數提取)
-- Markdown (標題和代碼塊)
+#### 2. Logical Architecture Extractor
+**File:** `integrations/github/logical_extractor.py`
 
-#### ParticleMemoryManager
+Detects patterns:
+- **Attention**: query/key/value, softmax, multi-head
+- **Memory**: cache, storage, recall, commit
+- **Merkle**: hash tree, root hash, verification
+- **Particle**: quantum, resonance, frequency
+- **Flow**: pipeline, stream, orchestration
+- **Layer**: hierarchy, stack, stratification
 
-```python
-class ParticleMemoryManager:
-    """粒子化記憶管理器"""
-    
-    def particlize_code(...) -> CodeParticle:
-        """代碼 → 粒子"""
-    
-    def deduplicate(particles: List) -> Tuple[unique, duplicates]:
-        """SimHash 去重"""
-    
-    def store_particle(particle: CodeParticle) -> bool:
-        """存儲到層級目錄 + Merkle 提交"""
-    
-    def query_by_pattern(pattern: str) -> List[CodeParticle]:
-        """按模式查詢"""
-    
-    def find_similar(content: str) -> List[Tuple[Particle, distance]]:
-        """找相似粒子"""
-    
-    def verify_integrity() -> Tuple[bool, errors]:
-        """驗證 Merkle 鏈"""
-```
+#### 3. Attention Filter
+**File:** `integrations/webgpu/attention_filter.py`
 
-#### AttentionBasedFilter
+- Frequency-based embeddings (Schumann 7.83Hz)
+- Multi-head attention similarity
+- Cosine similarity matrix
+- Top-k selection with softmax weights
 
-```python
-class AttentionBasedFilter:
-    """注意力過濾器"""
-    
-    def compute_attention(particles: List) -> Dict:
-        """計算粒子間注意力權重"""
-    
-    def filter_by_similarity(particles, query) -> List:
-        """相似度過濾"""
-    
-    def rank_by_importance(particles) -> List:
-        """重要性排序"""
-    
-    def _frequency_resonance(layer1, layer2) -> float:
-        """頻率共振匹配"""
-```
+#### 4. Particle Test Recorder ⭐
+**File:** `integrations/particle/test_recorder.py`
+
+Implements 7 critical tests:
+
+1. **Write Test**: Verify particle can write to KV
+2. **Read Test**: Verify particle can be read
+3. **SimHash Collision**: Check similar particles (Hamming ≤ 3)
+4. **Merkle Integrity**: Verify Merkle chain
+5. **Layer Retrieval**: Verify layer-based (L1-L7) retrieval
+6. **Tag Search**: Verify tag-based search
+7. **Frequency Resonance**: Find frequency-similar particles (±0.5Hz)
+
+Test results are stored as particles (`fx.meta.test`) in L7.
+
+#### 5. Particle Naming Engine ⭐
+**File:** `integrations/particle/naming_engine.py`
+
+Auto-generates names based on:
+
+| Pattern/Concept | Particle Type |
+|----------------|---------------|
+| attention      | `fx.pattern.attention` |
+| memory         | `fx.pattern.memory` |
+| merkle/chain   | `fx.pattern.chain` |
+| particle       | `fx.pattern.particle` |
+| flow           | `fx.flow.pipeline` |
+| layer          | `fx.pattern.hierarchical` |
+| distributed    | `fx.system.distributed` |
+| neural         | `fx.ai.neural` |
+| *default*      | `fx.logic.{reasoning_type}` |
+
+Handles conflicts with versioning (e.g., `name_v2`, `name_v3`).
+
+#### 6. Particle Memory Storage
+**File:** `integrations/particle/memory_storage.py`
+
+- **SimHash64 deduplication**: Hamming ≤ 3
+- **Source merging**: Combines similar particles
+- **Merkle chain**: Tamper-proof verification
+- **Layer assignment**: Based on similarity score
+- **Frequency calculation**: Schumann × Phi^n
+
+#### 7. Sync Orchestrator
+**File:** `scripts/intelligent_repo_sync.py`
+
+Main controller coordinating all components.
 
 ---
 
-## API 參考
+## API Reference
 
-### 命令行介面
-
-#### intelligent_repo_sync.py
-
-```bash
-python scripts/intelligent_repo_sync.py [OPTIONS]
-
-選項:
-  --config PATH       配置檔案路徑 (預設: intelligent_sync.yaml)
-  --repo NAME         只同步指定倉庫
-  --pattern PATTERN   只同步指定模式
-  --stats             只顯示統計資訊
-
-範例:
-  # 同步所有
-  python scripts/intelligent_repo_sync.py
-  
-  # 同步 attention_mechanism 模式
-  python scripts/intelligent_repo_sync.py --pattern attention_mechanism
-```
-
-#### sync_config_validator.py
-
-```bash
-python scripts/sync_config_validator.py [CONFIG] [OPTIONS]
-
-選項:
-  --strict            嚴格模式（警告也視為錯誤）
-
-範例:
-  python scripts/sync_config_validator.py intelligent_sync.yaml
-```
-
-### Python API
-
-#### 提取邏輯架構
+### GitHub Search Engine
 
 ```python
-from integrations.github.logical_extractor import LogicalStructureExtractor
+from scripts.global_github_search import GitHubSearchEngine
 
-extractor = LogicalStructureExtractor()
-structure = extractor.extract_from_code(code, 'python')
+engine = GitHubSearchEngine(token="github_token")
 
-print(structure['patterns'])  # 識別的模式
-print(structure['concepts'])  # 核心概念
-```
-
-#### 粒子化記憶
-
-```python
-from integrations.github.particle_memory import ParticleMemoryManager
-
-manager = ParticleMemoryManager('./particle_memory')
-
-# 創建粒子
-particle = manager.particlize_code(
-    content=code,
-    language='python',
-    file_path='attention.py',
-    patterns=['attention_mechanism']
+# Search code
+snippets = engine.search_code(
+    pattern="attention mechanism",
+    languages=["Python", "TypeScript"],
+    limit=30,
+    min_stars=10
 )
 
-# 存儲
-manager.store_particle(particle)
-
-# 查詢
-results = manager.query_by_pattern('attention_mechanism')
+# Each snippet has:
+# - repo: full repository name
+# - path: file path
+# - language: programming language
+# - code: source code
+# - url: GitHub URL
+# - score: search score
 ```
 
-#### 注意力過濾
+### Logical Extractor
 
 ```python
-from integrations.github.attention_filter import AttentionBasedFilter
+from integrations.github.logical_structure_extractor import LogicalStructureExtractor
 
-filter = AttentionBasedFilter(dimension=64, num_heads=8)
+extractor = LogicalStructureExtractor()
 
-# 計算注意力
-attention_map = filter.compute_attention(particles)
+structure = extractor.extract_from_code(code="...", language="Python")
 
-# 重要性排序
-ranked = filter.rank_by_importance(particles, attention_map)
+# structure['patterns']: ['attention', 'memory']
+# structure['concepts']: ['vector', 'neural']
+# structure['relationships']: {'classes': [...], 'functions': [...]}
+# structure['reasoning_chains']: ['query -> key -> value -> softmax']
+# structure['formula']: 'Attention(Q,K,V) = softmax(QK^T/√d)V'
+# structure['confidence']: 0.85
+```
+
+### Attention Filter
+
+```python
+from integrations.webgpu.attention_filter import AttentionFilter
+
+filter = AttentionFilter(embedding_dim=128, num_heads=4)
+
+# Compute embedding
+embedding = filter.compute_embedding("attention mechanism", base_freq=7.83)
+
+# Filter by attention
+scores = filter.filter_by_attention(
+    texts=["text1", "text2", "text3"],
+    threshold=0.5
+)
+
+# Each score has:
+# - snippet_a: index of first text
+# - snippet_b: index of second text
+# - similarity: cosine similarity
+# - layer: assigned layer (L1-L5)
+# - frequency: frequency in Hz
+```
+
+### Particle Test Recorder
+
+```python
+from integrations.particle.test_recorder import ParticleTestRecorder
+
+recorder = ParticleTestRecorder('./test_particles')
+
+# Run all 7 tests
+import asyncio
+report = asyncio.run(recorder.run_all_tests())
+
+# report.total_tests: 7
+# report.passed: number passed
+# report.failed: number failed
+# report.tests: list of test results
+```
+
+### Naming Engine
+
+```python
+from integrations.particle.naming_engine import ParticleNamingEngine
+
+engine = ParticleNamingEngine('./naming_history')
+
+decision = engine.generate_name(
+    patterns=['attention', 'memory'],
+    concepts=['vector', 'neural'],
+    reasoning_chains=['query -> key -> value'],
+    source_info={'repo': 'user/repo', 'language': 'Python'}
+)
+
+# decision.particle_name: 'fx.pattern.attention.attention_vector_repo'
+# decision.particle_type: 'fx.pattern.attention'
+# decision.reasoning: 'Primary pattern 'attention' detected'
+# decision.confidence: 0.9
+# decision.version: 1
+```
+
+### Memory Storage
+
+```python
+from integrations.particle.memory_storage import ParticleMemoryStorage
+
+storage = ParticleMemoryStorage('./particle_memory')
+
+# Store particle
+particle, is_new = storage.store(
+    name='fx.pattern.attention.test',
+    particle_type='fx.pattern.attention',
+    content='attention mechanism implementation',
+    source_info={'repo': 'user/repo', 'url': 'https://...'},
+    tags=['attention', 'neural'],
+    metadata={'confidence': 0.85}
+)
+
+# Search particles
+particles = storage.search_by_layer('L2')
+particles = storage.search_by_tag('attention')
+particles = storage.search_by_frequency(7.83, tolerance=0.5)
+
+# Verify Merkle chain
+valid, errors = storage.verify_merkle_chain()
 ```
 
 ---
 
-## 範例
+## Use Cases
 
-### 範例 1：同步 flow-tasks 的注意力機制
+### 1. Learn from Open Source
 
-**配置**：
-
-```yaml
-repositories:
-  - name: "flow-tasks"
-    url: "https://github.com/dofaromg/flow-tasks.git"
-    branch: "main"
-    enabled: true
-    
-    logical_patterns:
-      - pattern: "attention_mechanism"
-        target_layer: "L2"
-```
-
-**執行**：
+Discover how top repositories implement specific patterns:
 
 ```bash
-python scripts/intelligent_repo_sync.py --pattern attention_mechanism
+python scripts/intelligent_repo_sync.py --pattern "attention mechanism" --limit 50
 ```
 
-**結果**：
-
-```
-🔍 開始掃描倉庫: https://github.com/dofaromg/flow-tasks.git
-📥 克隆倉庫...
-✅ 掃描完成: 142 個檔案
-
-🔗 開始匹配邏輯模式...
-  找到 8 個包含 attention_mechanism 的遠端結構
-✅ 匹配完成: 8 個匹配
-
-💾 開始同步到粒子記憶...
-  去重: 6 唯一, 2 重複
-  注意力過濾: 保留 5, 過濾 1
-✅ 同步完成: 5 個粒子
-
-📊 同步統計
-  新增粒子: 5
-  總粒子數: 23
-  L2: 5
-  Merkle 完整性: ✅
-```
-
-### 範例 2：查詢相似代碼
+Then explore particles:
 
 ```python
-from integrations.github.particle_memory import ParticleMemoryManager
+from integrations.particle.memory_storage import ParticleMemoryStorage
+storage = ParticleMemoryStorage('./particle_memory')
 
-manager = ParticleMemoryManager('./particle_memory')
-
-# 查詢內容
-query = """
-def attention(query, key, value):
-    scores = query @ key.T
-    return softmax(scores) @ value
-"""
-
-# 找相似粒子
-similar = manager.find_similar(query, threshold=3, limit=5)
-
-for particle, distance in similar:
-    print(f"距離: {distance}")
-    print(f"檔案: {particle.file_path}")
-    print(f"模式: {particle.patterns}")
-    print()
+attention_particles = storage.search_by_type('fx.pattern.attention')
+for p in attention_particles:
+    print(f"{p.name}: {len(p.sources)} sources")
+    for source in p.sources:
+        print(f"  - {source['repo']}")
 ```
 
-### 範例 3：自定義邏輯模式
+### 2. Track Architecture Evolution
 
-```yaml
-# 添加自定義模式
-settings:
-  pattern_matching:
-    patterns:
-      - "custom_crypto_algorithm"  # 自定義模式
+Run weekly syncs to see how patterns evolve:
 
-repositories:
-  - name: "crypto-lib"
-    logical_patterns:
-      - pattern: "custom_crypto_algorithm"
-        description: "加密演算法實現"
-        target_layer: "L3"
+```bash
+# Automatic via GitHub Actions every Monday
+# Manual: python scripts/intelligent_repo_sync.py --all
 ```
 
----
-
-## 常見問題
-
-### Q: 與傳統 git submodule 的差別？
-
-**A**: 
-
-| 特性 | git submodule | Intelligent Sync |
-|------|---------------|------------------|
-| 同步單位 | 整個倉庫 | 邏輯架構片段 |
-| 去重 | 無 | SimHash64 語意去重 |
-| 完整性 | Git SHA | Merkle Chain |
-| 理解能力 | 無 | 邏輯架構感知 |
-| 粒度 | 倉庫級 | 函數/類級 |
-
-### Q: SimHash 閾值如何設定？
-
-**A**: 
-
-- `threshold = 0`: 完全相同
-- `threshold = 1-3`: 幾乎相同（推薦）
-- `threshold = 4-8`: 相似
-- `threshold > 8`: 太寬鬆
-
-### Q: 如何處理私有倉庫？
-
-**A**:
-
-GitHub Actions 中設定 `GITHUB_TOKEN`:
-
-```yaml
-env:
-  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-```
-
-或使用 SSH:
-
-```yaml
-url: "git@github.com:user/private-repo.git"
-```
-
-### Q: 記憶粒子會佔用多少空間？
-
-**A**:
-
-每個粒子約 1-5KB（包含 JSON 元資料）。
-1000 個粒子 ≈ 1-5MB。
-
-可以定期清理舊粒子或低重要性粒子。
-
-### Q: Merkle 鏈驗證失敗怎麼辦？
-
-**A**:
+Compare naming history:
 
 ```python
-from integrations.github.particle_memory import ParticleMemoryManager
+from integrations.particle.naming_engine import ParticleNamingEngine
+engine = ParticleNamingEngine('./naming_history')
 
-manager = ParticleMemoryManager('./particle_memory')
-valid, errors = manager.verify_integrity()
+# Get all attention patterns
+attention_names = engine.get_by_type('fx.pattern.attention')
+print(f"Found {len(attention_names)} attention implementations")
+```
 
+### 3. Verify System Integrity
+
+Run particle tests before deployment:
+
+```bash
+python integrations/particle/test_recorder.py
+```
+
+Verify Merkle chain:
+
+```python
+from integrations.particle.memory_storage import ParticleMemoryStorage
+storage = ParticleMemoryStorage('./particle_memory')
+
+valid, errors = storage.verify_merkle_chain()
 if not valid:
+    print("Chain compromised!")
     for error in errors:
-        print(error)
-    
-    # 可選：回滾到上一個有效狀態
-    # manager.merkle_chain.rollback(target_merkle)
+        print(f"  - {error}")
+```
+
+### 4. Discover Similar Implementations
+
+Find repositories with similar architectures:
+
+```python
+from integrations.webgpu.attention_filter import AttentionFilter
+
+filter = AttentionFilter()
+
+# Get all particle contents
+storage = ParticleMemoryStorage('./particle_memory')
+particles = storage.search_by_type('fx.pattern.attention')
+
+contents = [p.content for p in particles]
+scores = filter.filter_by_attention(contents, threshold=0.7)
+
+# scores shows similar implementations
 ```
 
 ---
 
-## 延伸閱讀
+## FAQ
 
-- [SYSTEM_INDEX.md](../SYSTEM_INDEX.md) - 七層記憶架構
-- [core/simhash64.py](../core/simhash64.py) - SimHash 實現
-- [core/merkle.py](../core/merkle.py) - Merkle Chain 實現
-- [index.ts](../index.ts) - ParticleAttention 引擎
+### Q: How does SimHash deduplication work?
+
+**A:** SimHash generates a 64-bit fingerprint from text. Similar texts have similar hashes (Hamming distance ≤ 3). When storing a particle, we check if a similar one exists (Hamming ≤ 3) and merge sources instead of creating a duplicate.
+
+### Q: What is the Merkle chain used for?
+
+**A:** The Merkle chain provides tamper-proof verification. Each particle has a `merkle` hash computed from `content + simhash + timestamp + prev_merkle`. This creates an immutable chain where any modification breaks verification.
+
+### Q: Why frequency-based embeddings?
+
+**A:** Following MrLiouWord philosophy, we use Schumann resonance (7.83Hz) as the base frequency. Embeddings modulate this frequency with character distributions, creating resonant patterns that reflect logical structure.
+
+### Q: How are layers assigned?
+
+**A:** Layers are assigned based on similarity scores:
+- High similarity (≥0.9) → L1 (core patterns)
+- Medium similarity (0.6-0.9) → L2-L3
+- Low similarity (<0.6) → L4-L5 (experimental)
+
+### Q: What happens when particle names conflict?
+
+**A:** The naming engine auto-versions conflicts:
+- First: `fx.pattern.attention.transformer`
+- Second: `fx.pattern.attention.transformer_v2`
+- Third: `fx.pattern.attention.transformer_v3`
+
+### Q: Can I add custom patterns?
+
+**A:** Yes! Edit `intelligent_sync.yaml`:
+
+```yaml
+patterns:
+  - "your custom pattern"
+  - "another pattern"
+```
+
+### Q: How do I export all particles?
+
+```bash
+python -c "
+from integrations.particle.memory_storage import ParticleMemoryStorage
+storage = ParticleMemoryStorage('./particle_memory')
+storage.export_particles('particles_export.json')
+"
+```
+
+### Q: What are the 7 particle tests?
+
+1. **Write**: Can particle write to KV storage?
+2. **Read**: Can particle be read back?
+3. **SimHash**: Are similar particles detected (Hamming ≤ 3)?
+4. **Merkle**: Is the Merkle chain valid?
+5. **Layer**: Can particles be retrieved by layer (L1-L7)?
+6. **Tag**: Can particles be searched by tags?
+7. **Frequency**: Can particles be found by frequency resonance (±0.5Hz)?
+
+All tests must pass for system integrity.
 
 ---
 
-> **哲學**：這個系統不只是「複製檔案」，而是：
-> - 理解**邏輯架構原理**
-> - 以**粒子形式記憶**
-> - 通過**注意力機制**識別重要性
-> - 保證**完整性可驗證**（Merkle）
-> - 實現**語意去重**（SimHash）
-> 
-> 讓系統真正「理解」它在同步什麼，而不是盲目複製。
-> 
-> **怎麼過去，就怎麼回來** 🌀
+## Support
+
+- **GitHub Issues**: [Report bugs or request features](https://github.com/your-repo/issues)
+- **Documentation**: This guide
+- **Philosophy**: 怎麼過去，就怎麼回來 (What goes around, comes around)
+
+---
+
+**Built with ❤️ by MR.liou**
+
+*Understanding logic, not just code.*

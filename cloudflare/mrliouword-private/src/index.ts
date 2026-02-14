@@ -15,7 +15,7 @@
 
 // 常數定義
 const ORIGIN = 'MrLiouWord';
-const VERSION = '4.0.0';
+const VERSION = '2.1.0';
 const SCHUMANN = 7.83;
 const PHI = 1.618033988749895;
 

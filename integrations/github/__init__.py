@@ -10,11 +10,7 @@ Author: MR.liou
 __version__ = "1.0.0"
 
 from .logical_extractor import LogicalStructureExtractor
-from .particle_memory import ParticleMemoryManager
-from .attention_filter import AttentionBasedFilter
 
 __all__ = [
     "LogicalStructureExtractor",
-    "ParticleMemoryManager",
-    "AttentionBasedFilter",
 ]
