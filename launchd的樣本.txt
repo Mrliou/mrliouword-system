@@ -1,0 +1,100 @@
+Sampling process launchd [1] for 3 seconds with 1 millisecond of run time between samples
+Sampling completed, processing symbols...
+
+Analysis of sampling:
+  Call graph:
+    2842 Thread_0x123456 DispatchQueue_1: com.apple.main-thread (serial)
+    + 2842 start (in libdyld.dylib) + 1 [0x7fff20345621]
+    +   2842 ??? (in launchd) load address 0x10e6f4000 + 0x4328 [0x10e6f8328]
+    +     2842 ??? (in launchd) load address 0x10e6f4000 + 0x4a9c [0x10e6f8a9c]
+    +       2842 ??? (in launchd) load address 0x10e6f4000 + 0x1c034 [0x10e710034]
+    +         2842 CFRunLoopRunSpecific (in CoreFoundation) + 462 [0x7fff203a1edd]
+    +           2820 __CFRunLoopRun (in CoreFoundation) + 1268 [0x7fff203a2994]
+    +           ! 2598 __CFRunLoopServiceMachPort (in CoreFoundation) + 322 [0x7fff203a3c82]
+    +           ! : 2598 mach_msg (in libsystem_kernel.dylib) + 60 [0x7fff20394c9c]
+    +           ! :   2598 mach_msg_trap (in libsystem_kernel.dylib) + 10 [0x7fff20395382]
+    +           ! 222 __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__ (in CoreFoundation) + 9 [0x7fff203a5349]
+    +           !   222 _dispatch_main_queue_callback_4CF (in libdispatch.dylib) + 31 [0x7fff203217cf]
+    +           !     222 _dispatch_mach_invoke (in libdispatch.dylib) + 433 [0x7fff20322fb1]
+    +           !       222 _dispatch_lane_serial_drain (in libdispatch.dylib) + 602 [0x7fff2031ed6a]
+    +           !         222 _dispatch_client_callout (in libdispatch.dylib) + 8 [0x7fff2031c6d8]
+    +           !           222 _dispatch_call_block_and_release (in libdispatch.dylib) + 12 [0x7fff2031b8fc]
+    +           !             148 ??? (in launchd) load address 0x10e6f4000 + 0x8b44 [0x10e6fcb44]
+    +           !             : 148 ??? (in launchd) load address 0x10e6f4000 + 0x9378 [0x10e6fd378]
+    +           !             :   74 ??? (in launchd) load address 0x10e6f4000 + 0xa1f0 [0x10e6fe1f0]
+    +           !             :   ! 74 xpc_pipe_routine (in libxpc.dylib) + 452 [0x7fff203e8a24]
+    +           !             :   !   74 xpc_pipe_try_receive (in libxpc.dylib) + 346 [0x7fff203e8d4a]
+    +           !             :   !     74 _xpc_pipe_handle_message (in libxpc.dylib) + 156 [0x7fff203e91ac]
+    +           !             :   !       74 _xpc_connection_mach_event (in libxpc.dylib) + 1826 [0x7fff203dd282]
+    +           !             :   !         74 _xpc_connection_call_event_handler (in libxpc.dylib) + 56 [0x7fff203dc688]
+    +           !             :   !           74 ??? (in launchd) load address 0x10e6f4000 + 0xa958 [0x10e6fe958]
+    +           !             :   !             37 ??? (in launchd) load address 0x10e6f4000 + 0xb2f4 [0x10e6ff2f4]
+    +           !             :   !             : 37 ??? (in launchd) load address 0x10e6f4000 + 0xc140 [0x10e700140]
+    +           !             :   !             :   37 xpc_dictionary_get_value (in libxpc.dylib) + 92 [0x7fff203dc35c]
+    +           !             :   !             37 ??? (in launchd) load address 0x10e6f4000 + 0xb824 [0x10e6ff824]
+    +           !             :   !               37 ??? (in launchd) load address 0x10e6f4000 + 0x17a18 [0x10e70ba18]
+    +           !             :   74 ??? (in launchd) load address 0x10e6f4000 + 0xa538 [0x10e6fe538]
+    +           !             :     74 xpc_pipe_routine (in libxpc.dylib) + 452 [0x7fff203e8a24]
+    +           !             :       74 xpc_pipe_try_receive (in libxpc.dylib) + 346 [0x7fff203e8d4a]
+    +           !             :         74 _xpc_pipe_handle_message (in libxpc.dylib) + 156 [0x7fff203e91ac]
+    +           !             :           74 _xpc_connection_mach_event (in libxpc.dylib) + 1826 [0x7fff203dd282]
+    +           !             74 ??? (in launchd) load address 0x10e6f4000 + 0x8de4 [0x10e6fcde4]
+    +           !               74 ??? (in launchd) load address 0x10e6f4000 + 0x9378 [0x10e6fd378]
+    +           !                 37 ??? (in launchd) load address 0x10e6f4000 + 0xa1f0 [0x10e6fe1f0]
+    +           !                 37 ??? (in launchd) load address 0x10e6f4000 + 0xa538 [0x10e6fe538]
+    +           22 __CFRunLoopDoTimers (in CoreFoundation) + 307 [0x7fff203a5bb3]
+    +             22 __CFRunLoopDoTimer (in CoreFoundation) + 1033 [0x7fff203a5fb9]
+    +               22 __CFRUNLOOP_IS_CALLING_OUT_TO_A_TIMER_CALLBACK_FUNCTION__ (in CoreFoundation) + 20 [0x7fff203a6344]
+    +                 22 ??? (in launchd) load address 0x10e6f4000 + 0x1a234 [0x10e70e234]
+    +                   22 ??? (in launchd) load address 0x10e6f4000 + 0x1a45c [0x10e70e45c]
+    +                     11 ??? (in launchd) load address 0x10e6f4000 + 0x1a8f4 [0x10e70e8f4]
+    +                     11 ??? (in launchd) load address 0x10e6f4000 + 0x1ab2c [0x10e70eb2c]
+
+  Total number in stack (recursive counted multiple, when >=5):
+    222 _dispatch_call_block_and_release (in libdispatch.dylib) + 12 [0x7fff2031b8fc]
+    222 _dispatch_client_callout (in libdispatch.dylib) + 8 [0x7fff2031c6d8]
+    222 _dispatch_lane_serial_drain (in libdispatch.dylib) + 602 [0x7fff2031ed6a]
+    222 _dispatch_main_queue_callback_4CF (in libdispatch.dylib) + 31 [0x7fff203217cf]
+    222 _dispatch_mach_invoke (in libdispatch.dylib) + 433 [0x7fff20322fb1]
+    222 __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__ (in CoreFoundation) + 9 [0x7fff203a5349]
+    148 _xpc_connection_call_event_handler (in libxpc.dylib) + 56 [0x7fff203dc688]
+    148 _xpc_connection_mach_event (in libxpc.dylib) + 1826 [0x7fff203dd282]
+    148 _xpc_pipe_handle_message (in libxpc.dylib) + 156 [0x7fff203e91ac]
+    148 xpc_pipe_routine (in libxpc.dylib) + 452 [0x7fff203e8a24]
+    148 xpc_pipe_try_receive (in libxpc.dylib) + 346 [0x7fff203e8d4a]
+
+  Sort by top of stack, same collapsed (when >= 5):
+    mach_msg_trap (in libsystem_kernel.dylib)    2598
+    xpc_dictionary_get_value (in libxpc.dylib)     37
+    ??? (in launchd) load address 0x10e6f4000 + 0x17a18    37
+    ??? (in launchd) load address 0x10e6f4000 + 0x1a8f4     11
+    ??? (in launchd) load address 0x10e6f4000 + 0x1ab2c     11
+    _xpc_connection_mach_event (in libxpc.dylib)  74
+
+Binary Images:
+       0x10e6f4000 -        0x10e73ffff  launchd (2038.120.1) <5E2A7C02-F32B-3BC4-8428-7B42451F2E03> /sbin/launchd
+    0x7fff20315000 -     0x7fff2035afff  libdispatch.dylib (1271.120.2) <FAEAAFDD-DF99-34F1-BF41-E9CE2BF55EF7> /usr/lib/system/libdispatch.dylib
+    0x7fff20390000 -     0x7fff203c7fff  libsystem_kernel.dylib (7195.141.2) <3FBC799B-E4D0-35AA-8B6D-47B2FCC5D6A1> /usr/lib/system/libsystem_kernel.dylib
+    0x7fff20345000 -     0x7fff2037bfff  libdyld.dylib (852.2) <8ADB7426-C337-3811-A614-55345F1F4B63> /usr/lib/system/libdyld.dylib
+    0x7fff203d5000 -     0x7fff203f5fff  libxpc.dylib (2038.120.1) <B6619C0A-99BB-34AB-A5E8-FC62DD0CDF18> /usr/lib/system/libxpc.dylib
+    0x7fff2037e000 -     0x7fff207e5fff  com.apple.CoreFoundation (6.9 - 1775.118) <469D0BA7-EC2D-36C2-9B08-E63FA0BC7E31> /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+
+Report details:
+  Sample duration:        3.006 s
+  Steps:                  3007
+  
+Performance Summary:
+  Primary bottleneck:     mach_msg_trap (91.4% of samples)
+  Main activity:          Event loop processing
+  XPC communication:      Normal levels
+  Timer processing:       Minimal (0.8% of samples)
+  
+Analysis Notes:
+  - launchd is operating normally in its main event loop
+  - Majority of time spent waiting for mach messages (expected behavior)
+  - XPC pipe routines consuming 5.2% (normal for system service communication)
+  - Timer callbacks executing as expected
+  - No performance anomalies detected
+
+MrLiouWord Origin Signature: 怎麼過去，就怎麼回來
+Generated: 2026-01-20T22:00:00.000Z

@@ -1,0 +1,12 @@
+services:
+  flowbox-api:
+    image: python:3.11-slim
+    container_name: flowbox-api
+    working_dir: /app
+    volumes:
+      - /srv/flowagent:/srv/flowagent
+      - ./:/app
+    command: bash -lc "pip install -r api/requirements.txt && uvicorn api.main:app --host 0.0.0.0 --port 8080"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

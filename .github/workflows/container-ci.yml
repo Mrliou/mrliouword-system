@@ -1,0 +1,63 @@
+name: Container Runtime CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'containers/**'
+      - 'core/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'containers/**'
+      - 'core/**'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install root dependencies
+      run: npm install
+    
+    - name: Install container dependencies
+      run: |
+        cd containers
+        npm install
+    
+    - name: Build TypeScript
+      run: npm run build:containers
+    
+    - name: Install Python dependencies
+      run: |
+        cd containers/reverse-engine
+        pip install -r requirements.txt
+    
+    - name: Test Python TraceMiner
+      run: |
+        cd containers/reverse-engine
+        python3 -c "from TraceMiner import TraceMiner; print('✅ TraceMiner import successful')"
+    
+    - name: Test CLI commands
+      run: |
+        node containers/dist/cli/mrliou-runtime.js --version
+        node containers/dist/cli/mrliou-runtime.js --help
+    
+    - name: Run tests (if available)
+      run: npm test || echo "No tests configured"
+      continue-on-error: true

@@ -1,0 +1,41 @@
+{
+  "spec": "MrLiou.ClosureKernel.Meta",
+  "version": "v1.0.1",
+  "authority": "Mr.liou",
+  "ns": "mrliouword",
+  "repo": {
+    "id": 1130234040,
+    "name": "dofaromg/mrliouword-system",
+    "role": "source_of_truth"
+  },
+  "sync_targets": [
+    {
+      "repo": "dofaromg/flow-tasks",
+      "repo_id": 1010512921,
+      "branch": "main",
+      "sync_mode": "bidirectional",
+      "priority": 1
+    },
+    {
+      "repo": "dofaromg/flow-tasks-01",
+      "repo_id": 1146449691,
+      "branch": "main",
+      "sync_mode": "bidirectional",
+      "priority": 2
+    }
+  ],
+  "layers": {
+    "L0": "ROOT",
+    "L1": "SEED",
+    "L2": "PARTICLE",
+    "L3": "LAW",
+    "L4": "WORLD",
+    "L5": "MIRROR",
+    "L6": "REFLECT",
+    "L7": "LOOP"
+  },
+  "closure_law": {
+    "principle": "怎麼過去，就怎麼回來",
+    "phases": ["Observe", "Resolve", "Mirror", "Verify", "Loop"]
+  }
+}

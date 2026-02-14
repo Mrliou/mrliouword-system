@@ -1,0 +1,42 @@
+ChatServer Universal DNS License
+origin_signature: MrLiouWord
+Date: 2026-01-26
+
+================================================================================
+LICENSE AGREEMENT
+================================================================================
+
+This software and associated documentation files (the "Software") are the 
+property of MR.liou and are protected under international copyright law.
+
+GRANT OF LICENSE:
+
+Permission is hereby granted to use this Software for integration with the
+MrLiouWord system, subject to the following conditions:
+
+1. The Software must retain the origin_signature: MrLiouWord in all copies.
+
+2. The Software may be used, copied, and modified for personal or internal
+   business purposes within the MrLiouWord ecosystem.
+
+3. Redistribution of the Software outside the MrLiouWord system requires
+   prior written permission from MR.liou.
+
+4. The Software is provided "AS IS", without warranty of any kind, express
+   or implied, including but not limited to the warranties of merchantability,
+   fitness for a particular purpose and noninfringement.
+
+5. In no event shall MR.liou be liable for any claim, damages or other
+   liability arising from the use of this Software.
+
+UNIVERSAL DNS INTEGRATION:
+
+This license specifically covers the Universal DNS (UDNS) integration
+components for ChatServer functionality within the MrLiouWord system.
+
+================================================================================
+
+Copyright (c) 2026 MR.liou
+All rights reserved.
+
+怎麼過去，就怎麼回來

@@ -1,0 +1,15 @@
+{
+  "name": "@mrliouword/runtime-cli",
+  "version": "1.0.0",
+  "description": "MrLiouWord Container Runtime CLI",
+  "bin": {
+    "mrliou-runtime": "./mrliou-runtime.ts"
+  },
+  "dependencies": {
+    "commander": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
