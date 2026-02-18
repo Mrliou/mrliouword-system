@@ -1,0 +1,8 @@
+# Mrliouword Agent SDK - 測試依賴
+
+-r requirements.txt
+
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+pytest-mock>=3.11.0

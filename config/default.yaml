@@ -1,0 +1,42 @@
+# Mrliouword Agent SDK 預設配置
+
+app:
+  name: "Mrliouword Agent SDK"
+  version: "1.0.0"
+  environment: "development"
+
+anthropic:
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 4096
+  timeout: 300
+
+agent:
+  default_tools:
+    - Read
+    - Write
+    - Edit
+    - Bash
+    - Glob
+  setting_sources:
+    - project
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/mrliouword.log"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  rate_limit: 100  # requests per hour
+
+security:
+  enable_auth: false
+  enable_rate_limit: true
+
+monitoring:
+  enable_metrics: true
+  enable_tracing: false
+  track_costs: true
+  cost_alert_threshold: 100.0
