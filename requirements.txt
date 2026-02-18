@@ -1,0 +1,19 @@
+# Mrliouword Agent SDK - 基本依賴
+
+# Anthropic API
+anthropic>=0.18.0
+
+# 配置管理
+pydantic>=2.0.0
+pyyaml>=6.0
+
+# CLI 工具
+click>=8.0.0
+
+# Web API
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+
+# 通用工具
+requests>=2.31.0
