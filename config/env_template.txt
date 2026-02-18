@@ -1,0 +1,46 @@
+# MrLiou AI Supercomputer - Environment Variables Template
+# ========================================================
+# Copy this file to .env and fill in your API keys
+# 將此檔案複製為 .env 並填入您的 API 金鑰
+
+# OpenAI Configuration
+# https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-...
+
+# Anthropic Claude Configuration
+# https://console.anthropic.com/
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Google Gemini Configuration
+# https://makersuite.google.com/app/apikey
+GOOGLE_API_KEY=...
+
+# Azure OpenAI Configuration (Optional)
+# https://portal.azure.com/
+AZURE_OPENAI_API_KEY=...
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT=your-deployment-name
+
+# Ollama Configuration (Local only, no API key needed)
+# Install from: https://ollama.ai
+# Default: http://localhost:11434
+
+# Installation Instructions / 安裝說明
+# =====================================
+# 
+# 1. Copy this file / 複製此檔案:
+#    cp config/env_template.txt .env
+#
+# 2. Edit .env and add your API keys / 編輯 .env 並新增您的 API 金鑰
+#
+# 3. Load environment variables / 載入環境變數:
+#    export $(cat .env | xargs)
+#    # Or on Windows / 或在 Windows:
+#    # Get-Content .env | ForEach-Object { $var = $_.Split('='); [Environment]::SetEnvironmentVariable($var[0], $var[1]) }
+#
+# 4. Start the server / 啟動伺服器:
+#    ./run.sh
+#    # Or / 或:
+#    python3 flowcore_loop.py
+#
+# Philosophy: 怎麼過去，就怎麼回來 (How you go, so you return)
