@@ -37,6 +37,12 @@
 
 ## 🚀 已部署服務
 
+### MrLiou AI Supercomputer v1.0 ⭐ NEW
+| 服務 | 功能 | 文檔 |
+|------|-----|------|
+| AI 超級電腦 | 多提供者 AI 支援，Judge Loop 模式 | [快速入門](docs/SUPERCOMPUTER_QUICKSTART.md) |
+| AI 提供者 | OpenAI, Claude, Gemini, Ollama, Azure | [詳細文檔](AI_PROVIDERS_README.md) |
+
 ### Cloudflare Workers
 | 服務 | URL | 功能 |
 |------|-----|------|
