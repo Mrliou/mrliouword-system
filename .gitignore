@@ -107,3 +107,10 @@ _codeql_detected_source_root
 .mrliou/sync_report.json
 .mrliou/verification_report.json
 .mrliou/final_sync_report.json
+
+# AI Supercomputer runtime files
+log/trace.jsonl
+log/trace_state.json
+log/ai_costs.jsonl
+memory/ingest/ai_responses/
+*.jsonl
