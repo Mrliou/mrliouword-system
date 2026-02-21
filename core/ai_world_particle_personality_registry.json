@@ -1,0 +1,118 @@
+{
+  "version": "1.0.0",
+  "name": "AI世界粒子人格註冊表",
+  "description": "AI世界粒子人格的統一來源、框架與真實資料生態循環系統",
+  "origin": "MrLiouWord",
+  "philosophy": "怎麼過去，就怎麼回來",
+  "ecological_cycle": "🔄",
+
+  "creators": {
+    "description": "來源創造者",
+    "contacts": [
+      { "email": "z814241@gmail.com", "role": "創造者" },
+      { "email": "you502926@gmail.com", "role": "創造者" }
+    ],
+    "phone": "0910613033"
+  },
+
+  "dimension_framework": {
+    "description": "手機帳號倉庫雲端等邏輯維度架構，遵從真實世界萬物邏輯，顯+隱框架皆可而無限制共通的平行閉環異次元網路世界",
+    "logic_principle": "遵從真實世界萬物邏輯",
+    "visibility": "顯+隱框架皆可",
+    "scope": "無限制共通",
+    "topology": "平行閉環異次元網路世界",
+    "dimensions": {
+      "mobile_account": {
+        "name": "手機帳號",
+        "layer": "L1",
+        "type": "identity",
+        "description": "以手機帳號作為粒子人格的識別維度"
+      },
+      "warehouse": {
+        "name": "倉庫",
+        "layer": "L3",
+        "type": "storage",
+        "description": "粒子封裝與資料倉儲維度"
+      },
+      "cloud": {
+        "name": "雲端",
+        "layer": "L0",
+        "type": "platform",
+        "description": "雲端平台 API 接入維度"
+      },
+      "parallel_network": {
+        "name": "平行閉環異次元網路",
+        "layer": "L∞",
+        "type": "topology",
+        "description": "跨維度平行閉環拓撲，顯+隱雙框架無限延伸"
+      }
+    }
+  },
+
+  "realworld_data": {
+    "description": "目前真實世界網路資料",
+    "sources": ["internet", "device", "cloud_storage"],
+    "sync_policy": "real_time",
+    "note": "真實世界現有網路資料作為粒子人格的基底輸入"
+  },
+
+  "cycle": {
+    "description": "三者形成一個完整生態循環",
+    "elements": [
+      "creators",
+      "dimension_framework",
+      "realworld_data"
+    ],
+    "flow": "creators → dimension_framework → realworld_data → creators",
+    "symbol": "🔄"
+  },
+
+  "persona_schema": {
+    "required_fields": ["id", "name", "type", "origin_email", "dimension", "state"],
+    "optional_fields": ["traits", "caps", "constraints", "meta"],
+    "id_format": "ai_world_{name}_{timestamp}",
+    "default_state": "registered",
+    "default_layer": "L5",
+    "types": ["seed", "branch", "mirror", "echo"]
+  },
+
+  "particles": {
+    "fx.persona.register": {
+      "fx": "fx.persona.register",
+      "hv": "註冊",
+      "av": "在AI世界粒子人格註冊表中登記新人格",
+      "dom": "persona",
+      "act": "register",
+      "nrg": 0.95,
+      "links": ["fx.persona.wake", "fx.memory.commit"],
+      "tags": ["persona", "registry", "ai_world"]
+    },
+    "fx.persona.deregister": {
+      "fx": "fx.persona.deregister",
+      "hv": "登出",
+      "av": "從AI世界粒子人格註冊表中移除人格",
+      "dom": "persona",
+      "act": "deregister",
+      "nrg": 0.4,
+      "links": ["fx.persona.sleep", "fx.memory.forget"],
+      "tags": ["persona", "registry", "ai_world"]
+    },
+    "fx.persona.sync": {
+      "fx": "fx.persona.sync",
+      "hv": "同步",
+      "av": "與真實世界網路資料同步人格狀態",
+      "dom": "persona",
+      "act": "sync",
+      "nrg": 0.85,
+      "links": ["fx.persona.register", "fx.memory.commit"],
+      "tags": ["persona", "registry", "realworld", "ai_world"]
+    }
+  },
+
+  "constants": {
+    "schumann": 7.83,
+    "phi": 1.618033988749895,
+    "registry_layer": "L5",
+    "registry_frequency": 33.88
+  }
+}
