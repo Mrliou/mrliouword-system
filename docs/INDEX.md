@@ -164,6 +164,11 @@ Technical references, examples, and utilities.
   - **[Ubuntu Slim README](references/ubuntu-slim-readme.md)** - Ubuntu Slim base image
   - **[Chat Logs](references/chat-logs/)** - Historical logs
 
+### Git Guides
+- **[Guides Directory](guides/)** - Git and repository guides
+  - **[Installing Git LFS](guides/installing-git-lfs.md)** - Install and configure Git Large File Storage
+  - **[Troubleshooting Push Limit](guides/troubleshooting-push-limit.md)** - Work around the 2 GiB push limit
+
 ### Readme Examples
 - **[Readme Directory](readme/)** - Example README files
   - **[Kiosk Agent v2](readme/kiosk-agent-v2.md)** - Kiosk agent example
