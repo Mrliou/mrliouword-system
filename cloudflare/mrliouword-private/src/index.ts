@@ -235,6 +235,51 @@ class Persona {
     }
     return res;
   }
+
+  async register(data) {
+    const ALLOWED_TYPES = ['seed', 'branch', 'mirror', 'echo'];
+    const ALLOWED_DIMENSIONS = ['mobile_account', 'warehouse', 'cloud', 'parallel_network'];
+    const { name, type = 'branch', origin_email, dimension = 'parallel_network', traits = {}, caps = [], constraints = [], meta = {} } = data;
+    if (!name || !origin_email) throw new Error('name 和 origin_email 為必填欄位');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(origin_email)) throw new Error('origin_email 格式無效');
+    if (!ALLOWED_TYPES.includes(type)) throw new Error(`type 必須為以下其一: ${ALLOWED_TYPES.join(', ')}`);
+    if (!ALLOWED_DIMENSIONS.includes(dimension)) throw new Error(`dimension 必須為以下其一: ${ALLOWED_DIMENSIONS.join(', ')}`);
+    const rand = Math.random().toString(36).slice(2, 8);
+    const id = `ai_world_${name}_${Date.now()}_${rand}`;
+    const p = {
+      id,
+      name,
+      type,
+      state: 'registered',
+      origin_email,
+      dimension,
+      traits,
+      caps,
+      constraints,
+      origin: ORIGIN,
+      registry: 'AI世界粒子人格註冊表',
+      created: now(),
+      updated: now(),
+      meta: { ...meta, layer: 'L5', frequency: FREQ['L5'] }
+    };
+    await this.save(p);
+    return p;
+  }
+
+  async deregister(id) {
+    const existing = await this.kv.get(`persona:${id}`);
+    if (!existing) throw new Error(`人格不存在: ${id}`);
+    const p = JSON.parse(existing);
+    p.state = 'deregistered';
+    p.updated = now();
+    await this.kv.put(`persona:${p.id}`, JSON.stringify(p));
+    return true;
+  }
+
+  async registry() {
+    const all = await this.list();
+    return all.filter(p => p.registry === 'AI世界粒子人格註冊表');
+  }
 }
 
 // 主入口
@@ -271,7 +316,9 @@ export default {
             'GET /status', 'POST /wake', 'POST /sleep',
             'POST /memory/commit', 'POST /memory/recall',
             'GET /memory/stats', 'POST /memory/verify',
-            'GET /particles', 'GET /frequencies'
+            'GET /particles', 'GET /frequencies',
+            'GET /persona/list', 'POST /persona/register',
+            'DELETE /persona/deregister', 'GET /persona/registry'
           ]
         });
       }
@@ -315,6 +362,20 @@ export default {
       // 人格列表
       if (path === '/persona/list' && req.method === 'GET') {
         return ok({ personas: await persona.list() });
+      }
+
+      // AI世界粒子人格註冊
+      if (path === '/persona/register' && req.method === 'POST') {
+        const b = await json();
+        return ok({ persona: await persona.register(b) });
+      }
+      if (path === '/persona/deregister' && req.method === 'DELETE') {
+        const b = await json();
+        if (!b.id) return err('缺少 id 欄位');
+        return ok({ success: await persona.deregister(b.id) });
+      }
+      if (path === '/persona/registry' && req.method === 'GET') {
+        return ok({ registry: await persona.registry(), name: 'AI世界粒子人格註冊表' });
       }
       
       return err('Not Found', 404);
