@@ -1,0 +1,107 @@
+mrl_registry_entry: true
+
+id: "mrl_Pattern_IndexQuerySplit_v1.0.0"
+type: "ProtocolPattern"
+status: "stable_locked"
+root: "MrlCore"
+scope:
+  mainline: "MrlCore.Mainline"
+  daughter: "MrlCore.Daughter"
+
+origin_signature: "MrLiouWord"
+created_at: "2026-02-24"
+source_reference:
+  name: "Algolia legacy docs (pattern reference)"
+  note: "Interface paradigm only; not a dependency"
+
+intent:
+  - "Cut noise without losing capability"
+  - "Stabilize compute<->data interface"
+  - "Enable evolution via safe reindex/swap"
+  - "Support multi-view replicas without data drift"
+
+core_principles:
+  - "Split channels: Index / Query / Export"
+  - "Shadow rebuild then swap (zero-downtime evolution)"
+  - "Replica views share data but can differ in policy/ranking"
+  - "Registry gate: only recorded artifacts enter system naming/index rules"
+
+channels:
+  index_channel:
+    name: "Index"
+    owner_module: "FlowNode"
+    responsibilities:
+      - "ingest"
+      - "format transform"
+      - "semantic particle generation"
+      - "dedup gate"
+      - "write ShadowIndex first"
+    outputs:
+      - "ShadowIndex"
+      - "IndexMetadata"
+
+  query_channel:
+    name: "Query"
+    owner_module: "FlowCore"
+    responsibilities:
+      - "retrieve from ActiveIndex"
+      - "apply policy/ranking"
+      - "serve reasoning/task runtime"
+    guarantees:
+      - "No raw ingest stream access"
+      - "Reads only from gated memory/index"
+
+  export_channel:
+    name: "Export"
+    owner_module: "FlowPoint"
+    responsibilities:
+      - "browse/export index+registry for backup"
+      - "snapshot packaging"
+      - "rollback materialization"
+    guarantees:
+      - "No ranking; pure archival channel"
+
+index_lifecycle:
+  active_index: "ActiveIndex"
+  shadow_index: "ShadowIndex"
+  steps:
+    - "Build ShadowIndex from gated sources"
+    - "Validate invariants (counts, hashes, merkle roots, schema)"
+    - "Swap ShadowIndex -> ActiveIndex"
+    - "Record swap event to registry"
+
+replica_model:
+  primary: "MrlCore.Mainline"
+  replicas:
+    - name: "MrlCore.Daughter"
+      purpose: "Kid-friendly view; safe policies; optional ranking rules"
+    - name: "PersonaViews"
+      purpose: "Different retrieval/ranking policies over same data"
+  sync_rule:
+    - "Data synchronized from primary"
+    - "Policies may diverge per replica"
+    - "Replica cannot mutate core laws"
+
+anti_noise_guards:
+  - guard: "No raw stream to FlowCore"
+    enforcement: "FlowCore reads only from ActiveIndex"
+  - guard: "Dedup gate before indexing"
+    enforcement: "FlowNode must pass dedup before ShadowIndex write"
+  - guard: "Registry gate"
+    enforcement: "Only recorded artifacts enter naming/index rules"
+  - guard: "Rollback-ready"
+    enforcement: "Every swap produces FlowPoint snapshot"
+
+integration_map:
+  FlowNode: ["index_channel", "shadow_build"]
+  FlowMemory: ["stores ActiveIndex/ShadowIndex metadata", "vector/structured index"]
+  FlowShell: ["orchestrates lifecycle", "triggers rebuild/swap/snapshot"]
+  FlowCore: ["query_channel"]
+  FlowPoint: ["export_channel", "snapshots"]
+  FlowPlatform: ["exposes internal endpoints: core.mrl, kid.mrl"]
+
+definition_of_done:
+  - "Registry entry saved"
+  - "Index/Query/Export channels exist as interfaces (minimal OK)"
+  - "Shadow->Active swap procedure exists"
+  - "At least one FlowPoint snapshot taken after swap"

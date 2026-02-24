@@ -1,0 +1,21 @@
+mrl_ruleset: true
+id: "mrl_NamingRules_v1"
+status: "stable_locked"
+root: "MrlCore"
+origin_signature: "MrLiouWord"
+created_at: "2026-02-24"
+
+invariants:
+  - "Original names are NEVER changed"
+  - "Integration adds prefix 'mrl_' only"
+  - "Only recorded artifacts enter system naming rules"
+
+naming:
+  registry_key_format: "mrl_<OriginalName>"
+  prefix: "mrl_"
+  rule: "Append mrl_ prefix; do not alter original name in any way"
+
+gate:
+  label: "Registry Gate"
+  condition: "Artifact must have an explicit registry entry before entering naming/index rules"
+  enforcement: "No unrecorded artifact may receive an mrl_ key or appear in index"
