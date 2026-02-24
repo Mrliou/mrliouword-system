@@ -1,6 +1,6 @@
 mrl_registry_entry: true
 
-id: "mrl_Pattern_IndexQuerySplit_v1.0"
+id: "mrl_Pattern_IndexQuerySplit_v1.0.0"
 type: "ProtocolPattern"
 status: "stable_locked"
 root: "MrlCore"
