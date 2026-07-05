@@ -2,6 +2,21 @@
 
 from .config import MrliouwordConfig, config
 from .logger import MrliouwordLogger, get_logger
+from .mrl_ai_system import (
+    DecisionTrace,
+    DecisionTraceLogger,
+    EscalationOrchestrator,
+    EscalationRequest,
+    Guardrail,
+    GuardrailEnforcer,
+    MRLAISystem,
+    PermissionDecision,
+    PermissionResolver,
+    PermissionSnapshot,
+    PolicyComposer,
+    PolicyRule,
+    Principal,
+)
 from .exceptions import (
     MrliouwordException,
     ConfigurationError,
@@ -14,6 +29,19 @@ __all__ = [
     "config",
     "MrliouwordLogger",
     "get_logger",
+    "DecisionTrace",
+    "DecisionTraceLogger",
+    "EscalationOrchestrator",
+    "EscalationRequest",
+    "Guardrail",
+    "GuardrailEnforcer",
+    "MRLAISystem",
+    "PermissionDecision",
+    "PermissionResolver",
+    "PermissionSnapshot",
+    "PolicyComposer",
+    "PolicyRule",
+    "Principal",
     "MrliouwordException",
     "ConfigurationError",
     "AgentError",
