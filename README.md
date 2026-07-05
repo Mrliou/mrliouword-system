@@ -96,6 +96,14 @@ mrliouword-system/
 
 ---
 
+## 🔐 MRL_AI_SYSTEM 授權模組
+
+- 模組入口：`mrliouword_agents.core.MRLAISystem`
+- 實作文件：[docs/core/mrl-ai-system.md](./docs/core/mrl-ai-system.md)
+- 核心能力：Permission Resolver / Policy Composer / Risk-aware Gate / Escalation Hooks / Decision Trace / Guardrails
+
+---
+
 ## 🔗 相關連結
 
 - **GitHub Repos**: 153+ repositories ([索引](./docs/REPOS_INDEX.md))
