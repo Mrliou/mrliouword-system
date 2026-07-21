@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "origin": "MrLiouWord",
+  "architecture": "mrliou創世公式邏輯架構",
+  "warehouse": "particle_memory",
+  "updated_at": "2026-07-21T17:41:38.678414",
+  "categories": {
+    "vector": {
+      "label": "向量",
+      "description": "保存向量、嵌入與粒子權重向量資料",
+      "records": 0,
+      "last_updated": null
+    },
+    "function": {
+      "label": "函數",
+      "description": "保存函數、執行入口與運行上下文",
+      "records": 32,
+      "last_updated": "2026-07-21T17:41:38.676322"
+    },
+    "api": {
+      "label": "API",
+      "description": "保存 API 端點、方法與請求封裝",
+      "records": 0,
+      "last_updated": null
+    },
+    "ai_weight_token": {
+      "label": "AI 初始權重 Token",
+      "description": "保存人工智能初始權重與 token 種子資料",
+      "records": 0,
+      "last_updated": null
+    }
+  }
+}
