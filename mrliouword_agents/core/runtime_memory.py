@@ -74,13 +74,11 @@ class ParticleRuntimeMemory:
         self.storage_dir = Path(storage_dir or config.runtime_memory_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.warehouse_dir = self.storage_dir / "particle_warehouse"
-        self.warehouse_dir.mkdir(parents=True, exist_ok=True)
         self._warehouse_registry_path = self.warehouse_dir / "registry.json"
         self.particle_dict_path = Path(
             particle_dict_path or config.particle_dict_path or self._default_particle_dict()
         )
         self._particle_dict = self._load_particle_dict()
-        self._ensure_warehouse_registry()
         self._queue: asyncio.Queue[Optional[Dict[str, Any]]] = asyncio.Queue()
         self._worker_task: Optional[asyncio.Task] = None
         self._worker_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -137,6 +135,7 @@ class ParticleRuntimeMemory:
             json.dump(registry, file, ensure_ascii=False, indent=2)
 
     def _ensure_warehouse_registry(self) -> None:
+        self.warehouse_dir.mkdir(parents=True, exist_ok=True)
         self._save_warehouse_registry(self._load_warehouse_registry())
 
     def _agent_filename(self, agent_name: str) -> Path:
