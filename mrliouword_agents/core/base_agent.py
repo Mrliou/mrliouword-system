@@ -1,7 +1,6 @@
 """
 基礎 Agent 類別
 """
-import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, AsyncGenerator
 from datetime import datetime
@@ -11,6 +10,7 @@ from .logger import get_logger
 from .exceptions import AgentError
 from .metrics import metrics_collector
 from .cost_tracker import CostTracker
+from .runtime_memory import ParticleRuntimeMemory
 
 
 class BaseAgent(ABC):
@@ -27,6 +27,9 @@ class BaseAgent(ABC):
         self.max_tokens = max_tokens or config.max_tokens
         self.logger = get_logger(f"agent.{name}")
         self.cost_tracker = CostTracker() if config.track_costs else None
+        self.runtime_memory = (
+            ParticleRuntimeMemory() if config.background_memory_enabled else None
+        )
 
         self.logger.info(f"初始化 {name} Agent")
 
@@ -45,23 +48,55 @@ class BaseAgent(ABC):
     async def _track_execution(self, func, *args, **kwargs):
         """追蹤執行時間和指標"""
         start_time = datetime.now()
-        
+
         try:
             metrics_collector.record_request()
-            result = await func(*args, **kwargs)
-            
-            # 計算執行時間
+            await self._record_runtime_event(
+                "execution.start",
+                {"function": getattr(func, "__name__", "execute")},
+            )
+
+            result = func(*args, **kwargs)
+
+            if hasattr(result, "__aiter__"):
+                async for message in result:
+                    await self._record_runtime_event(
+                        "execution.message", {"message": message}
+                    )
+                    yield message
+            else:
+                resolved = await result
+                if resolved is not None:
+                    await self._record_runtime_event(
+                        "execution.message", {"message": resolved}
+                    )
+                    yield resolved
+
             duration = (datetime.now() - start_time).total_seconds()
             metrics_collector.record_execution_time(duration)
             metrics_collector.record_agent_call(self.name, duration)
-            
+            await self._record_runtime_event(
+                "execution.complete", {"duration_seconds": duration}
+            )
+
             self.logger.info(f"{self.name} 執行完成，耗時: {duration:.2f}秒")
-            return result
-            
+
         except Exception as e:
             metrics_collector.record_error()
+            await self._record_runtime_event("execution.error", {"error": str(e)})
             self.logger.error(f"{self.name} 執行錯誤: {str(e)}")
             raise AgentError(f"{self.name} 執行失敗: {str(e)}") from e
+        finally:
+            if self.runtime_memory:
+                await self.runtime_memory.flush()
+
+    async def _record_runtime_event(
+        self, event_type: str, payload: Optional[Dict[str, Any]] = None
+    ):
+        """記錄背景運行記憶。"""
+        if not self.runtime_memory:
+            return
+        await self.runtime_memory.record(self.name, event_type, payload=payload)
 
     def _track_api_cost(
         self,
