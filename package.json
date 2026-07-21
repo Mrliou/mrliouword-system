@@ -3,8 +3,9 @@
   "version": "2.1.0",
   "description": "MrliouWord Private AI Server with Vector Attention Engine",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --config wrangler.jsonc",
+    "deploy": "wrangler deploy --config wrangler.jsonc",
+    "versions:upload": "wrangler versions upload --config wrangler.jsonc",
     "test": "bash test.sh"
   },
   "devDependencies": {
