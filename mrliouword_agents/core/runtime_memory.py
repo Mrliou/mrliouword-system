@@ -3,6 +3,7 @@
 """
 import asyncio
 import json
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -318,6 +319,7 @@ class ParticleRuntimeMemory:
         if not entries:
             return
 
+        self._ensure_warehouse_registry()
         registry = self._load_warehouse_registry()
         for entry in entries:
             category = entry["category"]
@@ -407,6 +409,13 @@ class ParticleRuntimeMemory:
         if self._worker_task is None:
             return
         await self._queue.join()
+        if self._worker_task.done():
+            return
+        self._worker_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await self._worker_task
+        self._worker_task = None
+        self._worker_loop = None
 
     def read_records(self, agent_name: str) -> List[Dict[str, Any]]:
         output_file = self._agent_filename(agent_name)
