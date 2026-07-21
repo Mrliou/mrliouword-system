@@ -73,9 +73,17 @@ class ParticleRuntimeMemory:
         event_type: str,
         payload: Optional[Dict[str, Any]] = None,
         session_id: Optional[str] = None,
+        upstream: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         particle_fx = self.resolve_particle_fx(agent_name, event_type)
         particle = self._particle_dict.get("particles", {}).get(particle_fx, {})
+        upstream_trace = self._build_upstream_trace(
+            agent_name,
+            event_type,
+            payload=payload,
+            session_id=session_id,
+            upstream=upstream,
+        )
         return {
             "id": str(uuid4()),
             "timestamp": datetime.now().isoformat(),
@@ -85,6 +93,9 @@ class ParticleRuntimeMemory:
             "particle_fx": particle_fx,
             "particle": particle,
             "payload": self._json_safe(payload or {}),
+            "upstream_path": upstream_trace.get("primary_path"),
+            "upstream_paths": upstream_trace.get("paths", []),
+            "upstream": self._json_safe(upstream_trace),
         }
 
     def _json_safe(self, value: Any) -> Any:
@@ -95,6 +106,62 @@ class ParticleRuntimeMemory:
         if isinstance(value, (str, int, float, bool)) or value is None:
             return value
         return repr(value)
+
+    def _build_upstream_trace(
+        self,
+        agent_name: str,
+        event_type: str,
+        payload: Optional[Dict[str, Any]] = None,
+        session_id: Optional[str] = None,
+        upstream: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        provided = dict(upstream or {})
+        payload_paths = self._collect_paths(payload)
+        upstream_paths = []
+        for path in provided.get("paths", []):
+            if isinstance(path, str) and path not in upstream_paths:
+                upstream_paths.append(path)
+        for path in payload_paths:
+            if path not in upstream_paths:
+                upstream_paths.append(path)
+
+        primary_path = provided.get("primary_path")
+        if not primary_path and upstream_paths:
+            primary_path = upstream_paths[0]
+
+        return {
+            "agent_name": agent_name,
+            "event_type": event_type,
+            "session_id": session_id,
+            "function": provided.get("function"),
+            "inputs": provided.get("inputs", {}),
+            "paths": upstream_paths,
+            "primary_path": primary_path,
+        }
+
+    def _collect_paths(self, value: Any) -> List[str]:
+        paths: List[str] = []
+        self._collect_paths_into(value, paths)
+        return paths
+
+    def _collect_paths_into(self, value: Any, paths: List[str]) -> None:
+        if isinstance(value, dict):
+            for item in value.values():
+                self._collect_paths_into(item, paths)
+            return
+        if isinstance(value, (list, tuple, set)):
+            for item in value:
+                self._collect_paths_into(item, paths)
+            return
+        if isinstance(value, str):
+            for token in value.replace("\n", " ").split():
+                normalized = token.strip(" ,;:'\"()[]{}<>")
+                if (
+                    normalized
+                    and any(marker in normalized for marker in ("/", "\\", "./", "../"))
+                    and normalized not in paths
+                ):
+                    paths.append(normalized)
 
     async def _ensure_worker(self):
         loop = asyncio.get_running_loop()
@@ -124,10 +191,17 @@ class ParticleRuntimeMemory:
         event_type: str,
         payload: Optional[Dict[str, Any]] = None,
         session_id: Optional[str] = None,
+        upstream: Optional[Dict[str, Any]] = None,
     ):
         await self._ensure_worker()
         self._queue.put_nowait(
-            self.build_record(agent_name, event_type, payload=payload, session_id=session_id)
+            self.build_record(
+                agent_name,
+                event_type,
+                payload=payload,
+                session_id=session_id,
+                upstream=upstream,
+            )
         )
 
     async def flush(self):

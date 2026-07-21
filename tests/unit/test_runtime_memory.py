@@ -34,7 +34,17 @@ async def test_runtime_memory_persists_records(tmp_path):
     )
 
     await memory.record("DataAnalyzer", "execution.start", {"step": "boot"})
-    await memory.record("DataAnalyzer", "execution.message", {"message": "分析中"})
+    await memory.record(
+        "DataAnalyzer",
+        "execution.message",
+        {"message": "分析中", "artifacts": ["/tmp/input.csv"]},
+        upstream={
+            "function": "execute",
+            "inputs": {"file_path": "/tmp/input.csv", "full_analysis": False},
+            "paths": ["/tmp/input.csv"],
+            "primary_path": "/tmp/input.csv",
+        },
+    )
     await memory.record("DataAnalyzer", "execution.complete", {"duration_seconds": 0.1})
     await memory.flush()
 
@@ -43,6 +53,10 @@ async def test_runtime_memory_persists_records(tmp_path):
     assert records[0]["particle_fx"] == "fx.flow.start"
     assert records[1]["particle_fx"] == "fx.logic.analyze"
     assert records[2]["particle_fx"] == "fx.flow.end"
+    assert records[1]["upstream_path"] == "/tmp/input.csv"
+    assert records[1]["upstream"]["function"] == "execute"
+    assert records[1]["upstream"]["inputs"]["file_path"] == "/tmp/input.csv"
+    assert records[1]["upstream_paths"] == ["/tmp/input.csv"]
 
 
 @pytest.mark.asyncio
@@ -67,3 +81,5 @@ async def test_data_analyzer_syncs_background_memory(tmp_path, sample_csv_file, 
     assert "execution.start" in event_types
     assert "execution.message" in event_types
     assert "execution.complete" in event_types
+    assert all(record["upstream_path"] == sample_csv_file for record in records)
+    assert records[0]["upstream"]["inputs"]["file_path"] == sample_csv_file
