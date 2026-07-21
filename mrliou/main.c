@@ -21,7 +21,8 @@ static int g_listen_fd = -1;
 static void on_signal(int sig)
 {
     (void)sig;
-    printf("\n[mrliou] shutting down...\n");
+    const char msg[] = "\n[mrliou] shutting down...\n";
+    if (write(STDOUT_FILENO, msg, sizeof(msg) - 1) == -1) { /* nothing to do in signal handler */ }
     server_stop();
     /* closing the listen socket unblocks accept() */
     if (g_listen_fd >= 0) {

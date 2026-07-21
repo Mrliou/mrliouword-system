@@ -17,7 +17,7 @@
 #include "server.h"
 #include "config.h"
 
-static volatile int g_running = 1;
+static volatile sig_atomic_t g_running = 1;
 
 /* ---- socket helpers ---------------------------------------------- */
 
@@ -131,6 +131,20 @@ int server_parse_request(const char *raw, int raw_len, HttpRequest *req)
 
 /* ---- HTTP response writer ---------------------------------------- */
 
+static int write_all(int fd, const char *buf, size_t len)
+{
+    while (len > 0) {
+        ssize_t w = write(fd, buf, len);
+        if (w < 0) {
+            if (errno == EINTR) continue;
+            return -1;
+        }
+        buf += w;
+        len -= (size_t)w;
+    }
+    return 0;
+}
+
 int server_send_response(int client_fd, const HttpResponse *resp)
 {
     if (client_fd < 0 || !resp) return -1;
@@ -150,16 +164,17 @@ int server_send_response(int client_fd, const HttpResponse *resp)
         ct,
         resp->body_len > 0 ? resp->body_len : (int)strlen(resp->body));
 
-    int sent = (int)write(client_fd, header, (size_t)hlen);
-    if (sent < 0) return -1;
+    /* clamp if snprintf truncated */
+    if (hlen < 0) return -1;
+    if (hlen >= (int)sizeof(header)) hlen = (int)sizeof(header) - 1;
+
+    if (write_all(client_fd, header, (size_t)hlen) < 0) return -1;
 
     int blen = resp->body_len > 0 ? resp->body_len : (int)strlen(resp->body);
     if (blen > 0) {
-        int bsent = (int)write(client_fd, resp->body, (size_t)blen);
-        if (bsent < 0) return -1;
-        sent += bsent;
+        if (write_all(client_fd, resp->body, (size_t)blen) < 0) return -1;
     }
-    return sent;
+    return hlen + blen;
 }
 
 /* ---- accept loop ------------------------------------------------- */

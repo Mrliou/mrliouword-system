@@ -71,6 +71,7 @@ int growth_init(void)
         g_latest.generation_quality= (float)atof(fields[3]);
         g_latest.timestamp         = (time_t)atol(fields[4]);
         strncpy(g_latest.notes, fields[5], sizeof(g_latest.notes) - 1);
+        g_latest.notes[sizeof(g_latest.notes) - 1] = '\0';
     }
     return 0;
 }
