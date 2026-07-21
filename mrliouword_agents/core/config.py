@@ -5,6 +5,8 @@ from typing import List, Optional
 import yaml
 from pydantic import Field
 
+from ..version import __version__
+
 try:
     from pydantic_settings import (
         BaseSettings as PydanticBaseSettings,
@@ -31,7 +33,7 @@ class MrliouwordConfig(PydanticBaseSettings):
 
     # 基本設定
     app_name: str = "Mrliouword Agent SDK"
-    version: str = "1.0.0"
+    version: str = __version__
     environment: str = Field(default="development", validation_alias="ENVIRONMENT")
     debug: bool = Field(default=False, validation_alias="DEBUG")
 
