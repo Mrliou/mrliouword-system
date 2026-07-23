@@ -17,7 +17,7 @@ PostgreSQL schemas are confirmed without changing the round-trip contract.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Type
 
@@ -57,15 +57,18 @@ class SystemAAdapter(ABC):
             )
 
         persona_id = self._first_value(source_row, self.persona_id_candidates)
-        tags = self._normalize_tags(self._first_value(source_row, self.tags_candidates))
+        tags = self._normalize_tags(
+            self._first_value(source_row, self.tags_candidates)
+        )
         proof = self._extract_proof(source_row)
 
+        path_value = source_row.get("fltnz_path") or source_row.get("path")
         return UnifiedParticle(
             source=self.table_name,
             seed_id=str(seed_id),
             persona_id=None if persona_id is None else str(persona_id),
             domain=self.domain,
-            fltnz_path=self._optional_string(source_row.get("fltnz_path") or source_row.get("path")),
+            fltnz_path=self._optional_string(path_value),
             state=source_row,
             proof=proof,
             tags=tags,
@@ -77,7 +80,8 @@ class SystemAAdapter(ABC):
             raise OriginSignatureError("LAW-0 violation")
         if particle.source != self.table_name:
             raise ParticleLayerError(
-                f"source mismatch: expected {self.table_name}, got {particle.source}"
+                f"source mismatch: expected {self.table_name}, "
+                f"got {particle.source}"
             )
         return deepcopy(dict(particle.state))
 
@@ -144,7 +148,8 @@ class FileIndexAdapter(SystemAAdapter):
 
 
 ADAPTERS: Dict[str, Type[SystemAAdapter]] = {
-    cls.table_name: cls for cls in (PersonaAdapter, MemoryAdapter, FileIndexAdapter)
+    cls.table_name: cls
+    for cls in (PersonaAdapter, MemoryAdapter, FileIndexAdapter)
 }
 
 
@@ -152,7 +157,9 @@ def get_adapter(table_name: str) -> SystemAAdapter:
     try:
         return ADAPTERS[table_name]()
     except KeyError as exc:
-        raise ParticleLayerError(f"unsupported System A table: {table_name}") from exc
+        raise ParticleLayerError(
+            f"unsupported System A table: {table_name}"
+        ) from exc
 
 
 def verify_law2(
