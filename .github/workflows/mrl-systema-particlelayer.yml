@@ -1,0 +1,25 @@
+name: MRL SystemA ParticleLayer
+
+on:
+  push:
+    paths:
+      - 'modules/MRL_SystemA_ParticleLayer/**'
+      - '.github/workflows/mrl-systema-particlelayer.yml'
+  pull_request:
+    paths:
+      - 'modules/MRL_SystemA_ParticleLayer/**'
+      - '.github/workflows/mrl-systema-particlelayer.yml'
+
+jobs:
+  law-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependency
+        run: python -m pip install pytest
+      - name: Verify LAW-0 and LAW-2
+        working-directory: modules/MRL_SystemA_ParticleLayer
+        run: pytest -q
