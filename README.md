@@ -96,6 +96,51 @@ mrliouword-system/
 
 ---
 
+## 🏗️ 自主化架構 (Provider/Adapter)
+
+> 從 Firebase 必要依賴轉為可替換 Adapter 架構  
+> 詳細遷移指引請見 [docs/MIGRATION.md](./docs/MIGRATION.md)
+
+### Provider 介面
+
+業務層透過抽象介面操作，不直接 import Firebase SDK：
+
+```typescript
+import { createAuthProvider, createAIProvider } from '@mrliouword/containers/providers'
+
+// 依環境變數自動切換：firebase | authentik
+const auth = createAuthProvider()
+const token = await auth.getAccessToken()
+
+// 依環境變數自動切換：local | gemini | openai
+const ai = createAIProvider()
+for await (const event of ai.generate({ model: 'mrl-local-default', messages: [...] })) {
+  if (event.type === 'delta') process.stdout.write(event.delta ?? '')
+}
+```
+
+### 切換指令
+
+| 功能 | 環境變數 | 過渡值 | 目標值 |
+|------|---------|--------|--------|
+| 認證 | `NEXT_PUBLIC_AUTH_PROVIDER` | `firebase` | `authentik` |
+| UI 狀態 | `UI_STATE_PROVIDER` | `firestore` | `postgres` |
+| 記憶 | `MEMORY_PROVIDER` | `kv` | `api` |
+| 檔案 | `STORAGE_PROVIDER` | `r2` | `minio` |
+| AI | `AI_PROVIDER` | `local` | `local` |
+
+### 自主化部署（Phase 2+）
+
+```bash
+cp deploy/.env.deploy deploy/.env
+# 填入所有必要值
+docker compose -f deploy/docker-compose.yml up -d
+```
+
+包含服務：Next.js · API Gateway · PostgreSQL+pgvector · Redis · MinIO · Authentik · Caddy
+
+---
+
 ## 🔐 MRL_AI_SYSTEM 授權模組
 
 - 模組入口：`mrliouword_agents.core.MRLAISystem`
