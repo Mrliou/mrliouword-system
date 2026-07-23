@@ -1,0 +1,252 @@
+# MrLiouWord 自主化部署 — Docker Compose 第一階段
+# Origin Signature: MrLiouWord
+#
+# 啟動方式：
+#   cp deploy/.env.deploy deploy/.env
+#   # 填入 deploy/.env 中所有必要值
+#   docker compose -f deploy/docker-compose.yml up -d
+#
+# 網路架構：
+#   ┌─────────────────────────────────────────────┐
+#   │  Internet                                   │
+#   │    ↓ HTTPS 443                              │
+#   │  caddy (reverse proxy + TLS)                │
+#   │    ↓ internal only                          │
+#   │  mrliouai-control-center :3000              │
+#   │  mrl-api-gateway          :8080             │
+#   │    ↓ internal only                          │
+#   │  postgres     :5432                         │
+#   │  redis        :6379                         │
+#   │  minio        :9000 / :9001 (console)       │
+#   │  authentik-server  :9000                    │
+#   │  authentik-worker                           │
+#   └─────────────────────────────────────────────┘
+#
+# 私有服務（postgres, redis, minio, authentik）
+# 僅在 mrliouword-internal 網路互通，不直接對外暴露。
+
+version: "3.9"
+
+networks:
+  mrliouword-internal:
+    driver: bridge
+  mrliouword-public:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  authentik-media:
+  authentik-certs:
+  caddy-data:
+  caddy-config:
+
+services:
+
+  # ──────────────────────────────────────────────
+  # 1. Caddy — 反向代理 + 自動 TLS (Let's Encrypt)
+  # ──────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - mrliouword-public
+      - mrliouword-internal
+    depends_on:
+      - mrliouai-control-center
+      - mrl-api-gateway
+
+  # ──────────────────────────────────────────────
+  # 2. Next.js 前端控制中心
+  # ──────────────────────────────────────────────
+  mrliouai-control-center:
+    build:
+      context: ../
+      dockerfile: deploy/Dockerfile.nextjs
+    container_name: mrliouai-control-center
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # 公開環境變數 (NEXT_PUBLIC_* 可在瀏覽器看到)
+      NEXT_PUBLIC_AUTH_PROVIDER: "${NEXT_PUBLIC_AUTH_PROVIDER:-firebase}"
+      NEXT_PUBLIC_AUTH_BASE_URL: "${NEXT_PUBLIC_AUTH_BASE_URL}"
+      NEXT_PUBLIC_AUTH_CLIENT_ID: "${NEXT_PUBLIC_AUTH_CLIENT_ID}"
+      NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL:-https://api.mrliouword.com}"
+      NEXT_PUBLIC_APP_NAME: "MRLiouAI"
+      NEXT_PUBLIC_ORIGIN_SIGNATURE: "MrLiouWord"
+      # Firebase 過渡期變數（Phase 0-1）
+      NEXT_PUBLIC_FIREBASE_API_KEY: "${NEXT_PUBLIC_FIREBASE_API_KEY:-}"
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}"
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: "${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}"
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:-}"
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:-}"
+      NEXT_PUBLIC_FIREBASE_APP_ID: "${NEXT_PUBLIC_FIREBASE_APP_ID:-}"
+      # UI state provider
+      UI_STATE_PROVIDER: "${UI_STATE_PROVIDER:-firestore}"
+    expose:
+      - "3000"
+    networks:
+      - mrliouword-internal
+    depends_on:
+      - mrl-api-gateway
+
+  # ──────────────────────────────────────────────
+  # 3. MRL API Gateway
+  # ──────────────────────────────────────────────
+  mrl-api-gateway:
+    build:
+      context: ../
+      dockerfile: deploy/Dockerfile.gateway
+    container_name: mrl-api-gateway
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      ORIGIN_SIGNATURE: "MrLiouWord"
+      # 本地 AI runtime（DL580）
+      MRL_API_BASE_URL: "${MRL_API_BASE_URL:-http://host.docker.internal:7810}"
+      # 資料庫（僅 server 端）
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-mrl_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mrliouai}"
+      REDIS_URL: "redis://redis:6379"
+      # MinIO（僅 server 端）
+      MINIO_ENDPOINT: "http://minio:9000"
+      MINIO_BUCKET: "${MINIO_BUCKET:-mrliouai}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      # Authentik JWT 驗證
+      AUTH_ISSUER: "${AUTH_ISSUER}"
+      AUTH_CLIENT_ID: "${AUTH_CLIENT_ID}"
+      AUTH_CLIENT_SECRET: "${AUTH_CLIENT_SECRET}"
+    expose:
+      - "8080"
+    networks:
+      - mrliouword-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ──────────────────────────────────────────────
+  # 4. PostgreSQL + pgvector
+  # ──────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-mrl_user}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB:-mrliouai}"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - mrliouword-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mrl_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 不對外暴露 5432
+
+  # ──────────────────────────────────────────────
+  # 5. Redis
+  # ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - mrliouword-internal
+    # 不對外暴露 6379
+
+  # ──────────────────────────────────────────────
+  # 6. MinIO (S3-compatible)
+  # ──────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ACCESS_KEY}"
+      MINIO_ROOT_PASSWORD: "${MINIO_SECRET_KEY}"
+    volumes:
+      - minio-data:/data
+    networks:
+      - mrliouword-internal
+    # 管理介面僅內網訪問；如需本地除錯可臨時開啟：
+    # ports:
+    #   - "127.0.0.1:9001:9001"
+
+  # ──────────────────────────────────────────────
+  # 7. Authentik — 自主登入系統
+  # 文件：https://docs.goauthentik.io/docs/installation/docker-compose
+  # ──────────────────────────────────────────────
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.12
+    container_name: authentik-server
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: "${POSTGRES_USER:-mrl_user}"
+      AUTHENTIK_POSTGRESQL__PASSWORD: "${POSTGRES_PASSWORD}"
+      AUTHENTIK_POSTGRESQL__NAME: "${POSTGRES_DB:-mrliouai}"
+      AUTHENTIK_SECRET_KEY: "${AUTHENTIK_SECRET_KEY}"
+      # 替換為實際網域
+      # AUTHENTIK_DEFAULT_HTTP_BINDING: "0.0.0.0:9000"
+    volumes:
+      - authentik-media:/media
+      - authentik-certs:/certs
+    expose:
+      - "9000"
+      - "9443"
+    networks:
+      - mrliouword-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.12
+    container_name: authentik-worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: "${POSTGRES_USER:-mrl_user}"
+      AUTHENTIK_POSTGRESQL__PASSWORD: "${POSTGRES_PASSWORD}"
+      AUTHENTIK_POSTGRESQL__NAME: "${POSTGRES_DB:-mrliouai}"
+      AUTHENTIK_SECRET_KEY: "${AUTHENTIK_SECRET_KEY}"
+    volumes:
+      - authentik-media:/media
+      - authentik-certs:/certs
+    networks:
+      - mrliouword-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
