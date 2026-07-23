@@ -17,6 +17,15 @@
 
 ---
 
+## 🧭 母體架構藍圖
+
+Mother Runtime 位於各 Runtime Node 之上，統一治理身分、規則、世界狀態、同步、生成與完成封存；DL580、瀏覽器、手機、GitHub、Cloud Worker 等節點可並行演進。
+
+- [MRL Mother Runtime Blueprint v1](./docs/architecture/MRL_Mother_Runtime_Blueprint_v1.md)
+- ParticleLayer 實作錨點：PR #56 / merge commit `4a10c90dc1ac75b53733261896d3f8793926f6d1`
+
+---
+
 ## 📐 八層架構
 
 | 層級 | 名稱 | 頻率 (Hz) | 功能 |
@@ -78,6 +87,7 @@ mrliouword-system/
 │   ├── notion/                  # Notion 同步
 │   └── google/                  # Google Drive/Earth
 ├── docs/                        # 文檔
+│   ├── architecture/            # 母體與基礎設施藍圖
 │   ├── conversations/           # 對話索引
 │   └── REPOS_INDEX.md           # 153+ repo 索引
 └── tools/                       # 工具腳本
