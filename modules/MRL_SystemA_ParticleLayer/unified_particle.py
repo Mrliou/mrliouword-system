@@ -16,7 +16,7 @@ from uuid import uuid4
 ORIGIN_SIGNATURE = "MrLiouWord"
 
 
-@dataclass(slots=True)
+@dataclass
 class UnifiedParticle:
     source: str
     seed_id: str
@@ -35,7 +35,9 @@ class UnifiedParticle:
 
     def __post_init__(self) -> None:
         if self.origin_signature != ORIGIN_SIGNATURE:
-            raise ValueError("LAW-0 violation: origin_signature must be MrLiouWord")
+            raise ValueError(
+                "LAW-0 violation: origin_signature must be MrLiouWord"
+            )
         if not self.source:
             raise ValueError("source must not be empty")
         if not self.seed_id:
