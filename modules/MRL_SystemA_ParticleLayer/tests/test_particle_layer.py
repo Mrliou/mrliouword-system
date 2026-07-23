@@ -18,9 +18,26 @@ from MRL_SystemA_ParticleLayer import (
 @pytest.mark.parametrize(
     "adapter,row",
     [
-        (PersonaAdapter(), {"id": "p-1", "name": "MrLiou", "origin_signature": "MrLiouWord"}),
-        (MemoryAdapter(), {"id": "m-1", "state": {"text": "hello"}, "tags": ["memory"]}),
-        (FileIndexAdapter(), {"id": "f-1", "path": "/tmp/a.txt", "sha256": "abc"}),
+        (
+            PersonaAdapter(),
+            {
+                "id": "p-1",
+                "name": "MrLiou",
+                "origin_signature": "MrLiouWord",
+            },
+        ),
+        (
+            MemoryAdapter(),
+            {
+                "id": "m-1",
+                "state": {"text": "hello"},
+                "tags": ["memory"],
+            },
+        ),
+        (
+            FileIndexAdapter(),
+            {"id": "f-1", "path": "/tmp/a.txt", "sha256": "abc"},
+        ),
     ],
 )
 def test_roundtrip(adapter, row):
