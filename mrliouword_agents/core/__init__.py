@@ -23,6 +23,7 @@ from .exceptions import (
     AgentError,
     APIError,
 )
+from .runtime_memory import ParticleRuntimeMemory
 
 __all__ = [
     "MrliouwordConfig",
@@ -46,4 +47,5 @@ __all__ = [
     "ConfigurationError",
     "AgentError",
     "APIError",
+    "ParticleRuntimeMemory",
 ]

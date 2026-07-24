@@ -67,6 +67,17 @@ class MrliouwordConfig(PydanticBaseSettings):
     enable_tracing: bool = Field(default=False, validation_alias="ENABLE_TRACING")
     sentry_dsn: Optional[str] = Field(default=None, validation_alias="SENTRY_DSN")
 
+    # 背景記憶同步
+    background_memory_enabled: bool = Field(
+        default=True, validation_alias="BACKGROUND_MEMORY_ENABLED"
+    )
+    runtime_memory_dir: str = Field(
+        default="data/runtime_memory", validation_alias="RUNTIME_MEMORY_DIR"
+    )
+    particle_dict_path: Optional[str] = Field(
+        default=None, validation_alias="PARTICLE_DICT_PATH"
+    )
+
     # 成本追蹤
     track_costs: bool = Field(default=True, validation_alias="TRACK_COSTS")
     cost_alert_threshold: float = Field(default=100.0, validation_alias="COST_ALERT_THRESHOLD")
