@@ -1,12 +1,33 @@
 {
   "spec": "MrLiou.ClosureKernel.Meta",
-  "version": "v1.0.1",
+  "version": "v1.0.2",
   "authority": "Mr.liou",
   "ns": "mrliouword",
   "repo": {
     "id": 1130234040,
     "name": "dofaromg/mrliouword-system",
-    "role": "source_of_truth"
+    "role": "source_of_truth",
+    "role_scope": "closure_subsystem_legacy_only",
+    "global_role": "external_version_reference",
+    "canonical_authority": false,
+    "governance_authority": false,
+    "origin_authority": false,
+    "naming_authority": false,
+    "mother_mutation": "forbidden",
+    "relationship_to_mrlhub": "reference_source_and_evidence_ledger"
+  },
+  "authority_boundary": {
+    "mrlhub": "version_governance_and_lineage_authority",
+    "mrl_mother": "canonical_runtime_and_origin_lineage",
+    "github": "external_version_reference_and_evidence_ledger",
+    "github_may_define_mrl_canonical": false,
+    "github_may_rewrite_origin": false,
+    "github_may_rewrite_creator": false,
+    "github_may_rewrite_historical_provenance": false,
+    "github_may_mutate_mrl_mother": false,
+    "external_authority_inheritance": "none",
+    "history_policy": "append_only",
+    "difference_policy": "preserve_as_delta_not_failure"
   },
   "sync_targets": [
     {
@@ -14,14 +35,16 @@
       "repo_id": 1010512921,
       "branch": "main",
       "sync_mode": "bidirectional",
-      "priority": 1
+      "priority": 1,
+      "status": "legacy_pending_mrlhub_migration"
     },
     {
       "repo": "dofaromg/flow-tasks-01",
       "repo_id": 1146449691,
       "branch": "main",
       "sync_mode": "bidirectional",
-      "priority": 2
+      "priority": 2,
+      "status": "legacy_pending_mrlhub_migration"
     }
   ],
   "layers": {
