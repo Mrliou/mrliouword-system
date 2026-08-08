@@ -1,0 +1,42 @@
+{
+  "spec": "MrLiou.PlatformRelation.v1",
+  "platform": "GitHub",
+  "relationship": "external_version_reference",
+  "functions": [
+    "version_reference",
+    "evidence_ledger",
+    "source_snapshot",
+    "external_mirror",
+    "collaboration_interface"
+  ],
+  "not_authorized_for": [
+    "mrl_mother_canonical_definition",
+    "origin_signature_rewrite",
+    "creator_rewrite",
+    "ownership_rewrite",
+    "historical_provenance_rewrite",
+    "mrl_naming_authority",
+    "mrl_governance_authority",
+    "direct_mother_mutation"
+  ],
+  "authority_transfer": "none",
+  "history_policy": "append_only",
+  "difference_policy": "preserve_as_delta",
+  "mrlhub_relation": {
+    "role": "reference_source",
+    "ingest_mode": "snapshot_and_evidence",
+    "promotion_target": "MRLHub",
+    "canonicalization_owner": "MRLHub",
+    "source_history_must_be_preserved": true
+  },
+  "mrl_mother_relation": {
+    "role": "external_reference_only",
+    "may_mutate": false,
+    "may_override": false
+  },
+  "legacy": {
+    "closure_source_of_truth_label": "subsystem-local legacy label only",
+    "bidirectional_sync": "legacy_pending_mrlhub_migration"
+  },
+  "principle": "GitHub is one version-reference source within the MRL system; platform state never becomes MRL Mother authority."
+}

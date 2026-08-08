@@ -1,0 +1,94 @@
+{
+  "spec": "MrLiou.MRLHub.ProvenanceCausality.v1",
+  "origin_label": "MrLiou",
+  "purpose": "Preserve source, environment, causality, cognitive evolution, risk patterns, and historical truth without allowing platform authority to overwrite origin or lineage.",
+  "knowledge_principle": {
+    "natural_reality": "shared_observable_reality",
+    "observation_provenance": "must_be_preserved",
+    "concept_and_system_origin": "must_be_attributed_to_documented_originator",
+    "knowledge_access": "shared_subject_to_applicable_license_and_law",
+    "history": "append_only"
+  },
+  "evidence_classes": [
+    "DOCUMENTED",
+    "OBSERVED",
+    "VERIFIED",
+    "RECOLLECTION",
+    "INFERRED",
+    "COUNTERFACTUAL",
+    "UNRESOLVED"
+  ],
+  "investigation_rule": {
+    "stop_at_effect": false,
+    "required_trace": [
+      "observed_effect",
+      "immediate_cause",
+      "propagation_path",
+      "design_decision",
+      "input_or_prompt",
+      "source_context",
+      "earliest_proven_origin_event",
+      "origin_account",
+      "origin_actor_if_verifiable",
+      "environmental_conditions",
+      "knowledge_state_at_time",
+      "later_evidence",
+      "evolution_or_reform"
+    ],
+    "unknown_policy": "mark_UNRESOLVED_never_invent",
+    "account_identity_policy": "account_or_commit_identity_proves_platform_provenance_only; legal ownership requires separate evidence"
+  },
+  "observer_lineage": {
+    "primary_mrl_observer_origin": "MrLiou",
+    "record_scope": [
+      "firsthand_observation",
+      "environment_snapshot",
+      "interpretation_at_time",
+      "hypothesis",
+      "design_mapping",
+      "later_correction",
+      "evolution_history"
+    ],
+    "observer_is_not_owner_of_natural_law": true,
+    "observer_contribution_must_not_be_erased": true
+  },
+  "causal_resilience": {
+    "goal": "detect latent failure patterns while intervention remains reversible",
+    "pattern_fields": [
+      "environment_signature",
+      "cognitive_precursors",
+      "structural_precursors",
+      "propagation_chain",
+      "latent_failure",
+      "trigger_conditions",
+      "historical_matches",
+      "intervention_points",
+      "possible_adverse_outcomes",
+      "possible_beneficial_outcomes",
+      "confidence"
+    ],
+    "prediction_policy": "risk_estimation_not_prophecy",
+    "human_or_ai_thought_policy": "stated_reason_and_inferred_motivation_must_be_separated"
+  },
+  "governance_duties": [
+    "verify_sources",
+    "preserve_provenance",
+    "explain_causality",
+    "mark_uncertainty",
+    "preserve_conflicting_history",
+    "keep_replay_and_rollback_possible",
+    "record_reason_for_each_governance_change"
+  ],
+  "attribution": {
+    "required_origin_label_when_supported_by_evidence": "MrLiou",
+    "platform_must_not_replace_origin": true,
+    "derivative_lineage_must_be_preserved": true,
+    "creator_history_must_not_be_rewritten": true
+  },
+  "core_principles": [
+    "Knowledge may be shared; provenance must remain.",
+    "History may evolve; history must not be rewritten.",
+    "Do not stop at the tornado; trace the causal chain to the earliest provable butterfly.",
+    "Any authority may change; source and causal history remain independently verifiable."
+  ]
+}
