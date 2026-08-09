@@ -1,0 +1,26 @@
+{
+  "delivery": "MrliouAI_UniversalContainer_v1",
+  "scope": "GitHub executable projection only; not a finite list of worlds and not the mother itself.",
+  "expected_files": [
+    ".mrliou/mrliouai.universal_container.json",
+    ".mrliou/delivery/MrliouAI_UniversalContainer_v1.expected.json",
+    "mrliouword_agents/core/mrl_universal_container.py",
+    "mrliouword_agents/core/__init__.py",
+    "tests/unit/test_mrl_universal_container.py",
+    "docs/core/mrliouai-universal-container.md"
+  ],
+  "dependency_tree": {
+    ".mrliou/mrliouai.universal_container.json": [],
+    "mrliouword_agents/core/mrl_universal_container.py": [],
+    "mrliouword_agents/core/__init__.py": [
+      "mrliouword_agents/core/mrl_universal_container.py"
+    ],
+    "tests/unit/test_mrl_universal_container.py": [
+      "mrliouword_agents/core/mrl_universal_container.py"
+    ],
+    "docs/core/mrliouai-universal-container.md": [
+      "mrliouword_agents/core/mrl_universal_container.py",
+      ".mrliou/mrliouai.universal_container.json"
+    ]
+  }
+}
