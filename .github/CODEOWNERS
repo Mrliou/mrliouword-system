@@ -1,0 +1,14 @@
+# Canonical authority review gate
+# GitHub user namespace: dofaromg
+# Canonical human authority: Mr.liou
+# Origin signature: MrLiouWord
+
+* @dofaromg
+
+# Root authority, naming, registry, provenance, governance and release evidence
+/.mrliou/ @dofaromg
+/registry/ @dofaromg
+/docs/governance/ @dofaromg
+/.github/workflows/authority-integrity.yml @dofaromg
+/README.md @dofaromg
+/MrLiouWord_Master_Index.md @dofaromg

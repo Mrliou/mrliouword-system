@@ -1,0 +1,74 @@
+{
+  "origin_signature": "MrLiouWord",
+  "authority": "Mr.liou",
+  "version": "1.2.0",
+  "generated_at": "2026-08-03T14:08:00+08:00",
+  "official_domain": {
+    "primary": "Mrliouword.com",
+    "canonical_url": "https://mrliouword.com",
+    "status": "LOCKED_BY_AUTHORITY"
+  },
+  "repository_role": {
+    "implementation_candidate": "dofaromg/mrliouword-system",
+    "organization_projection_candidate": "Mrliou/mrliouword-system",
+    "status": "CANONICAL_NOT_FINAL_UNTIL_TREE_COMPARE"
+  },
+  "recovered_capabilities": [
+    {
+      "name": "ProviderAdapterArchitecture",
+      "evidence": ["PR#60", "ad43d29d15806443ae4eeee231533a979da006ba"],
+      "status": "PARTIAL_IMPLEMENTATION"
+    },
+    {
+      "name": "UniversalContainerRuntime",
+      "evidence": ["PR#13", "PR#28"],
+      "status": "IMPLEMENTED_REPOSITORY_RUNTIME_UNVERIFIED"
+    },
+    {
+      "name": "FlpkgFltnzPcode",
+      "evidence": ["PR#13", "PR#28"],
+      "status": "IMPLEMENTED_REPOSITORY_ROUNDTRIP_RETEST_REQUIRED"
+    },
+    {
+      "name": "UnifiedGateway",
+      "evidence": ["PR#4"],
+      "status": "IMPLEMENTED_REPOSITORY_LIVE_UNVERIFIED"
+    },
+    {
+      "name": "UnifiedParticleAdapters",
+      "evidence": ["PR#56"],
+      "status": "DRAFT_SCHEMA_PENDING"
+    },
+    {
+      "name": "ParticlePluginRuntime",
+      "evidence": ["PR#32"],
+      "status": "IMPLEMENTED_REPOSITORY_DEPLOYMENT_RETEST_REQUIRED"
+    }
+  ],
+  "true_gaps": [
+    "authentik_refresh_token_rotation",
+    "deploy_dockerfile_nextjs",
+    "deploy_dockerfile_gateway",
+    "provider_cases_openai_anthropic_gemini",
+    "firebase_to_postgres_migration_scripts",
+    "live_runtime_health_verification",
+    "repository_mirror_drift_resolution",
+    "domain_endpoint_authority_registry",
+    "source_freshness_evidence_api"
+  ],
+  "gates": [
+    "SOURCE_RECONCILIATION",
+    "EXISTING_MODULE_INTEGRATION",
+    "DOMAIN_RECONCILIATION",
+    "RUNTIME_EVIDENCE",
+    "CROSS_SOURCE_CLOSURE"
+  ],
+  "rules": [
+    "NO_BLIND_REBUILD",
+    "NO_MAIN_DIRECT_OVERWRITE",
+    "NO_RUNTIME_PASS_WITHOUT_RUNTIME_EVIDENCE",
+    "RAW_IMMUTABLE",
+    "MIRROR_RELATION_BEFORE_CANON",
+    "AUTHORITY_OVERRIDES_HISTORICAL_DOMAIN_RECORD"
+  ]
+}
