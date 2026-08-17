@@ -17,12 +17,22 @@ from .mrl_ai_system import (
     PolicyRule,
     Principal,
 )
+from .mrl_universal_container import (
+    MRLUniversalContainer,
+    MotherEvent,
+    ParticleSpace,
+    SnapshotIntegrityError,
+    SpaceNotFoundError,
+    SpaceSnapshot,
+    UniversalContainerError,
+)
 from .exceptions import (
     MrliouwordException,
     ConfigurationError,
     AgentError,
     APIError,
 )
+from .runtime_memory import ParticleRuntimeMemory
 
 __all__ = [
     "MrliouwordConfig",
@@ -42,8 +52,16 @@ __all__ = [
     "PolicyComposer",
     "PolicyRule",
     "Principal",
+    "MRLUniversalContainer",
+    "MotherEvent",
+    "ParticleSpace",
+    "SnapshotIntegrityError",
+    "SpaceNotFoundError",
+    "SpaceSnapshot",
+    "UniversalContainerError",
     "MrliouwordException",
     "ConfigurationError",
     "AgentError",
     "APIError",
+    "ParticleRuntimeMemory",
 ]

@@ -1,1 +1,36 @@
-{"name":"particle-api","compatibility_date":"2026-01-28","main":"src/index.ts","compatibility_flags":["nodejs_compat"],"observability":{"enabled":true},"vars":{"ENVIRONMENT":"production","ORIGIN_SIGNATURE":"MrLiouWord"},"kv_namespaces":[{"binding":"PARTICLE_KV","id":"your-kv-namespace-id"}],"r2_buckets":[{"binding":"PARTICLE_STORAGE","bucket_name":"mrlioubook"}],"d1_databases":[{"binding":"DB","database_name":"particle-db","database_id":"your-d1-database-id"}]}
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mrliouword-private",
+  "main": "cloudflare/mrliouword-private/src/index.ts",
+  "compatibility_date": "2026-07-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "ORIGIN": "MrLiouWord",
+    "ORIGIN_SIGNATURE": "MrLiouWord",
+    "VERSION": "2.1.0",
+    "ENTRY_LAYOUT": "root->cloudflare/mrliouword-private"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "MRLIOUWORD_VAULT",
+      "id": "01275832766148bfbcaa00ee4aeb9946"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MRLIOUBOOK",
+      "bucket_name": "mrlioubook"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "MRLIOUWORD_DB",
+      "database_name": "mrliouword-db",
+      "database_id": "7980baaf-48d3-43cc-8be7-dd8c9590f3d1"
+    }
+  ]
+}

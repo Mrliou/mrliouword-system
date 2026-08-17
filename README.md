@@ -17,6 +17,15 @@
 
 ---
 
+## 🧭 母體架構藍圖
+
+Mother Runtime 位於各 Runtime Node 之上，統一治理身分、規則、世界狀態、同步、生成與完成封存；DL580、瀏覽器、手機、GitHub、Cloud Worker 等節點可並行演進。
+
+- [MRL Mother Runtime Blueprint v1](./docs/architecture/MRL_Mother_Runtime_Blueprint_v1.md)
+- ParticleLayer 實作錨點：PR #56 / merge commit `4a10c90dc1ac75b53733261896d3f8793926f6d1`
+
+---
+
 ## 📐 八層架構
 
 | 層級 | 名稱 | 頻率 (Hz) | 功能 |
@@ -78,6 +87,7 @@ mrliouword-system/
 │   ├── notion/                  # Notion 同步
 │   └── google/                  # Google Drive/Earth
 ├── docs/                        # 文檔
+│   ├── architecture/            # 母體與基礎設施藍圖
 │   ├── conversations/           # 對話索引
 │   └── REPOS_INDEX.md           # 153+ repo 索引
 └── tools/                       # 工具腳本
@@ -93,6 +103,51 @@ mrliouword-system/
 1. 配置 GitHub Secrets (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`)
 2. 在 Cloudflare 創建所需資源 (KV, D1, R2)
 3. 推送到 `main` 分支自動部署
+
+---
+
+## 🏗️ 自主化架構 (Provider/Adapter)
+
+> 從 Firebase 必要依賴轉為可替換 Adapter 架構  
+> 詳細遷移指引請見 [docs/MIGRATION.md](./docs/MIGRATION.md)
+
+### Provider 介面
+
+業務層透過抽象介面操作，不直接 import Firebase SDK：
+
+```typescript
+import { createAuthProvider, createAIProvider } from '@mrliouword/containers/providers'
+
+// 依環境變數自動切換：firebase | authentik
+const auth = createAuthProvider()
+const token = await auth.getAccessToken()
+
+// 依環境變數自動切換：local | gemini | openai
+const ai = createAIProvider()
+for await (const event of ai.generate({ model: 'mrl-local-default', messages: [...] })) {
+  if (event.type === 'delta') process.stdout.write(event.delta ?? '')
+}
+```
+
+### 切換指令
+
+| 功能 | 環境變數 | 過渡值 | 目標值 |
+|------|---------|--------|--------|
+| 認證 | `NEXT_PUBLIC_AUTH_PROVIDER` | `firebase` | `authentik` |
+| UI 狀態 | `UI_STATE_PROVIDER` | `firestore` | `postgres` |
+| 記憶 | `MEMORY_PROVIDER` | `kv` | `api` |
+| 檔案 | `STORAGE_PROVIDER` | `r2` | `minio` |
+| AI | `AI_PROVIDER` | `local` | `local` |
+
+### 自主化部署（Phase 2+）
+
+```bash
+cp deploy/.env.deploy deploy/.env
+# 填入所有必要值
+docker compose -f deploy/docker-compose.yml up -d
+```
+
+包含服務：Next.js · API Gateway · PostgreSQL+pgvector · Redis · MinIO · Authentik · Caddy
 
 ---
 

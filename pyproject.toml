@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mrliouword-agent-sdk"
-version = "1.0.0"
+version = "1.0.1"
 description = "Mrliouword Agent SDK - 智能 AI Agent 開發套件"
 readme = "README.md"
 requires-python = ">=3.8"

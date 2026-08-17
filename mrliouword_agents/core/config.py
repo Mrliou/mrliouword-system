@@ -5,6 +5,8 @@ from typing import List, Optional
 import yaml
 from pydantic import Field
 
+from ..version import __version__
+
 try:
     from pydantic_settings import (
         BaseSettings as PydanticBaseSettings,
@@ -31,7 +33,7 @@ class MrliouwordConfig(PydanticBaseSettings):
 
     # 基本設定
     app_name: str = "Mrliouword Agent SDK"
-    version: str = "1.0.0"
+    version: str = __version__
     environment: str = Field(default="development", validation_alias="ENVIRONMENT")
     debug: bool = Field(default=False, validation_alias="DEBUG")
 
@@ -64,6 +66,17 @@ class MrliouwordConfig(PydanticBaseSettings):
     enable_metrics: bool = Field(default=True, validation_alias="ENABLE_METRICS")
     enable_tracing: bool = Field(default=False, validation_alias="ENABLE_TRACING")
     sentry_dsn: Optional[str] = Field(default=None, validation_alias="SENTRY_DSN")
+
+    # 背景記憶同步
+    background_memory_enabled: bool = Field(
+        default=True, validation_alias="BACKGROUND_MEMORY_ENABLED"
+    )
+    runtime_memory_dir: str = Field(
+        default="data/runtime_memory", validation_alias="RUNTIME_MEMORY_DIR"
+    )
+    particle_dict_path: Optional[str] = Field(
+        default=None, validation_alias="PARTICLE_DICT_PATH"
+    )
 
     # 成本追蹤
     track_costs: bool = Field(default=True, validation_alias="TRACK_COSTS")

@@ -114,3 +114,8 @@ log/trace_state.json
 log/ai_costs.jsonl
 memory/ingest/ai_responses/
 *.jsonl
+
+# Mr.liou AI C server build artifacts
+mrliou/*.o
+mrliou/mrliou-server
+mrliou/data/

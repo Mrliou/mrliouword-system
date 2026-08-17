@@ -318,8 +318,179 @@ export default {
             'GET /memory/stats', 'POST /memory/verify',
             'GET /particles', 'GET /frequencies',
             'GET /persona/list', 'POST /persona/register',
-            'DELETE /persona/deregister', 'GET /persona/registry'
+            'DELETE /persona/deregister', 'GET /persona/registry',
+            // MRL API Gateway endpoints
+            'GET /health',
+            'GET /api/mrl/runtimeos/ai/models',
+            'POST /api/mrl/runtimeos/ai/generate',
+            'POST /api/mrl/memory/search',
+            'POST /api/mrl/tools/execute',
+            'POST /api/mrl/files/upload',
+            'GET /api/mrl/audit/traces'
           ]
+        });
+      }
+
+      // ----------------------------------------------------------------
+      // MRL API Gateway 端點契約
+      // 統一回應格式: { ok, service, version, origin_signature, data?, error? }
+      // ----------------------------------------------------------------
+
+      // GET /health
+      if (path === '/health' && req.method === 'GET') {
+        return ok({
+          ok: true,
+          service: 'mrl-silly-api',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          timestamp: Date.now()
+        });
+      }
+
+      // GET /api/mrl/runtimeos/ai/models
+      if (path === '/api/mrl/runtimeos/ai/models' && req.method === 'GET') {
+        // TODO: proxy to DL580 local runtime or return static list
+        return ok({
+          ok: true,
+          service: 'mrl-ai',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: [
+            { id: 'mrl-local-default', name: 'MRL Local Default', type: 'text', contextWindow: 8192 }
+          ]
+        });
+      }
+
+      // POST /api/mrl/runtimeos/ai/generate
+      if (path === '/api/mrl/runtimeos/ai/generate' && req.method === 'POST') {
+        const b = await json();
+        // TODO: proxy to DL580 local runtime (MRL_API_BASE_URL)
+        return ok({
+          ok: true,
+          service: 'mrl-ai',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: {
+            model: b.model || 'mrl-local-default',
+            content: '(stub) 請設定 MRL_API_BASE_URL 指向本地 runtime',
+            usage: { input_tokens: 0, output_tokens: 0 }
+          }
+        });
+      }
+
+      // POST /api/mrl/memory/search
+      if (path === '/api/mrl/memory/search' && req.method === 'POST') {
+        const b = await json();
+        const results = await mem.recall(b.query || '', b.limit || 10);
+        return ok({
+          ok: true,
+          service: 'mrl-memory',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: results
+        });
+      }
+
+      // POST /api/mrl/memory/commit
+      if (path === '/api/mrl/memory/commit' && req.method === 'POST') {
+        const b = await json();
+        if (!b.content) return err('缺少 content 欄位');
+        const entry = await mem.commit(b.content, b.type, b.tags, b.meta);
+        return ok({
+          ok: true,
+          service: 'mrl-memory',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: entry
+        });
+      }
+
+      // POST /api/mrl/tools/execute
+      if (path === '/api/mrl/tools/execute' && req.method === 'POST') {
+        const b = await json();
+        // TODO: route to tool registry
+        return ok({
+          ok: true,
+          service: 'mrl-tools',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: {
+            tool: b.tool || 'unknown',
+            status: 'stub',
+            message: '工具執行端點尚未完整實作，請配置 tool registry'
+          }
+        });
+      }
+
+      // POST /api/mrl/files/upload
+      if (path === '/api/mrl/files/upload' && req.method === 'POST') {
+        // TODO: stream to R2 / MinIO
+        return ok({
+          ok: true,
+          service: 'mrl-files',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: {
+            key: `uploads/${Date.now()}`,
+            status: 'stub',
+            message: '檔案上傳端點尚未完整實作，請配置 R2/MinIO 連接'
+          }
+        });
+      }
+
+      // GET /api/mrl/audit/traces
+      if (path === '/api/mrl/audit/traces' && req.method === 'GET') {
+        // TODO: query audit log from D1 or Postgres
+        return ok({
+          ok: true,
+          service: 'mrl-audit',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: {
+            traces: [],
+            message: '審計記錄端點尚未完整實作，請配置 D1/Postgres 查詢'
+          }
+        });
+      }
+
+      // GET /api/mrl/ui-state/:userId
+      if (path.startsWith('/api/mrl/ui-state/') && req.method === 'GET') {
+        const userId = decodeURIComponent(path.replace('/api/mrl/ui-state/', ''));
+        const raw = await env.MRLIOUWORD_VAULT.get(`ui_state:${userId}`);
+        return ok({
+          ok: true,
+          service: 'mrl-ui-state',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: raw ? JSON.parse(raw) : null
+        });
+      }
+
+      // POST /api/mrl/ui-state/:userId
+      if (path.startsWith('/api/mrl/ui-state/') && req.method === 'POST') {
+        const userId = decodeURIComponent(path.replace('/api/mrl/ui-state/', ''));
+        const b = await json();
+        const existing = await env.MRLIOUWORD_VAULT.get(`ui_state:${userId}`);
+        const merged = { ...(existing ? JSON.parse(existing) : {}), ...b, userId, updatedAt: new Date().toISOString() };
+        await env.MRLIOUWORD_VAULT.put(`ui_state:${userId}`, JSON.stringify(merged));
+        return ok({
+          ok: true,
+          service: 'mrl-ui-state',
+          version: VERSION,
+          origin_signature: ORIGIN,
+          data: merged
+        });
+      }
+
+      // DELETE /api/mrl/ui-state/:userId
+      if (path.startsWith('/api/mrl/ui-state/') && req.method === 'DELETE') {
+        const userId = decodeURIComponent(path.replace('/api/mrl/ui-state/', ''));
+        await env.MRLIOUWORD_VAULT.delete(`ui_state:${userId}`);
+        return ok({
+          ok: true,
+          service: 'mrl-ui-state',
+          version: VERSION,
+          origin_signature: ORIGIN
         });
       }
       

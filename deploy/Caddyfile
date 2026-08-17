@@ -1,0 +1,46 @@
+# MrLiouWord Caddyfile
+# Origin Signature: MrLiouWord
+#
+# 替換以下網域為實際值，Caddy 自動申請 Let's Encrypt TLS。
+# 本地測試請改用 :80 或設定 tls internal。
+
+# 主控台前端
+mrliouword.com {
+    # TODO: 替換為實際網域
+    reverse_proxy mrliouai-control-center:3000
+    encode gzip
+    header {
+        X-Origin-Signature MrLiouWord
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+    }
+}
+
+# API Gateway
+api.mrliouword.com {
+    # TODO: 替換為實際網域
+    reverse_proxy mrl-api-gateway:8080
+    encode gzip
+    header {
+        X-Origin-Signature MrLiouWord
+        Access-Control-Allow-Origin "https://mrliouword.com"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+    }
+}
+
+# Authentik 登入系統
+auth.mrliouword.com {
+    # TODO: 替換為實際網域
+    reverse_proxy authentik-server:9000
+    encode gzip
+}
+
+# 本地開發模式（不需要 TLS）
+# localhost:3000 {
+#     reverse_proxy mrliouai-control-center:3000
+# }
+# localhost:8080 {
+#     reverse_proxy mrl-api-gateway:8080
+# }

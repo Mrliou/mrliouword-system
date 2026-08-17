@@ -1,0 +1,33 @@
+{
+  "schema": "MrLiou.ImmutableAuthorityLock.v1",
+  "status": "stable_locked",
+  "authority": {
+    "canonical_name": "Mr.liou",
+    "github_user": "dofaromg",
+    "github_org_projection": "Mrliou"
+  },
+  "origin": {
+    "signature": "MrLiouWord",
+    "namespace": "mrliouword",
+    "official_domain": "Mrliouword.com"
+  },
+  "repository_authority": {
+    "source_of_truth": "dofaromg/mrliouword-system",
+    "organization_projection": "Mrliou/mrliouword-system"
+  },
+  "reserved_names": [
+    "Mr.liou",
+    "MrLiouWord",
+    "mrliouword",
+    "MRL_"
+  ],
+  "invariants": [
+    "The canonical authority name is Mr.liou and cannot be replaced by a provider, model, repository, organization, agent, or generated artifact.",
+    "MrLiouWord is an origin signature and provenance marker; it does not make a derived artifact the root authority.",
+    "Every derivative or projection using MrLiouWord must declare artifact_owner, source_repo, projection_role, and origin_signature.",
+    "The MRL_ prefix is reserved for registry-approved artifacts only.",
+    "External providers and adapters may be recorded as execution or projection roles only; they cannot be root or authority.",
+    "Repository mirrors and organization projections cannot silently become source_of_truth.",
+    "Changes to this lock require explicit approval from the canonical authority and a recorded migration entry."
+  ]
+}
