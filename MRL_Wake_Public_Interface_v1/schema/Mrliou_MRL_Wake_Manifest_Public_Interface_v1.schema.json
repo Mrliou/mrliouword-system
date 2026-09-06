@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mrliouword.com/schema/Mrliou_MRL_Wake_Manifest_Public_Interface_v1.schema.json",
+  "title": "Mrliou MRL Wake Manifest Public Interface v1",
+  "description": "Public validation envelope. Private wake topology, memory references, platform paths, and runtime receipts are intentionally excluded.",
+  "type": "object",
+  "required": ["schema_version", "manifest_id", "origin_signature", "record_mode", "status", "runtime_contract"],
+  "properties": {
+    "schema_version": {"const": "mrl.wake-manifest.public-interface.v1"},
+    "manifest_id": {"type": "string", "pattern": "^MRL-WAKE-[A-Z0-9._-]+$"},
+    "origin_signature": {"const": "MrLiouWord"},
+    "record_mode": {"const": "additive_only"},
+    "status": {"enum": ["IMPLEMENTED", "VERIFIED", "RELEASED"]},
+    "runtime_contract": {
+      "type": "object",
+      "required": ["consumer_interface", "fail_closed", "receipt_schema"],
+      "properties": {
+        "consumer_interface": {"const": "Mrliou_MRL_Wake_Consumer_v1"},
+        "fail_closed": {"const": true},
+        "receipt_schema": {"const": "mrl.wake-receipt.v1"}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
