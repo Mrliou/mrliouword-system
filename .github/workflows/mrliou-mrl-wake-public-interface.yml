@@ -1,0 +1,30 @@
+name: Mrliou MRL Wake Public Interface
+
+on:
+  pull_request:
+    paths:
+      - "MRL_Wake_Public_Interface_v1/**"
+      - ".github/workflows/mrliou-mrl-wake-public-interface.yml"
+  push:
+    branches: [main]
+    paths:
+      - "MRL_Wake_Public_Interface_v1/**"
+      - ".github/workflows/mrliou-mrl-wake-public-interface.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public-interface:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Parse public schema
+        run: node -e 'JSON.parse(require("fs").readFileSync("MRL_Wake_Public_Interface_v1/schema/Mrliou_MRL_Wake_Manifest_Public_Interface_v1.schema.json", "utf8"))'
+      - name: Run fail-closed public interface self-test
+        run: node MRL_Wake_Public_Interface_v1/scripts/Mrliou_MRL_Verify_Wake_Public_Interface_v1.mjs
