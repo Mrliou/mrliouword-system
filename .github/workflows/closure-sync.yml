@@ -8,233 +8,239 @@ on:
       - 'docs/particle-dictionary/**'
       - '.mrliou/**'
   schedule:
-    - cron: '0 */6 * * *'  # 每 6 小時檢查一次
+    - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       mode:
         description: 'Sync mode'
         required: false
-        default: 'full'
+        default: 'observe'
         type: choice
-        options:
-          - full
-          - observe
-          - verify
+        options: [observe, verify, full]
       dry_run:
-        description: 'Dry run (no actual changes)'
+        description: 'Dry run (no repository writes)'
         required: false
         type: boolean
-        default: false
+        default: true
+
+concurrency:
+  group: closure-sync-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   PYTHON_VERSION: '3.11'
+  SOURCE_REPOSITORY: ${{ github.repository }}
+  TARGET_REPOSITORY_1: ${{ vars.MRL_SYNC_TARGET_1 }}
+  TARGET_REPOSITORY_2: ${{ vars.MRL_SYNC_TARGET_2 }}
+  ALLOWED_OWNER: ${{ vars.MRL_SYNC_ALLOWED_OWNER || github.repository_owner }}
+  MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'observe' }}
+  APPLY_CHANGES: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'full' && inputs.dry_run == false }}
+  CANDIDATE_BRANCH: Mrliou_MRL_closure_sync/${{ github.run_id }}
 
 jobs:
   sync-consistency:
-    runs-on: ubuntu-latest
     name: 跨倉庫一致性同步
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      contents: write  # Need write for committing changes
-      actions: read    # Need read for workflow artifacts
-    
+      contents: read
+      actions: read
+
     steps:
-      - name: Checkout Source (mrliouword-system)
+      - name: Validate authority and routes
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "$SOURCE_REPOSITORY" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error::Source must be the repository running this workflow"
+            exit 1
+          fi
+          if [ -z "$TARGET_REPOSITORY_1" ]; then
+            echo "::error::MRL_SYNC_TARGET_1 must name an explicitly approved MRL repository"
+            exit 1
+          fi
+          for repository in "$TARGET_REPOSITORY_1" "$TARGET_REPOSITORY_2"; do
+            [ -z "$repository" ] && continue
+            case "$repository" in
+              "$ALLOWED_OWNER"/*) ;;
+              *) echo "::error::Unapproved repository owner: $repository"; exit 1 ;;
+            esac
+          done
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "::error::SYNC_TOKEN is required for explicit cross-repository access"
+            exit 1
+          fi
+          echo "source=$SOURCE_REPOSITORY"
+          echo "target_1=$TARGET_REPOSITORY_1"
+          echo "target_2=${TARGET_REPOSITORY_2:-<none>}"
+          echo "allowed_owner=$ALLOWED_OWNER"
+          echo "mode=$MODE"
+          echo "apply_changes=$APPLY_CHANGES"
+
+      - name: Checkout authoritative source
         uses: actions/checkout@v4
         with:
-          repository: dofaromg/mrliouword-system
+          repository: ${{ env.SOURCE_REPOSITORY }}
           path: source
-          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.SYNC_TOKEN }}
           fetch-depth: 0
-      
-      - name: Checkout Target 1 (flow-tasks)
+
+      - name: Checkout approved target 1
         uses: actions/checkout@v4
         with:
-          repository: dofaromg/flow-tasks
+          repository: ${{ env.TARGET_REPOSITORY_1 }}
           path: target1
-          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.SYNC_TOKEN }}
           fetch-depth: 0
-        continue-on-error: true
-      
-      - name: Checkout Target 2 (flow-tasks-01)
+
+      - name: Checkout approved target 2
+        if: ${{ env.TARGET_REPOSITORY_2 != '' }}
         uses: actions/checkout@v4
         with:
-          repository: dofaromg/flow-tasks-01
+          repository: ${{ env.TARGET_REPOSITORY_2 }}
           path: target2
-          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.SYNC_TOKEN }}
           fetch-depth: 0
-        continue-on-error: true
-      
-      - name: Setup Python
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      
-      - name: Install Dependencies
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check cryptography gitpython
+
+      - name: Build deterministic source Merkle tree
+        run: python source/tools/merkle_builder.py source source/.mrliou/merkle.json
+
+      - name: Run source-authoritative closure plan
         run: |
-          pip install PyGithub gitpython cryptography
-      
-      - name: Build Merkle Tree
+          set -euo pipefail
+          targets="target1"
+          if [ -d target2 ]; then targets="$targets,target2"; fi
+          command=(python source/tools/sync_manager.py --source source --targets "$targets" --mode "$MODE" --report source/.mrliou/sync_report.json)
+          if [ "$APPLY_CHANGES" = "true" ]; then
+            command+=(--auto-heal)
+          else
+            command+=(--dry-run)
+          fi
+          "${command[@]}"
+
+      - name: Verify all declared repositories
         run: |
-          cd source
-          python tools/merkle_builder.py . .mrliou/merkle.json
-      
-      - name: Run Closure Sync
-        env:
-          MODE: ${{ github.event.inputs.mode || 'full' }}
-          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-        run: |
-          cd source
-          
-          # Build targets list
-          TARGETS="../target1"
-          if [ -d "../target2" ]; then
-            TARGETS="$TARGETS,../target2"
-          fi
-          
-          # Build command
-          CMD="python tools/sync_manager.py --source . --targets $TARGETS --mode $MODE"
-          
-          if [ "$DRY_RUN" = "true" ]; then
-            CMD="$CMD --dry-run"
-          fi
-          
-          CMD="$CMD --verify merkle --report .mrliou/sync_report.json"
-          
-          if [ "$MODE" = "full" ]; then
-            CMD="$CMD --auto-heal"
-          fi
-          
-          # Execute sync
-          eval $CMD
-      
-      - name: Verify Merkle Consistency
-        run: |
-          cd source
-          
-          REPOS="."
-          if [ -d "../target1" ]; then
-            REPOS="$REPOS ../target1"
-          fi
-          if [ -d "../target2" ]; then
-            REPOS="$REPOS ../target2"
-          fi
-          
-          python tools/verify_consistency.py \
-            $REPOS \
-            --check-merkle \
-            --cross-repo \
-            --output .mrliou/verification_report.json
-      
-      - name: Update Health Status
+          set -euo pipefail
+          repos=(source target1)
+          if [ -d target2 ]; then repos+=(target2); fi
+          python source/tools/verify_consistency.py "${repos[@]}" --check-merkle --cross-repo --output source/.mrliou/verification_report.json
+
+      - name: Generate report with actual targets
         if: always()
         run: |
-          cd source
-          
-          # Update health.json with current status
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          
-          cat > .mrliou/health.json << EOF
-          {
-            "last_sync": "$TIMESTAMP",
-            "status": "healthy",
-            "repos": {
-              "dofaromg/mrliouword-system": {
-                "merkle_root": "$(cat .mrliou/merkle.json | python -c 'import sys, json; print(json.load(sys.stdin).get("merkle_root", ""))')",
-                "particle_count": $(find core/particles docs/particle-dictionary -type f 2>/dev/null | wc -l),
-                "last_verified": "$TIMESTAMP"
-              }
-            },
-            "issues": []
-          }
-          EOF
-      
-      - name: Commit Changes to Source
-        if: ${{ !github.event.inputs.dry_run }}
+          set -euo pipefail
+          targets="target1"
+          if [ -d target2 ]; then targets="$targets,target2"; fi
+          python source/tools/generate_sync_report.py --source source --targets "$targets" --output source/.mrliou/final_sync_report.json
+
+      - name: Record truthful health status
+        if: ${{ success() && env.APPLY_CHANGES == 'true' }}
         run: |
-          cd source
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          verification = json.loads(Path('source/.mrliou/verification_report.json').read_text())
+          health = {
+              'last_sync': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'status': 'healthy' if verification.get('consistent') else 'unhealthy',
+              'source_repository': '${{ env.SOURCE_REPOSITORY }}',
+              'target_repositories': [
+                  value for value in [
+                      '${{ env.TARGET_REPOSITORY_1 }}',
+                      '${{ env.TARGET_REPOSITORY_2 }}',
+                  ] if value
+              ],
+              'verification': verification,
+              'issues': [] if verification.get('consistent') else verification.get('mismatches', []),
+          }
+          Path('source/.mrliou/health.json').write_text(json.dumps(health, indent=2, ensure_ascii=False) + '\n')
+          PY
+
+      - name: Commit source evidence to candidate branch
+        if: ${{ success() && env.APPLY_CHANGES == 'true' }}
+        working-directory: source
+        run: |
+          set -euo pipefail
           git config user.name "MrLiouWord Sync Bot"
           git config user.email "sync@mrliouword.system"
-          git add .mrliou/
-          git diff --staged --quiet || git commit -m "🔄 [Auto-Sync] Update closure metadata and health status"
-          git push origin main || echo "No changes to push to source"
-      
-      - name: Commit Changes to Target 1
-        if: ${{ !github.event.inputs.dry_run }}
-        continue-on-error: true
-        run: |
-          if [ -d "target1" ]; then
-            cd target1
-            git config user.name "MrLiouWord Sync Bot"
-            git config user.email "sync@mrliouword.system"
-            git add -A
-            git diff --staged --quiet || git commit -m "🔄 [Auto-Sync] Closure consistency update from mrliouword-system"
-            git push origin main || echo "No changes to push to target1"
+          git add .mrliou/merkle.json .mrliou/health.json .mrliou/sync_report.json .mrliou/verification_report.json .mrliou/final_sync_report.json
+          if ! git diff --staged --quiet; then
+            git commit -m "🔄 [Closure Sync] Record verified MRL sync evidence"
+            git push origin "HEAD:refs/heads/$CANDIDATE_BRANCH"
           fi
-      
-      - name: Commit Changes to Target 2
-        if: ${{ !github.event.inputs.dry_run }}
-        continue-on-error: true
+
+      - name: Commit approved target 1 changes to candidate branch
+        if: ${{ success() && env.APPLY_CHANGES == 'true' }}
+        working-directory: target1
         run: |
-          if [ -d "target2" ]; then
-            cd target2
-            git config user.name "MrLiouWord Sync Bot"
-            git config user.email "sync@mrliouword.system"
-            git add -A
-            git diff --staged --quiet || git commit -m "🔄 [Auto-Sync] Closure consistency update from mrliouword-system"
-            git push origin main || echo "No changes to push to target2"
+          set -euo pipefail
+          git config user.name "MrLiouWord Sync Bot"
+          git config user.email "sync@mrliouword.system"
+          git add core/particles docs/particle-dictionary .mrliou
+          if ! git diff --staged --quiet; then
+            git commit -m "🔄 [Closure Sync] Apply verified MRL source state"
+            git push origin "HEAD:refs/heads/$CANDIDATE_BRANCH"
           fi
-      
-      - name: Generate Sync Report
-        if: always()
+
+      - name: Commit approved target 2 changes to candidate branch
+        if: ${{ success() && env.APPLY_CHANGES == 'true' && env.TARGET_REPOSITORY_2 != '' }}
+        working-directory: target2
         run: |
-          cd source
-          python tools/generate_sync_report.py \
-            --source . \
-            --output .mrliou/final_sync_report.json
-      
-      - name: Upload Artifacts
+          set -euo pipefail
+          git config user.name "MrLiouWord Sync Bot"
+          git config user.email "sync@mrliouword.system"
+          git add core/particles docs/particle-dictionary .mrliou
+          if ! git diff --staged --quiet; then
+            git commit -m "🔄 [Closure Sync] Apply verified MRL source state"
+            git push origin "HEAD:refs/heads/$CANDIDATE_BRANCH"
+          fi
+
+      - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sync-report-${{ github.run_number }}
           path: |
+            source/.mrliou/merkle.json
             source/.mrliou/sync_report.json
             source/.mrliou/verification_report.json
             source/.mrliou/final_sync_report.json
+          if-no-files-found: warn
           retention-days: 30
-      
-      - name: Create Summary
+
+      - name: Create evidence-based summary
         if: always()
         run: |
-          echo "## 🔄 Closure Sync Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
-          echo "**Mode**: ${{ github.event.inputs.mode || 'full' }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Dry Run**: ${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f "source/.mrliou/verification_report.json" ]; then
-            echo "### Verification Results" >> $GITHUB_STEP_SUMMARY
-            python -c "
-          import json, sys
-          with open('source/.mrliou/verification_report.json') as f:
-              data = json.load(f)
-              status = '✅ Consistent' if data.get('consistent') else '❌ Inconsistent'
-              print(f'**Status**: {status}')
-              print(f'**Reference Root**: {data.get(\"reference_root\", \"N/A\")[:16]}...')
-              if data.get('mismatches'):
-                  print('\n**Mismatches**:')
-                  for m in data['mismatches']:
-                      print(f'- {m[\"repository\"]}')
-          " >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 閉環法則驗證 (Closure Law Verification)" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Observe (可觀測) - Repository states collected" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Resolve (可整合) - Conflicts identified and resolved" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Mirror (可回寫) - Changes synchronized" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Verify (可驗證) - Merkle consistency verified" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Loop (可重複) - Automated continuous sync" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**怎麼過去，就怎麼回來** ✨" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Closure Sync Report"
+            echo ""
+            echo "- Source: \`$SOURCE_REPOSITORY\`"
+            echo "- Target 1: \`$TARGET_REPOSITORY_1\`"
+            echo "- Target 2: \`${TARGET_REPOSITORY_2:-none}\`"
+            echo "- Mode: \`$MODE\`"
+            echo "- Apply changes: \`$APPLY_CHANGES\`"
+            echo "- Candidate branch: \`$CANDIDATE_BRANCH\`"
+            if [ -f source/.mrliou/verification_report.json ]; then
+              python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('source/.mrliou/verification_report.json').read_text())
+          print(f"- Verified consistent: \`{str(bool(data.get('consistent'))).lower()}\`")
+          print(f"- Mismatches: \`{len(data.get('mismatches', []))}\`")
+          PY
+            else
+              echo "- Verified consistent: \`false\`"
+              echo "- Verification report: \`missing\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

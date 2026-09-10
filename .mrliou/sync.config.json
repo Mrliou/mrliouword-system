@@ -1,31 +1,38 @@
 {
   "sync_protocol": "MrLiou.Closure.Sync",
-  "version": "v1.0",
+  "version": "v1.1",
+  "authority": {
+    "mode": "source_only",
+    "target_to_source": false,
+    "target_extra_files": "report_for_manual_review"
+  },
   "rules": {
-    "conflict_resolution": "merkle_root_comparison",
-    "missing_node_recovery": "multi_source_restoration",
-    "hash_algorithm": "sha256"
+    "conflict_resolution": "source_authoritative_content_hash",
+    "missing_node_recovery": "source_to_approved_target_only",
+    "hash_algorithm": "sha256",
+    "generated_metadata_in_merkle": false
   },
   "sync_paths": [
     {
       "path": "core/particles/**/*.json",
       "sync_mode": "full",
-      "bidirectional": true,
-      "conflict_strategy": "newest_merkle_wins"
+      "bidirectional": false,
+      "conflict_strategy": "source_authoritative"
     },
     {
       "path": "docs/particle-dictionary/**/*.md",
       "sync_mode": "full",
-      "bidirectional": true,
-      "conflict_strategy": "manual_review"
+      "bidirectional": false,
+      "conflict_strategy": "source_authoritative"
     },
     {
       "path": ".mrliou/**/*.json",
-      "sync_mode": "full",
-      "bidirectional": true,
+      "sync_mode": "stable_metadata_only",
+      "bidirectional": false,
       "conflict_strategy": "manual_review"
     }
   ],
   "checksum_verification": true,
-  "auto_heal": true
+  "auto_heal": false,
+  "write_gate": "manual_full_non_dry_run_to_candidate_branch"
 }

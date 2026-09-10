@@ -168,3 +168,32 @@ brew install python@3.11
 
 **origin_signature**: MrLiouWord  
 **principle**: 怎麼過去，就怎麼回來 ✨
+
+
+---
+
+## 2026-09-10 安全補正（取代上方舊操作預設）
+
+為保存歷史，上方原始 Quickstart 保留；涉及 token、排程與同步方向的操作，以本節為現行規則。
+
+- Repository variables：`MRL_SYNC_ALLOWED_OWNER`、必要的 `MRL_SYNC_TARGET_1`、選用的 `MRL_SYNC_TARGET_2`。
+- Repository secret：`SYNC_TOKEN`，使用只涵蓋目前 source 與核准 targets、Contents 最小權限的 fine-grained token；不要使用涵蓋所有私人倉庫的 classic `repo` token。
+- target owner 不符合 allowlist、target 缺失或 token 未設定時必須 fail closed，不得回退至其他 owner。
+- schedule 與 push 僅執行 `observe`；manual dispatch 預設 `mode=observe`、`dry_run=true`。
+- 只有人工選擇 `mode=full` 且 `dry_run=false` 才會準備 source→target 變更。
+- 寫入結果只推送至 `Mrliou_MRL_closure_sync/<run_id>` 候選分支；workflow 不直接推送 main，也不自動合併。
+- target 多出的檔案只列入人工審查，不會自動反向寫回 source 或自動刪除。
+- runtime 產生的 Merkle、health 與 report 檔案不納入自己的 Merkle input。
+- checkout、verify、commit 或 push 失敗不可被吞掉，summary 只呈現實際結果。
+
+解鎖後依序執行：
+
+1. 確認 GitHub billing/account lock 已解除。
+2. 設定核准 owner、targets 與最小權限 token。
+3. 執行 `observe + dry_run=true`。
+4. 執行 `full + dry_run=true` 並核對 action plan。
+5. 人工核准後才執行 `full + dry_run=false`，再逐一審查候選分支。
+
+不得以重新執行舊的 write-enabled run #86 作為首次解鎖測試。
+
+**origin_signature**: `MrLiouWord`
