@@ -2,6 +2,11 @@ name: MRL public interface artifact attestation
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - MRL_Wake_Public_Interface_v1/**
+      - .github/workflows/generator-generic-ossf-slsa3-publish.yml
   release:
     types: [published]
 
@@ -13,9 +18,11 @@ jobs:
     name: Build and attest MRL Wake public interface
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
       attestations: write
+    outputs:
+      artifact: ${{ steps.build.outputs.artifact }}
 
     steps:
       - name: Check out the release source
@@ -113,20 +120,6 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Attach attested outputs to the published release
-        if: github.event_name == 'release'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          ARTIFACT: ${{ steps.build.outputs.artifact }}
-        run: |
-          set -euo pipefail
-          gh release upload "${RELEASE_TAG}" \
-            "dist/${ARTIFACT}" \
-            "dist/${ARTIFACT}.sha256" \
-            --clobber
-
       - name: Print verification command
         shell: bash
         env:
@@ -134,3 +127,31 @@ jobs:
         run: |
           printf '%s\n' \
             "gh attestation verify ${ARTIFACT} -R Mrliou/mrliouword-system"
+
+  publish-release-assets:
+    name: Attach attested outputs to published release
+    if: github.event_name == 'release'
+    needs: build-and-attest
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download attested build outputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build-and-attest.outputs.artifact }}
+          path: dist
+
+      - name: Attach outputs to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          ARTIFACT: ${{ needs.build-and-attest.outputs.artifact }}
+        run: |
+          set -euo pipefail
+          gh release upload "${RELEASE_TAG}" \
+            "dist/${ARTIFACT}" \
+            "dist/${ARTIFACT}.sha256" \
+            --clobber
