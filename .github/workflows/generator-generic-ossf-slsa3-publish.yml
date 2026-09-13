@@ -1,66 +1,136 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+name: MRL public interface artifact attestation
 
-# This workflow lets you generate SLSA provenance file for your project.
-# The generation satisfies level 3 for the provenance requirements - see https://slsa.dev/spec/v0.1/requirements
-# The project is an initiative of the OpenSSF (openssf.org) and is developed at
-# https://github.com/slsa-framework/slsa-github-generator.
-# The provenance file can be verified using https://github.com/slsa-framework/slsa-verifier.
-# For more information about SLSA and how it improves the supply-chain, visit slsa.dev.
-
-name: SLSA generic generator
 on:
   workflow_dispatch:
   release:
-    types: [created]
+    types: [published]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  build-and-attest:
+    name: Build and attest MRL Wake public interface
     runs-on: ubuntu-latest
-    outputs:
-      digests: ${{ steps.hash.outputs.digests }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      # ========================================================
-      #
-      # Step 1: Build your artifacts.
-      #
-      # ========================================================
-      - name: Build artifacts
+      - name: Validate public interface sources
+        shell: bash
         run: |
-            # These are some amazing artifacts.
-            echo "artifact1" > artifact1
-            echo "artifact2" > artifact2
+          set -euo pipefail
+          test -f MRL_Wake_Public_Interface_v1/schema/Mrliou_MRL_Wake_Manifest_Public_Interface_v1.schema.json
+          test -f MRL_Wake_Public_Interface_v1/scripts/Mrliou_MRL_Verify_Wake_Public_Interface_v1.mjs
+          node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" \
+            MRL_Wake_Public_Interface_v1/schema/Mrliou_MRL_Wake_Manifest_Public_Interface_v1.schema.json
+          node MRL_Wake_Public_Interface_v1/scripts/Mrliou_MRL_Verify_Wake_Public_Interface_v1.mjs
 
-      # ========================================================
-      #
-      # Step 2: Add a step to generate the provenance subjects
-      #         as shown below. Update the sha256 sum arguments
-      #         to include all binaries that you generate
-      #         provenance for.
-      #
-      # ========================================================
-      - name: Generate subject for provenance
-        id: hash
+      - name: Build deterministic public interface archive
+        id: build
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
 
-          # List the artifacts the provenance will refer to.
-          files=$(ls artifact*)
-          # Generate the subjects (base64 encoded).
-          echo "hashes=$(sha256sum $files | base64 -w0)" >> "${GITHUB_OUTPUT}"
+          if [[ "${EVENT_NAME}" == "release" ]]; then
+            version="${RELEASE_TAG}"
+          else
+            version="sha-${GITHUB_SHA:0:12}"
+          fi
 
-  provenance:
-    needs: [build]
-    permissions:
-      actions: read   # To read the workflow path.
-      id-token: write # To sign the provenance.
-      contents: write # To add assets to a release.
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.4.0
-    with:
-      base64-subjects: "${{ needs.build.outputs.digests }}"
-      upload-assets: true # Optional: Upload to a new release
+          artifact="MRL_Wake_Public_Interface_v1-${version}.tar.gz"
+          staging="dist/staging"
+          mkdir -p "${staging}/MRL_Wake_Public_Interface_v1"
+          cp -a MRL_Wake_Public_Interface_v1/schema "${staging}/MRL_Wake_Public_Interface_v1/"
+          cp -a MRL_Wake_Public_Interface_v1/scripts "${staging}/MRL_Wake_Public_Interface_v1/"
+
+          SOURCE_COMMIT="${GITHUB_SHA}" SOURCE_REF="${GITHUB_REF}" \
+          BUILD_WORKFLOW="${GITHUB_WORKFLOW_REF}" BUILD_RUN_ID="${GITHUB_RUN_ID}" \
+          node <<'NODE' > "${staging}/MRL_Wake_Public_Interface_v1/PROVENANCE-MANIFEST.json"
+          const manifest = {
+            schema_version: "1.0.0",
+            artifact_name: "MRL_Wake_Public_Interface_v1",
+            artifact_role: "PUBLIC_INTERFACE_PACKAGE",
+            canonical_authority: "Mr.liou / MrLiouWord",
+            source_repository: "https://github.com/Mrliou/mrliouword-system",
+            source_commit: process.env.SOURCE_COMMIT,
+            source_ref: process.env.SOURCE_REF,
+            build_workflow: process.env.BUILD_WORKFLOW,
+            build_run_id: process.env.BUILD_RUN_ID,
+            included_paths: [
+              "MRL_Wake_Public_Interface_v1/schema",
+              "MRL_Wake_Public_Interface_v1/scripts"
+            ],
+            excluded_products: ["MRL-APIWORKS-BYOH-DEPLOY-V1"],
+            verification_policy: "VERIFY_WITH_GITHUB_ARTIFACT_ATTESTATION",
+            origin_signature: "MrLiouWord"
+          };
+          process.stdout.write(JSON.stringify(manifest, null, 2) + "\n");
+          NODE
+
+          (
+            cd "${staging}/MRL_Wake_Public_Interface_v1"
+            find schema scripts -type f -print0 \
+              | LC_ALL=C sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+
+          export SOURCE_DATE_EPOCH
+          SOURCE_DATE_EPOCH="$(git show -s --format=%ct "${GITHUB_SHA}")"
+          tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" \
+            --owner=0 --group=0 --numeric-owner \
+            -C "${staging}" -cf - MRL_Wake_Public_Interface_v1 \
+            | gzip -n > "dist/${artifact}"
+          (
+            cd dist
+            sha256sum "${artifact}" > "${artifact}.sha256"
+          )
+
+          echo "artifact=${artifact}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate GitHub build provenance attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/${{ steps.build.outputs.artifact }}
+
+      - name: Upload attested build outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.build.outputs.artifact }}
+          path: |
+            dist/${{ steps.build.outputs.artifact }}
+            dist/${{ steps.build.outputs.artifact }}.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Attach attested outputs to the published release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          ARTIFACT: ${{ steps.build.outputs.artifact }}
+        run: |
+          set -euo pipefail
+          gh release upload "${RELEASE_TAG}" \
+            "dist/${ARTIFACT}" \
+            "dist/${ARTIFACT}.sha256" \
+            --clobber
+
+      - name: Print verification command
+        shell: bash
+        env:
+          ARTIFACT: ${{ steps.build.outputs.artifact }}
+        run: |
+          printf '%s\n' \
+            "gh attestation verify ${ARTIFACT} -R Mrliou/mrliouword-system"
