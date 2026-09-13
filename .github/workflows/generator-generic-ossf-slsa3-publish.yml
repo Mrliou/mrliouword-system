@@ -50,7 +50,7 @@ jobs:
           set -euo pipefail
 
           if [[ "${EVENT_NAME}" == "release" ]]; then
-            version="${RELEASE_TAG}"
+            version="$(printf '%s' "${RELEASE_TAG}" | tr -c 'A-Za-z0-9._-' '_')"
           else
             version="sha-${GITHUB_SHA:0:12}"
           fi
@@ -61,8 +61,7 @@ jobs:
           cp -a MRL_Wake_Public_Interface_v1/schema "${staging}/MRL_Wake_Public_Interface_v1/"
           cp -a MRL_Wake_Public_Interface_v1/scripts "${staging}/MRL_Wake_Public_Interface_v1/"
 
-          SOURCE_COMMIT="${GITHUB_SHA}" SOURCE_REF="${GITHUB_REF}" \
-          BUILD_WORKFLOW="${GITHUB_WORKFLOW_REF}" BUILD_RUN_ID="${GITHUB_RUN_ID}" \
+          SOURCE_COMMIT="${GITHUB_SHA}" WORKFLOW_COMMIT="${GITHUB_WORKFLOW_SHA}" \
           node <<'NODE' > "${staging}/MRL_Wake_Public_Interface_v1/PROVENANCE-MANIFEST.json"
           const manifest = {
             schema_version: "1.0.0",
@@ -71,9 +70,8 @@ jobs:
             canonical_authority: "Mr.liou / MrLiouWord",
             source_repository: "https://github.com/Mrliou/mrliouword-system",
             source_commit: process.env.SOURCE_COMMIT,
-            source_ref: process.env.SOURCE_REF,
-            build_workflow: process.env.BUILD_WORKFLOW,
-            build_run_id: process.env.BUILD_RUN_ID,
+            build_workflow: ".github/workflows/generator-generic-ossf-slsa3-publish.yml",
+            build_workflow_commit: process.env.WORKFLOW_COMMIT,
             included_paths: [
               "MRL_Wake_Public_Interface_v1/schema",
               "MRL_Wake_Public_Interface_v1/scripts"
@@ -87,7 +85,7 @@ jobs:
 
           (
             cd "${staging}/MRL_Wake_Public_Interface_v1"
-            find schema scripts -type f -print0 \
+            find PROVENANCE-MANIFEST.json schema scripts -type f -print0 \
               | LC_ALL=C sort -z \
               | xargs -0 sha256sum > SHA256SUMS
           )
