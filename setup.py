@@ -23,7 +23,7 @@ setup(
     author_email="contact@mrliou.com",
     url="https://github.com/dofaromg/mrliouword-system",
     packages=find_packages(exclude=["tests", "tests.*", "examples"]),
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=[
         "anthropic>=0.18.0",
         "pydantic>=2.0.0",
@@ -59,8 +59,6 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
