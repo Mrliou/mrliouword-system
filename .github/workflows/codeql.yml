@@ -63,6 +63,47 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v7
 
+    # ── 偏離 GitHub 自動產生模板之處（依倉庫規章，逐字匯入的偏離要留下為什麼）──
+    #
+    # 本倉庫的根目錄與 integrations/ 逐字匯入了 359 個 Git 自身的 C 原始碼檔
+    # （根目錄 267 個：access.c、worktree.c、write-tree.c …；integrations/ 92 個），
+    # 沒有任何一個屬於本倉庫（以 mrl_/mrliou 全文比對，命中 0）。
+    # 但 build-mode: none 的 C/C++ 抽取是依副檔名推斷編譯單元，會把那 359 個
+    # 全部吃進去，而它們不是本倉庫要掃描的程式碼。
+    #
+    # 這一步只從 runner 的臨時工作副本移除那批外來檔案，讓 c-cpp 分析聚焦在
+    # 本倉庫自有的 C：mrliou/ 的 17 個檔（8 個 .c + 9 個 .h，1,888 行，含
+    # server.c 的 socket/accept 與 memory.c 的手動記憶體操作）加上
+    # core/atom_t.h，共 18 個。實測 377 → 18。
+    # mrliou/ 只 include 自己的標頭與 libc/POSIX，不依賴根目錄那批 Git 標頭，
+    # 因此移除後仍可獨立抽取。
+    #
+    # 為什麼不用 config-file 的 paths-ignore：
+    # paths-ignore 對 build-mode: none 的 C/C++ 是否生效，以及 `*.c` 會不會
+    # 遞迴匹配到 mrliou/*.c，本輪在受限網路環境下取不到官方文件原文，無法確證。
+    # 若 glob 其實是遞迴的，會連自有程式碼一起排除**而且不會報錯**——那比現狀
+    # 更糟。改用工作副本裁剪，語意由本檔的 shell glob 決定，可在本地重現驗證，
+    # 並在下方加了保險：裁剪後若 mrliou/ 沒有 C 檔留下就讓 job 明確失敗。
+    #
+    # 不動 git 歷史、不刪倉庫內的檔案（倉庫規章：history_policy: append_only、
+    # 檔案不要亂刪、留存紀錄）。影響範圍僅此 job 的臨時 checkout。
+    - name: Exclude vendored Git sources from C/C++ extraction
+      if: matrix.language == 'c-cpp'
+      shell: bash
+      run: |
+        set -euo pipefail
+        count_c() { find . -type f \( -name '*.c' -o -name '*.h' \) | wc -l; }
+        before=$(count_c)
+        rm -f ./*.c ./*.h integrations/*.c integrations/*.h
+        after=$(count_c)
+        echo "C/C++ 檔數：$before → $after（移除逐字匯入的 Git 源碼）"
+        echo "保留供分析的自有 C 實作："
+        find . -type f \( -name '*.c' -o -name '*.h' \) | sort
+        if [ -z "$(find mrliou -type f -name '*.c' -print -quit 2>/dev/null)" ]; then
+          echo "::error::裁剪後 mrliou/ 沒有 C 檔留下，排除範圍設定有誤，中止以免無聲失去覆蓋"
+          exit 1
+        fi
+
     # Add any setup steps before running the `github/codeql-action/init` action.
     # This includes steps like installing compilers or runtimes (`actions/setup-node`
     # or others). This is typically only required for manual builds.
