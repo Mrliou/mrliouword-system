@@ -32,7 +32,7 @@ The current `ALLOWED_OWNER` is `Mrliou`. If an approved target uses another owne
 
 The job has no `environment:` selection. Repository-scoped settings must be on **`Mrliou/mrliouword-system`**; identically named settings in `dofaromg/mrliouword-system` do not flow here. Environment-only settings require the exact Environment to be selected by the job; do not invent one. Organization settings, where applicable, must grant the running repository access.
 
-The available connector does not provide secrets/variables administration metadata. The logs prove empty effective values; the precise administrative cause (missing key, incorrect name, wrong scope or unavailable environment) remains unverified. No credential value is needed to inspect settings names and scope.
+Authenticated, read-only inspection of this exact repository's Actions settings on 2026-09-26 confirmed: no Repository secrets, no Environment secrets, and no Organization secrets available to the repository; the Variables tab likewise reports no Repository variables, no Environment variables, and no Organization variables available. Thus `SYNC_TOKEN` and the route variables are absent from the visible execution scope. No spelling mismatch was found in the YAML references. Settings in other repositories were not inspected or assumed to exist. Only configuration names and empty-state notices were inspected; no secret value was requested or read.
 
 Settings: [Secrets](https://github.com/Mrliou/mrliouword-system/settings/secrets/actions), [Variables](https://github.com/Mrliou/mrliouword-system/settings/variables/actions).
 
