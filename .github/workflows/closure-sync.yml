@@ -48,6 +48,7 @@ jobs:
 
     steps:
       - name: Validate authority and routes
+        id: validate_config
         env:
           SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
@@ -56,8 +57,17 @@ jobs:
             echo "::error::Source must be the repository running this workflow"
             exit 1
           fi
+          missing=0
           if [ -z "$TARGET_REPOSITORY_1" ]; then
-            echo "::error::MRL_SYNC_TARGET_1 must name an explicitly approved MRL repository"
+            echo "::error::Missing Actions variable MRL_SYNC_TARGET_1; it must name an explicitly approved MRL repository"
+            missing=1
+          fi
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "::error::Missing Actions secret SYNC_TOKEN; explicit cross-repository access is required"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Check names and repository/organization scope; this job does not select a GitHub Environment."
             exit 1
           fi
           for repository in "$TARGET_REPOSITORY_1" "$TARGET_REPOSITORY_2"; do
@@ -67,10 +77,6 @@ jobs:
               *) echo "::error::Unapproved repository owner: $repository"; exit 1 ;;
             esac
           done
-          if [ -z "$SYNC_TOKEN" ]; then
-            echo "::error::SYNC_TOKEN is required for explicit cross-repository access"
-            exit 1
-          fi
           echo "source=$SOURCE_REPOSITORY"
           echo "target_1=$TARGET_REPOSITORY_1"
           echo "target_2=${TARGET_REPOSITORY_2:-<none>}"
@@ -79,6 +85,7 @@ jobs:
           echo "apply_changes=$APPLY_CHANGES"
 
       - name: Checkout authoritative source
+        id: checkout_source
         uses: actions/checkout@v4
         with:
           repository: ${{ env.SOURCE_REPOSITORY }}
@@ -87,6 +94,7 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout approved target 1
+        id: checkout_target_1
         uses: actions/checkout@v4
         with:
           repository: ${{ env.TARGET_REPOSITORY_1 }}
@@ -95,6 +103,7 @@ jobs:
           fetch-depth: 0
 
       - name: Checkout approved target 2
+        id: checkout_target_2
         if: ${{ env.TARGET_REPOSITORY_2 != '' }}
         uses: actions/checkout@v4
         with:
@@ -104,6 +113,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
+        id: setup_python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -135,7 +145,7 @@ jobs:
           python source/tools/verify_consistency.py "${repos[@]}" --check-merkle --cross-repo --output source/.mrliou/verification_report.json
 
       - name: Generate report with actual targets
-        if: always()
+        if: ${{ !cancelled() && steps.checkout_source.outcome == 'success' && steps.checkout_target_1.outcome == 'success' && (env.TARGET_REPOSITORY_2 == '' || steps.checkout_target_2.outcome == 'success') && steps.setup_python.outcome == 'success' }}
         run: |
           set -euo pipefail
           targets="target1"
@@ -231,6 +241,7 @@ jobs:
             echo "- Mode: \`$MODE\`"
             echo "- Apply changes: \`$APPLY_CHANGES\`"
             echo "- Candidate branch: \`$CANDIDATE_BRANCH\`"
+            echo "- Configuration validation: \`${{ steps.validate_config.outcome }}\`"
             if [ -f source/.mrliou/verification_report.json ]; then
               python - <<'PY'
           import json
