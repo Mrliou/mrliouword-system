@@ -111,6 +111,7 @@ class ClosureSyncSafetyTests(unittest.TestCase):
         self.assertNotIn("HEAD:main", content)
         self.assertNotIn("|| echo", content)
         self.assertIn("MRL_SYNC_ALLOWED_OWNER", content)
+        self.assertIn("if: ${{ vars.MRL_SYNC_TARGET_1 != '' || github.event_name == 'workflow_dispatch' }}", content)
         self.assertIn("inputs.dry_run == false", content)
         self.assertIn("Mrliou_MRL_closure_sync/${{ github.run_id }}", content)
 
