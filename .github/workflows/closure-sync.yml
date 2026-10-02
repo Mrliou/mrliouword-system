@@ -136,7 +136,7 @@ jobs:
           python source/tools/verify_consistency.py "${repos[@]}" --check-merkle --cross-repo --output source/.mrliou/verification_report.json
 
       - name: Generate report with actual targets
-        if: always()
+        if: ${{ always() && hashFiles('source/tools/generate_sync_report.py') != '' }}
         run: |
           set -euo pipefail
           targets="target1"
