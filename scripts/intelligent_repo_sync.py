@@ -33,7 +33,7 @@ import argparse
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
-from integrations.github.logical_extractor import LogicalExtractor
+from integrations.github.logical_extractor import LogicalStructureExtractor as LogicalExtractor
 from integrations.webgpu.attention_filter import AttentionFilter
 from integrations.particle.test_recorder import ParticleTestRecorder
 from integrations.particle.naming_engine import ParticleNamingEngine
