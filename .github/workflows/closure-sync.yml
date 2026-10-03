@@ -1,5 +1,19 @@
 name: 🔄 Closure Sync - 閉環同步
 
+# ============================================================================
+# 範圍：兩個帳號（dofaromg / Mrliou）底下的「全部」倉庫 — 含 fork、含 private。
+# 依據：.mrliou/sync.targets.json（MR.liou 2026-10-03 決定：字典就是語言，不分地盤）
+#
+# 安全邊界（不可放寬）：
+#   1. source 單向 → targets；target 永遠不回流（sync_manager 強制）
+#   2. 只寫 candidate branch `Mrliou_MRL_closure_sync/<run_id>`，不碰任何 default branch
+#   3. 只有 workflow_dispatch + mode=full + dry_run=false 才會真的寫；排程永遠 observe
+#   4. owner 白名單在政策檔；SYNC_TOKEN 必須存在
+#
+# 需要的 secret：SYNC_TOKEN — 對兩個帳號所有倉庫有 Contents: Read & Write 的 PAT
+#   （classic PAT 勾 `repo` 最省事；fine-grained 要對兩個帳號都選 All repositories）
+# ============================================================================
+
 on:
   push:
     branches: [main]
@@ -30,82 +44,102 @@ concurrency:
 env:
   PYTHON_VERSION: '3.11'
   SOURCE_REPOSITORY: ${{ github.repository }}
-  TARGET_REPOSITORY_1: ${{ vars.MRL_SYNC_TARGET_1 }}
-  TARGET_REPOSITORY_2: ${{ vars.MRL_SYNC_TARGET_2 }}
-  ALLOWED_OWNER: ${{ vars.MRL_SYNC_ALLOWED_OWNER || github.repository_owner }}
+  POLICY_FILE: .mrliou/sync.targets.json
   MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'observe' }}
   APPLY_CHANGES: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'full' && inputs.dry_run == false }}
   CANDIDATE_BRANCH: Mrliou_MRL_closure_sync/${{ github.run_id }}
+  SYNC_PATHS: core/particles docs/particle-dictionary .mrliou
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
-  sync-consistency:
-    name: 跨倉庫一致性同步
-    if: ${{ vars.MRL_SYNC_TARGET_1 != '' || github.event_name == 'workflow_dispatch' }}
+  # ------------------------------------------------------------------------ #
+  resolve:
+    name: 解析全部 target
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      actions: read
-
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      count: ${{ steps.resolve.outputs.count }}
+      max_parallel: ${{ steps.resolve.outputs.max_parallel }}
     steps:
-      - name: Validate authority and routes
+      - name: Validate authority
         env:
           SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
           set -euo pipefail
-          if [ "$SOURCE_REPOSITORY" != "$GITHUB_REPOSITORY" ]; then
-            echo "::error::Source must be the repository running this workflow"
-            exit 1
-          fi
-          if [ -z "$TARGET_REPOSITORY_1" ]; then
-            echo "::error::MRL_SYNC_TARGET_1 must name an explicitly approved MRL repository"
-            exit 1
-          fi
-          for repository in "$TARGET_REPOSITORY_1" "$TARGET_REPOSITORY_2"; do
-            [ -z "$repository" ] && continue
-            case "$repository" in
-              "$ALLOWED_OWNER"/*) ;;
-              *) echo "::error::Unapproved repository owner: $repository"; exit 1 ;;
-            esac
-          done
           if [ -z "$SYNC_TOKEN" ]; then
             echo "::error::SYNC_TOKEN is required for explicit cross-repository access"
             exit 1
           fi
-          echo "source=$SOURCE_REPOSITORY"
-          echo "target_1=$TARGET_REPOSITORY_1"
-          echo "target_2=${TARGET_REPOSITORY_2:-<none>}"
-          echo "allowed_owner=$ALLOWED_OWNER"
-          echo "mode=$MODE"
-          echo "apply_changes=$APPLY_CHANGES"
+          echo "source=$SOURCE_REPOSITORY mode=$MODE apply_changes=$APPLY_CHANGES"
 
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Resolve targets from policy
+        id: resolve
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          python tools/resolve_sync_targets.py \
+            --policy "$POLICY_FILE" \
+            --source-repository "$SOURCE_REPOSITORY" \
+            --output targets.json \
+            --github-output "$GITHUB_OUTPUT"
+          python - <<'PY'
+          import json
+          data = json.load(open("targets.json"))
+          print(f"## Closure Sync targets: {data['target_count']} (policy {data['policy_version']})")
+          for t in data["targets"]:
+              flags = ",".join(f for f in ("fork" if t["fork"] else "", t["visibility"]) if f)
+              print(f"- {t['full_name']} [{flags}] @ {t['default_branch']}")
+          if data["skipped"]:
+              print(f"\n### skipped ({len(data['skipped'])})")
+              for name, why in data["skipped"].items():
+                  print(f"- {name}: {why}")
+          PY
+      - name: Publish target list to job summary
+        run: |
+          python - >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json
+          d = json.load(open("targets.json"))
+          print(f"### 🔄 Closure Sync — {d['target_count']} targets, {d['chunks']} chunks, mode=`{'${{ env.MODE }}'}` apply=`{'${{ env.APPLY_CHANGES }}'}`")
+          print("| repo | fork | visibility | default |")
+          print("|---|---|---|---|")
+          for t in d["targets"]:
+              print(f"| {t['full_name']} | {'✓' if t['fork'] else ''} | {t['visibility']} | `{t['default_branch']}` |")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: closure-targets
+          path: targets.json
+
+  # ------------------------------------------------------------------------ #
+  sync:
+    name: 同步 chunk ${{ matrix.chunk }}
+    needs: resolve
+    if: ${{ fromJSON(needs.resolve.outputs.count) > 0 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(needs.resolve.outputs.max_parallel) }}
+      matrix: ${{ fromJSON(needs.resolve.outputs.matrix) }}
+    steps:
       - name: Checkout authoritative source
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.SOURCE_REPOSITORY }}
           path: source
-          token: ${{ secrets.SYNC_TOKEN }}
           fetch-depth: 0
 
-      - name: Checkout approved target 1
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.TARGET_REPOSITORY_1 }}
-          path: target1
-          token: ${{ secrets.SYNC_TOKEN }}
-          fetch-depth: 0
-
-      - name: Checkout approved target 2
-        if: ${{ env.TARGET_REPOSITORY_2 != '' }}
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.TARGET_REPOSITORY_2 }}
-          path: target2
-          token: ${{ secrets.SYNC_TOKEN }}
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -115,11 +149,46 @@ jobs:
       - name: Build deterministic source Merkle tree
         run: python source/tools/merkle_builder.py source source/.mrliou/merkle.json
 
+      - name: Sparse-clone targets (only the dictionary paths)
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+          REPOS: ${{ join(matrix.repos, ' ') }}
+        run: |
+          set -uo pipefail
+          mkdir -p targets
+          : > target_dirs.txt
+          : > clone_failures.txt
+          git config --global user.name  "MrLiouWord Sync Bot"
+          git config --global user.email "sync@mrliouword.system"
+          git config --global advice.detachedHead false
+          for repo in $REPOS; do
+            dir="targets/${repo/\//__}"
+            url="https://x-access-token:${SYNC_TOKEN}@github.com/${repo}.git"
+            echo "::group::clone $repo"
+            if git clone --quiet --depth 1 --filter=blob:none --no-checkout "$url" "$dir" \
+               && git -C "$dir" sparse-checkout init --cone \
+               && git -C "$dir" sparse-checkout set $SYNC_PATHS \
+               && git -C "$dir" checkout --quiet; then
+              echo "$dir" >> target_dirs.txt
+            else
+              echo "$repo" >> clone_failures.txt
+              echo "::warning::could not clone $repo (empty / no access / no default branch)"
+              rm -rf "$dir"
+            fi
+            echo "::endgroup::"
+          done
+          echo "cloned=$(wc -l < target_dirs.txt) failed=$(wc -l < clone_failures.txt)"
+
       - name: Run source-authoritative closure plan
+        id: plan
         run: |
           set -euo pipefail
-          targets="target1"
-          if [ -d target2 ]; then targets="$targets,target2"; fi
+          if [ ! -s target_dirs.txt ]; then
+            echo "::warning::no targets cloned in this chunk"
+            echo '{"chunk": ${{ matrix.chunk }}, "state": {"phase": "no_targets"}}' > source/.mrliou/sync_report.json
+            exit 0
+          fi
+          targets=$(paste -sd, target_dirs.txt)
           command=(python source/tools/sync_manager.py --source source --targets "$targets" --mode "$MODE" --report source/.mrliou/sync_report.json)
           if [ "$APPLY_CHANGES" = "true" ]; then
             command+=(--auto-heal)
@@ -128,120 +197,181 @@ jobs:
           fi
           "${command[@]}"
 
-      - name: Verify all declared repositories
+      - name: Verify declared repositories (evidence, non-blocking in observe)
+        if: ${{ always() && hashFiles('target_dirs.txt') != '' }}
+        continue-on-error: ${{ env.APPLY_CHANGES != 'true' }}
         run: |
           set -euo pipefail
-          repos=(source target1)
-          if [ -d target2 ]; then repos+=(target2); fi
-          python source/tools/verify_consistency.py "${repos[@]}" --check-merkle --cross-repo --output source/.mrliou/verification_report.json
+          [ -s target_dirs.txt ] || exit 0
+          mapfile -t repos < target_dirs.txt
+          python source/tools/verify_consistency.py source "${repos[@]}" --check-merkle --cross-repo --output source/.mrliou/verification_report.json
 
-      - name: Generate report with actual targets
+      - name: Push candidate branch to each target (write gate)
+        if: ${{ success() && env.APPLY_CHANGES == 'true' }}
+        run: |
+          set -uo pipefail
+          : > pushed.txt
+          : > push_failures.txt
+          while read -r dir; do
+            [ -n "$dir" ] || continue
+            repo="${dir#targets/}"; repo="${repo/__/\/}"
+            echo "::group::push $repo"
+            for p in $SYNC_PATHS; do
+              [ -e "$dir/$p" ] && git -C "$dir" add -A -- "$p"
+            done
+            if git -C "$dir" diff --staged --quiet; then
+              echo "already consistent, nothing to push"
+              echo "$repo" >> pushed.txt
+            elif git -C "$dir" commit --quiet -m "🔄 [Closure Sync] Apply verified MRL particle dictionary
+
+          source: ${SOURCE_REPOSITORY}@${GITHUB_SHA}
+          run:    ${GITHUB_SERVER_URL}/${SOURCE_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          gate:   candidate branch only — default branch untouched" \
+                 && git -C "$dir" push --quiet origin "HEAD:refs/heads/${CANDIDATE_BRANCH}"; then
+              echo "$repo" >> pushed.txt
+            else
+              echo "$repo" >> push_failures.txt
+              echo "::warning::push failed for $repo"
+            fi
+            echo "::endgroup::"
+          done < target_dirs.txt
+          echo "pushed=$(wc -l < pushed.txt) failed=$(wc -l < push_failures.txt)"
+
+      - name: Collect chunk evidence
         if: always()
         run: |
           set -euo pipefail
-          targets="target1"
-          if [ -d target2 ]; then targets="$targets,target2"; fi
-          python source/tools/generate_sync_report.py --source source --targets "$targets" --output source/.mrliou/final_sync_report.json
-
-      - name: Record truthful health status
-        if: ${{ success() && env.APPLY_CHANGES == 'true' }}
-        run: |
+          mkdir -p evidence
           python - <<'PY'
-          import json
+          import json, os
+          from pathlib import Path
+          def lines(p): return [l.strip() for l in Path(p).read_text().splitlines() if l.strip()] if Path(p).exists() else []
+          def load(p):
+              try: return json.loads(Path(p).read_text())
+              except Exception: return None
+          chunk = ${{ matrix.chunk }}
+          out = {
+              "chunk": chunk,
+              "repos": ${{ toJSON(matrix.repos) }},
+              "cloned": [d[len("targets/"):].replace("__", "/", 1) for d in lines("target_dirs.txt")],
+              "clone_failures": lines("clone_failures.txt"),
+              "pushed": lines("pushed.txt"),
+              "push_failures": lines("push_failures.txt"),
+              "sync_report": load("source/.mrliou/sync_report.json"),
+              "verification_report": load("source/.mrliou/verification_report.json"),
+          }
+          Path(f"evidence/chunk-{chunk:03d}.json").write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: closure-evidence-${{ matrix.chunk }}
+          path: evidence/
+
+  # ------------------------------------------------------------------------ #
+  evidence:
+    name: 彙總證據
+    needs: [resolve, sync]
+    if: ${{ always() && needs.resolve.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: source
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: closure-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Merge evidence into final report + health
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, glob
           from datetime import datetime, timezone
           from pathlib import Path
 
-          verification = json.loads(Path('source/.mrliou/verification_report.json').read_text())
-          health = {
-              'last_sync': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-              'status': 'healthy' if verification.get('consistent') else 'unhealthy',
-              'source_repository': '${{ env.SOURCE_REPOSITORY }}',
-              'target_repositories': [
-                  value for value in [
-                      '${{ env.TARGET_REPOSITORY_1 }}',
-                      '${{ env.TARGET_REPOSITORY_2 }}',
-                  ] if value
-              ],
-              'verification': verification,
-              'issues': [] if verification.get('consistent') else verification.get('mismatches', []),
+          targets = json.loads(Path("artifacts/targets.json").read_text())
+          chunks = [json.loads(Path(p).read_text()) for p in sorted(glob.glob("artifacts/chunk-*.json"))]
+          now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+          cloned, clone_fail, pushed, push_fail = [], [], [], []
+          consistent_all = True
+          mismatches = []
+          for c in chunks:
+              cloned += c.get("cloned", []); clone_fail += c.get("clone_failures", [])
+              pushed += c.get("pushed", []);  push_fail += c.get("push_failures", [])
+              v = c.get("verification_report") or {}
+              if v and not v.get("consistent", False):
+                  consistent_all = False
+                  mismatches += v.get("mismatches", [])
+
+          final = {
+              "timestamp": now,
+              "source_repository": "${{ env.SOURCE_REPOSITORY }}",
+              "source_sha": "${{ github.sha }}",
+              "mode": "${{ env.MODE }}",
+              "apply_changes": "${{ env.APPLY_CHANGES }}" == "true",
+              "candidate_branch": "${{ env.CANDIDATE_BRANCH }}",
+              "policy": {"version": targets["policy_version"], "name": targets["policy"], "owners": targets["owners"]},
+              "target_count": targets["target_count"],
+              "chunks": len(chunks),
+              "cloned": sorted(cloned),
+              "clone_failures": sorted(clone_fail),
+              "pushed": sorted(pushed),
+              "push_failures": sorted(push_fail),
+              "skipped_by_policy": targets["skipped"],
+              "consistent": consistent_all,
+              "mismatch_count": len(mismatches),
           }
-          Path('source/.mrliou/health.json').write_text(json.dumps(health, indent=2, ensure_ascii=False) + '\n')
+          Path("source/.mrliou/final_sync_report.json").write_text(json.dumps(final, indent=2, ensure_ascii=False) + "\n")
+
+          if final["apply_changes"]:
+              health = {
+                  "last_sync": now,
+                  "status": "healthy" if consistent_all and not push_fail else "unhealthy",
+                  "source_repository": final["source_repository"],
+                  "target_count": final["target_count"],
+                  "pushed": len(pushed), "push_failures": len(push_fail),
+                  "clone_failures": len(clone_fail),
+                  "candidate_branch": final["candidate_branch"],
+                  "issues": mismatches + [{"repository": r, "reason": "push_failed"} for r in push_fail],
+              }
+              Path("source/.mrliou/health.json").write_text(json.dumps(health, indent=2, ensure_ascii=False) + "\n")
+
+          with open("${{ github.step_summary }}", "a") as s:
+              s.write(f"## 🔄 Closure Sync result — mode `{final['mode']}` apply `{final['apply_changes']}`\n\n")
+              s.write(f"| targets | cloned | clone ✗ | pushed | push ✗ | consistent |\n|---|---|---|---|---|---|\n")
+              s.write(f"| {final['target_count']} | {len(cloned)} | {len(clone_fail)} | {len(pushed)} | {len(push_fail)} | {'✅' if consistent_all else '❌ (' + str(len(mismatches)) + ')'} |\n")
+              if clone_fail: s.write("\n**clone failures:** " + ", ".join(sorted(clone_fail)) + "\n")
+              if push_fail:  s.write("\n**push failures:** "  + ", ".join(sorted(push_fail))  + "\n")
           PY
 
       - name: Commit source evidence to candidate branch
-        if: ${{ success() && env.APPLY_CHANGES == 'true' }}
+        if: ${{ env.APPLY_CHANGES == 'true' }}
         working-directory: source
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
           set -euo pipefail
-          git config user.name "MrLiouWord Sync Bot"
+          git config user.name  "MrLiouWord Sync Bot"
           git config user.email "sync@mrliouword.system"
-          git add .mrliou/merkle.json .mrliou/health.json .mrliou/sync_report.json .mrliou/verification_report.json .mrliou/final_sync_report.json
+          git remote set-url origin "https://x-access-token:${SYNC_TOKEN}@github.com/${SOURCE_REPOSITORY}.git"
+          git add .mrliou/final_sync_report.json .mrliou/health.json
           if ! git diff --staged --quiet; then
-            git commit -m "🔄 [Closure Sync] Record verified MRL sync evidence"
-            git push origin "HEAD:refs/heads/$CANDIDATE_BRANCH"
+            git commit -m "🔄 [Closure Sync] Record verified MRL sync evidence (${{ needs.resolve.outputs.count }} targets)"
+            git push origin "HEAD:refs/heads/${CANDIDATE_BRANCH}"
           fi
 
-      - name: Commit approved target 1 changes to candidate branch
-        if: ${{ success() && env.APPLY_CHANGES == 'true' }}
-        working-directory: target1
-        run: |
-          set -euo pipefail
-          git config user.name "MrLiouWord Sync Bot"
-          git config user.email "sync@mrliouword.system"
-          git add core/particles docs/particle-dictionary .mrliou
-          if ! git diff --staged --quiet; then
-            git commit -m "🔄 [Closure Sync] Apply verified MRL source state"
-            git push origin "HEAD:refs/heads/$CANDIDATE_BRANCH"
-          fi
-
-      - name: Commit approved target 2 changes to candidate branch
-        if: ${{ success() && env.APPLY_CHANGES == 'true' && env.TARGET_REPOSITORY_2 != '' }}
-        working-directory: target2
-        run: |
-          set -euo pipefail
-          git config user.name "MrLiouWord Sync Bot"
-          git config user.email "sync@mrliouword.system"
-          git add core/particles docs/particle-dictionary .mrliou
-          if ! git diff --staged --quiet; then
-            git commit -m "🔄 [Closure Sync] Apply verified MRL source state"
-            git push origin "HEAD:refs/heads/$CANDIDATE_BRANCH"
-          fi
-
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: sync-report-${{ github.run_number }}
-          path: |
-            source/.mrliou/merkle.json
-            source/.mrliou/sync_report.json
-            source/.mrliou/verification_report.json
-            source/.mrliou/final_sync_report.json
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Create evidence-based summary
-        if: always()
-        run: |
-          {
-            echo "## Closure Sync Report"
-            echo ""
-            echo "- Source: \`$SOURCE_REPOSITORY\`"
-            echo "- Target 1: \`$TARGET_REPOSITORY_1\`"
-            echo "- Target 2: \`${TARGET_REPOSITORY_2:-none}\`"
-            echo "- Mode: \`$MODE\`"
-            echo "- Apply changes: \`$APPLY_CHANGES\`"
-            echo "- Candidate branch: \`$CANDIDATE_BRANCH\`"
-            if [ -f source/.mrliou/verification_report.json ]; then
-              python - <<'PY'
-          import json
-          from pathlib import Path
-          data = json.loads(Path('source/.mrliou/verification_report.json').read_text())
-          print(f"- Verified consistent: \`{str(bool(data.get('consistent'))).lower()}\`")
-          print(f"- Mismatches: \`{len(data.get('mismatches', []))}\`")
-          PY
-            else
-              echo "- Verified consistent: \`false\`"
-              echo "- Verification report: \`missing\`"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          name: closure-final-report
+          path: source/.mrliou/final_sync_report.json

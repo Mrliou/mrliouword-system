@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -106,14 +107,27 @@ class ClosureSyncSafetyTests(unittest.TestCase):
             ClosureSyncManager(source, [])
 
     def test_workflow_has_no_external_fallback_or_direct_main_push(self):
-        content = (Path(__file__).resolve().parents[1] / ".github/workflows/closure-sync.yml").read_text(encoding="utf-8")
+        root = Path(__file__).resolve().parents[1]
+        content = (root / ".github/workflows/closure-sync.yml").read_text(encoding="utf-8")
+        # No hard-coded target repositories: the target set comes only from the policy file.
         self.assertNotIn("dofaromg/", content)
+        self.assertNotIn("Mrliou/", content.replace("Mrliou_MRL_closure_sync", ""))
+        self.assertIn("POLICY_FILE: .mrliou/sync.targets.json", content)
+        self.assertIn("tools/resolve_sync_targets.py", content)
+        # Never write to a default branch; only the run-scoped candidate branch.
         self.assertNotIn("HEAD:main", content)
-        self.assertNotIn("|| echo", content)
-        self.assertIn("MRL_SYNC_ALLOWED_OWNER", content)
-        self.assertIn("if: ${{ vars.MRL_SYNC_TARGET_1 != '' || github.event_name == 'workflow_dispatch' }}", content)
-        self.assertIn("inputs.dry_run == false", content)
+        self.assertNotIn("HEAD:master", content)
         self.assertIn("Mrliou_MRL_closure_sync/${{ github.run_id }}", content)
+        self.assertIn('HEAD:refs/heads/${CANDIDATE_BRANCH}', content)
+        # No silent fallbacks; explicit token gate; explicit dry-run gate.
+        self.assertNotIn("|| echo", content)
+        self.assertNotIn("|| true", content)
+        self.assertIn("SYNC_TOKEN is required", content)
+        self.assertIn("inputs.dry_run == false", content)
+        # Owner allowlist lives in the policy and is enforced by the resolver.
+        policy = json.loads((root / ".mrliou/sync.targets.json").read_text(encoding="utf-8"))
+        self.assertTrue(policy["owners"])
+        self.assertEqual(policy["write_gate"], "candidate_branch_only_never_default_branch")
 
 
 if __name__ == "__main__":
