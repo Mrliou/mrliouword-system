@@ -211,6 +211,7 @@ jobs:
         run: |
           set -uo pipefail
           : > pushed.txt
+          : > already_consistent.txt
           : > push_failures.txt
           while read -r dir; do
             [ -n "$dir" ] || continue
@@ -220,8 +221,8 @@ jobs:
               [ -e "$dir/$p" ] && git -C "$dir" add -A -- "$p"
             done
             if git -C "$dir" diff --staged --quiet; then
-              echo "already consistent, nothing to push"
-              echo "$repo" >> pushed.txt
+              echo "already consistent, no candidate branch created"
+              echo "$repo" >> already_consistent.txt
             elif git -C "$dir" commit --quiet -m "🔄 [Closure Sync] Apply verified MRL particle dictionary
 
           source: ${SOURCE_REPOSITORY}@${GITHUB_SHA}
@@ -235,7 +236,7 @@ jobs:
             fi
             echo "::endgroup::"
           done < target_dirs.txt
-          echo "pushed=$(wc -l < pushed.txt) failed=$(wc -l < push_failures.txt)"
+          echo "pushed=$(wc -l < pushed.txt) already_consistent=$(wc -l < already_consistent.txt) failed=$(wc -l < push_failures.txt)"
 
       - name: Collect chunk evidence
         if: always()
@@ -256,6 +257,7 @@ jobs:
               "cloned": [d[len("targets/"):].replace("__", "/", 1) for d in lines("target_dirs.txt")],
               "clone_failures": lines("clone_failures.txt"),
               "pushed": lines("pushed.txt"),
+              "already_consistent": lines("already_consistent.txt"),
               "push_failures": lines("push_failures.txt"),
               "sync_report": load("source/.mrliou/sync_report.json"),
               "verification_report": load("source/.mrliou/verification_report.json"),
@@ -303,16 +305,33 @@ jobs:
           chunks = [json.loads(Path(p).read_text()) for p in sorted(glob.glob("artifacts/chunk-*.json"))]
           now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
-          cloned, clone_fail, pushed, push_fail = [], [], [], []
+          cloned, clone_fail, pushed, already, push_fail = [], [], [], [], []
           consistent_all = True
           mismatches = []
+          declared = {t["full_name"] for t in targets["targets"]}
+          seen = set()
           for c in chunks:
+              seen.update(c.get("repos", []))
               cloned += c.get("cloned", []); clone_fail += c.get("clone_failures", [])
-              pushed += c.get("pushed", []);  push_fail += c.get("push_failures", [])
-              v = c.get("verification_report") or {}
-              if v and not v.get("consistent", False):
+              pushed += c.get("pushed", []);  already += c.get("already_consistent", [])
+              push_fail += c.get("push_failures", [])
+              # A declared target that could not be cloned was never verified: inconsistent by definition.
+              for r in c.get("clone_failures", []):
+                  consistent_all = False
+                  mismatches.append({"repository": r, "reason": "clone_failed_unverified"})
+              v = c.get("verification_report")
+              if c.get("cloned") and not v:
+                  # Targets were present but no verification evidence exists: fail closed.
+                  consistent_all = False
+                  mismatches.append({"chunk": c.get("chunk"), "reason": "verification_evidence_missing",
+                                     "repositories": c.get("cloned", [])})
+              elif v and not v.get("consistent", False):
                   consistent_all = False
                   mismatches += v.get("mismatches", [])
+          # Declared targets that never reached any chunk (matrix job lost / cancelled) are unverified too.
+          for r in sorted(declared - seen):
+              consistent_all = False
+              mismatches.append({"repository": r, "reason": "chunk_evidence_missing"})
 
           final = {
               "timestamp": now,
@@ -327,7 +346,9 @@ jobs:
               "cloned": sorted(cloned),
               "clone_failures": sorted(clone_fail),
               "pushed": sorted(pushed),
+              "already_consistent": sorted(already),
               "push_failures": sorted(push_fail),
+              "unreached_targets": sorted(declared - seen),
               "skipped_by_policy": targets["skipped"],
               "consistent": consistent_all,
               "mismatch_count": len(mismatches),
@@ -337,11 +358,12 @@ jobs:
           if final["apply_changes"]:
               health = {
                   "last_sync": now,
-                  "status": "healthy" if consistent_all and not push_fail else "unhealthy",
+                  "status": "healthy" if (consistent_all and not push_fail and not clone_fail) else "unhealthy",
                   "source_repository": final["source_repository"],
                   "target_count": final["target_count"],
-                  "pushed": len(pushed), "push_failures": len(push_fail),
-                  "clone_failures": len(clone_fail),
+                  "pushed": len(pushed), "already_consistent": len(already),
+                  "push_failures": len(push_fail), "clone_failures": len(clone_fail),
+                  "unreached_targets": len(declared - seen),
                   "candidate_branch": final["candidate_branch"],
                   "issues": mismatches + [{"repository": r, "reason": "push_failed"} for r in push_fail],
               }
@@ -349,8 +371,8 @@ jobs:
 
           with open("${{ github.step_summary }}", "a") as s:
               s.write(f"## 🔄 Closure Sync result — mode `{final['mode']}` apply `{final['apply_changes']}`\n\n")
-              s.write(f"| targets | cloned | clone ✗ | pushed | push ✗ | consistent |\n|---|---|---|---|---|---|\n")
-              s.write(f"| {final['target_count']} | {len(cloned)} | {len(clone_fail)} | {len(pushed)} | {len(push_fail)} | {'✅' if consistent_all else '❌ (' + str(len(mismatches)) + ')'} |\n")
+              s.write(f"| targets | cloned | clone ✗ | pushed | already ok | push ✗ | consistent |\n|---|---|---|---|---|---|---|\n")
+              s.write(f"| {final['target_count']} | {len(cloned)} | {len(clone_fail)} | {len(pushed)} | {len(already)} | {len(push_fail)} | {'✅' if consistent_all else '❌ (' + str(len(mismatches)) + ')'} |\n")
               if clone_fail: s.write("\n**clone failures:** " + ", ".join(sorted(clone_fail)) + "\n")
               if push_fail:  s.write("\n**push failures:** "  + ", ".join(sorted(push_fail))  + "\n")
           PY
