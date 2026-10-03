@@ -1,0 +1,28 @@
+{
+  "spec": "MrLiou.Closure.SyncTargets",
+  "version": "v1.0.0",
+  "decided_by": "MR.liou",
+  "decided_at": "2026-10-03",
+  "rationale": "字典就是語言，是我給 AI 的文明語言。語言不分地盤，沒有分什麼地方才能同步。",
+  "policy": "all_repositories_under_owners",
+  "owners": ["dofaromg", "Mrliou"],
+  "include_forks": true,
+  "include_private": true,
+  "exclude_archived": true,
+  "exclude_empty": true,
+  "exclude_disabled": true,
+  "exclude": [
+    "Mrliou/mrliouword-system"
+  ],
+  "include_extra": [],
+  "chunk_size": 20,
+  "max_parallel": 8,
+  "write_gate": "candidate_branch_only_never_default_branch",
+  "candidate_branch_prefix": "Mrliou_MRL_closure_sync/",
+  "notes": [
+    "owners 同時是白名單：resolver 只接受這些 owner 底下的倉庫，其他一律拒絕。",
+    "exclude 裡的 source 自己永遠不會成為 target（sync_manager 也會二次擋）。",
+    "寫入只到 candidate branch，每個倉庫的 default branch 不動；要不要合併由各倉庫自行決定。",
+    "fork 的 default branch 不受影響，因此不會改變該 fork 對上游的 PR 內容，除非人工把 candidate branch 合進去。"
+  ]
+}
