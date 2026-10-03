@@ -1,23 +1,43 @@
+# ============================================================================
+# 狀態：休眠（DORMANT）— 2026-10-03 標記，檔案保留不刪
+# ============================================================================
+# 原因：
+#   本 repo 的 GitHub Code scanning「Default setup」已啟用。GitHub 規則是
+#   Default setup 開著時，拒收任何 Advanced（自訂 workflow）上傳的 SARIF：
+#     "CodeQL analyses from advanced configurations cannot be processed
+#      when the default setup is enabled"
+#   因此這個 workflow 自 2026-09 起每次 push / PR 都 4 個 Analyze 紅燈，
+#   但實際上安全掃描由 Default setup 正常執行中（結果見 Security 分頁）。
+#
+# 處置：
+#   - 停用自動觸發（push / pull_request / schedule 全部註解掉）
+#   - 保留 workflow_dispatch，需要時可手動跑
+#   - 保留完整設定（含 c-cpp 排除 vendored Git 原始碼的 config-file），
+#     未來若要切回 Advanced setup，步驟是：
+#       1. Settings → Code security → Code scanning → Default setup → Disable
+#       2. 把下面 on: 區塊的註解拿掉
+#   兩者只能擇一，不要同時開。
+#
+# 相關：PR #11 / #12 的 CI 留言有完整診斷。
+# ============================================================================
+#
 # For most projects, this workflow file will not need changing; you simply need
 # to commit it to your repository.
 #
 # You may wish to alter this file to override the set of languages analyzed,
 # or to provide custom queries or build logic.
 #
-# ******** NOTE ********
-# We have attempted to detect the languages in your repository. Please check
-# the `language` matrix defined below to confirm you have the correct set of
-# supported CodeQL languages.
-#
 name: "CodeQL Advanced"
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  schedule:
-    - cron: '19 11 * * 1'
+  # 休眠中 — 自動觸發已停用，見檔頭說明。要恢復請取消下面三段註解。
+  # push:
+  #   branches: [ "main" ]
+  # pull_request:
+  #   branches: [ "main" ]
+  # schedule:
+  #   - cron: '19 11 * * 1'
+  workflow_dispatch:
 
 jobs:
   analyze:
