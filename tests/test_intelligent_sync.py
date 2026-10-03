@@ -404,7 +404,11 @@ class TestSyncOrchestrator:
         
         assert report is not None
         assert report.pattern == 'test pattern'
-        assert isinstance(report.github_results, int)
+        assert report.github_results == 1
+        # Extraction must actually succeed, not be swallowed by the
+        # per-snippet try/except (regression: .extract() vs .extract_from_code()).
+        assert report.extracted_structures == 1
+        assert not [e for e in report.errors if e.startswith('Extraction error')]
 
 
 # Pytest fixtures
