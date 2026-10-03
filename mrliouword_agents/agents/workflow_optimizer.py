@@ -1,6 +1,7 @@
 """
 工作流優化 Agent
 """
+
 from typing import AsyncGenerator, Optional
 
 from ..core.base_agent import BaseAgent
@@ -12,16 +13,16 @@ class MrliouwordWorkflowOptimizer(BaseAgent):
     def __init__(self, model: Optional[str] = None):
         super().__init__(name="WorkflowOptimizer", model=model)
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self, workflow_path: str, optimization_level: str = "standard"
     ) -> AsyncGenerator[str, None]:
         """
         優化工作流
-        
+
         Args:
             workflow_path: 工作流檔案路徑
             optimization_level: 優化級別 (basic, standard, advanced)
-            
+
         Yields:
             優化過程中的消息
         """

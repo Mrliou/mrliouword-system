@@ -16,6 +16,7 @@ Author: MR.liou
 import re
 import ast
 import json
+import textwrap
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 
@@ -128,8 +129,10 @@ class LogicalStructureExtractor:
         }
         
         try:
-            tree = ast.parse(code)
-            
+            # 搜尋結果常帶有共同縮排（例如從 class body 擷取的片段），
+            # 先去除共同縮排再解析，否則 ast 會拋 IndentationError。
+            tree = ast.parse(textwrap.dedent(code))
+
             # 提取導入
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):

@@ -1,6 +1,7 @@
 """
 Mrliouword CLI 工具
 """
+
 import asyncio
 import click
 from pathlib import Path

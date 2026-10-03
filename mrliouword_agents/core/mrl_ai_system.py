@@ -1,14 +1,24 @@
 """
 MRL_AI_SYSTEM - GitHub 權限概念蒸餾後的授權模組
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from fnmatch import fnmatch
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+)
 from uuid import uuid4
-
 
 ROLE_ACTIONS: Dict[str, Tuple[str, ...]] = {
     "viewer": ("read",),
@@ -87,7 +97,9 @@ class PolicyRule:
         scope: str,
         context: Mapping[str, Any],
     ) -> bool:
-        if self.roles and not set(self.roles).intersection(principal_roles(principal, scope)):
+        if self.roles and not set(self.roles).intersection(
+            principal_roles(principal, scope)
+        ):
             return False
         if not _matches_any(action, self.actions):
             return False
@@ -479,9 +491,7 @@ class RiskAwareExecutionGate:
         )
 
         if any(
-            rule.effect == "deny"
-            for rule in policies
-            if rule.rule_id in matched_rules
+            rule.effect == "deny" for rule in policies if rule.rule_id in matched_rules
         ):
             decision = PermissionDecision(
                 allowed=False,
@@ -496,13 +506,15 @@ class RiskAwareExecutionGate:
                 trace_id=f"trace-{uuid4().hex}",
             )
             trace = self._trace_logger.record(principal, decision)
-            return PermissionDecision(**{**decision.__dict__, "trace_id": trace.trace_id})
+            return PermissionDecision(
+                **{**decision.__dict__, "trace_id": trace.trace_id}
+            )
 
-        allowed_by_role = action in snapshot.allowed_actions or "*" in snapshot.allowed_actions
+        allowed_by_role = (
+            action in snapshot.allowed_actions or "*" in snapshot.allowed_actions
+        )
         if not allowed_by_role and not any(
-            rule.effect == "allow"
-            for rule in policies
-            if rule.rule_id in matched_rules
+            rule.effect == "allow" for rule in policies if rule.rule_id in matched_rules
         ):
             decision = PermissionDecision(
                 allowed=False,
@@ -517,7 +529,9 @@ class RiskAwareExecutionGate:
                 trace_id=f"trace-{uuid4().hex}",
             )
             trace = self._trace_logger.record(principal, decision)
-            return PermissionDecision(**{**decision.__dict__, "trace_id": trace.trace_id})
+            return PermissionDecision(
+                **{**decision.__dict__, "trace_id": trace.trace_id}
+            )
 
         request_id = effective_context.get("escalation_request_id")
         approved = bool(effective_context.get("approved"))
@@ -529,14 +543,16 @@ class RiskAwareExecutionGate:
         ):
             approved = True
 
-        matched_guardrails, escalation_required, denial_reason = self._enforcer.evaluate(
-            guardrails=guardrails,
-            action=action,
-            resource=resource,
-            scope=scope,
-            risk_score=risk_score,
-            context=effective_context,
-            approved=approved,
+        matched_guardrails, escalation_required, denial_reason = (
+            self._enforcer.evaluate(
+                guardrails=guardrails,
+                action=action,
+                resource=resource,
+                scope=scope,
+                risk_score=risk_score,
+                context=effective_context,
+                approved=approved,
+            )
         )
 
         decision = PermissionDecision(
@@ -544,7 +560,8 @@ class RiskAwareExecutionGate:
             action=action,
             resource=resource,
             scope=scope,
-            reason=denial_reason or ("需要升權審批" if escalation_required else "允許執行"),
+            reason=denial_reason
+            or ("需要升權審批" if escalation_required else "允許執行"),
             roles=snapshot.roles,
             matched_policies=matched_rules,
             matched_guardrails=matched_guardrails,
@@ -569,19 +586,20 @@ class MRLAISystem:
         self.policy_composer = PolicyComposer()
         self.permission_resolver = PermissionResolver()
         self.trace_logger = trace_logger or DecisionTraceLogger()
-        self.escalation_orchestrator = escalation_orchestrator or EscalationOrchestrator()
-        self.guardrails = tuple(guardrails or ())
-        self.policies = tuple(
-            policies
-            or default_policy_rules()
+        self.escalation_orchestrator = (
+            escalation_orchestrator or EscalationOrchestrator()
         )
+        self.guardrails = tuple(guardrails or ())
+        self.policies = tuple(policies or default_policy_rules())
         self.execution_gate = RiskAwareExecutionGate(
             resolver=self.permission_resolver,
             trace_logger=self.trace_logger,
             escalation_orchestrator=self.escalation_orchestrator,
         )
 
-    def compose_policies(self, *policy_sets: Iterable[PolicyRule]) -> Tuple[PolicyRule, ...]:
+    def compose_policies(
+        self, *policy_sets: Iterable[PolicyRule]
+    ) -> Tuple[PolicyRule, ...]:
         self.policies = self.policy_composer.compose(*policy_sets)
         return self.policies
 
@@ -634,7 +652,9 @@ class MRLAISystem:
             ttl_seconds=ttl_seconds,
         )
 
-    def approve_escalation(self, request_id: str, approver_id: str) -> EscalationRequest:
+    def approve_escalation(
+        self, request_id: str, approver_id: str
+    ) -> EscalationRequest:
         return self.escalation_orchestrator.approve(request_id, approver_id)
 
     def get_decision_trace(self, trace_id: str) -> DecisionTrace:
