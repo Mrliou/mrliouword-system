@@ -33,7 +33,7 @@ import argparse
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
-from integrations.github.logical_extractor import LogicalExtractor
+from integrations.github.logical_extractor import LogicalStructureExtractor as LogicalExtractor
 from integrations.webgpu.attention_filter import AttentionFilter
 from integrations.particle.test_recorder import ParticleTestRecorder
 from integrations.particle.naming_engine import ParticleNamingEngine
@@ -45,6 +45,30 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def _adapt_structure(structure: Dict) -> Dict:
+    """
+    Normalise LogicalStructureExtractor output for the sync pipeline.
+
+    The extractor returns ``patterns`` as ``{name: [keywords]}`` and
+    ``reasoning_chains`` as ``List[List[str]]``, and scores the result as
+    ``complexity``. ParticleNamingEngine / ParticleMemoryStorage expect flat
+    ``List[str]`` for both and read ``confidence``; without this shim every
+    structure dies in Step 5/6 with a TypeError.
+    """
+    adapted = dict(structure)
+    patterns = adapted.get('patterns') or {}
+    if isinstance(patterns, dict):
+        adapted['patterns'] = list(patterns.keys())
+    chains = adapted.get('reasoning_chains') or []
+    adapted['reasoning_chains'] = [
+        ' -> '.join(chain) if isinstance(chain, (list, tuple)) else str(chain)
+        for chain in chains
+    ]
+    adapted.setdefault('confidence', adapted.get('complexity', 0.0))
+    return adapted
+
 
 @dataclass
 class SyncReport:
@@ -212,13 +236,13 @@ class IntelligentRepoSync:
         
         for snippet in snippets:
             try:
-                structure = self.logical_extractor.extract(
+                structure = self.logical_extractor.extract_from_code(
                     code=snippet.code,
                     language=snippet.language
                 )
-                
+
                 # Add source info
-                structure_dict = structure
+                structure_dict = _adapt_structure(structure)
                 structure_dict['source_info'] = {
                     'repo': snippet.repo,
                     'path': snippet.path,
