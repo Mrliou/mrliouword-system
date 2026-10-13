@@ -84,18 +84,18 @@ class TestLogicalExtractor:
         extractor = LogicalExtractor()
         
         code = """
-        class AttentionLayer:
-            def forward(self, query, key, value):
-                scores = torch.matmul(query, key.transpose(-2, -1))
-                attn = F.softmax(scores, dim=-1)
-                output = torch.matmul(attn, value)
-                return output
-        """
+class AttentionLayer:
+    def forward(self, query, key, value):
+        scores = torch.matmul(query, key.transpose(-2, -1))
+        attn = F.softmax(scores, dim=-1)
+        output = torch.matmul(attn, value)
+        return output
+"""
         
         structure = extractor.extract_from_code(code, "Python")
         
-        assert 'attention' in structure['patterns']
-        assert structure['confidence'] > 0
+        assert 'attention_mechanism' in structure['patterns']
+        assert structure['complexity'] > 0
         assert len(structure['reasoning_chains']) > 0
     
     def test_extract_concepts(self):
@@ -103,15 +103,17 @@ class TestLogicalExtractor:
         extractor = LogicalExtractor()
         
         code = """
-        class DistributedCache:
-            async def get(self, key):
-                # Distributed concurrent access
-                pass
-        """
+class DistributedCache:
+    async def get(self, key):
+        # Distributed concurrent access
+        pass
+"""
         
         structure = extractor.extract_from_code(code, "Python")
         
-        assert 'distributed' in structure['concepts'] or 'concurrent' in structure['concepts']
+        # concepts 收的是識別字名稱，語意詞由 _extract_keywords 收進 keywords
+        assert 'DistributedCache' in structure['concepts']
+        assert 'distributed' in structure['keywords'] or 'concurrent' in structure['keywords']
     
     def test_generate_formula(self):
         """Test formula-related structure construction"""
