@@ -214,15 +214,24 @@ def verify_law2(
     只有前五筆。要一份「不會說謊」的報告——明寫抽樣範圍、能表達失敗、帶環境與
     來源權威三態——請直接呼叫 Mrliou_MRL_build_law2_report，這個包裝函式為了
     維持舊合約，仍然會在有違規時丟例外而不產出報告。
+
+    兩個旗標都是為了逐字保住原本的行為：
+    - count_total=False：原版在 checked >= sample_n 時 break。若讓它為了算出
+      total_rows 把剩下的列走完，預設 sample_n=100 就不再是上界——資料庫
+      cursor 會被整表掃描，無界的產生器更是永不返回。
+    - catch_errors=False：原版讓 roundtrip_check 的例外原樣往外傳。若收進報告
+      再統一改丟 RoundtripViolation，呼叫端就分不出「輸入畸形」
+      （ParticleLayerError，例如找不到識別碼）與「真的往返不一致」，
+      診斷訊息也會丟失。
     """
     report = Mrliou_MRL_build_law2_report(
-        adapter, rows, environment=ENV_UNSPECIFIED, sample_n=sample_n
+        adapter,
+        rows,
+        environment=ENV_UNSPECIFIED,
+        sample_n=sample_n,
+        count_total=False,
+        catch_errors=False,
     )
-
-    # 維持原本的例外傳遞：他方簽名照舊丟 OriginSignatureError。
-    for failure in report["failures"]:
-        if failure["reason"] == "OriginSignatureError":
-            raise OriginSignatureError(failure["detail"])
 
     if report["failures"]:
         located = [failure["located"] for failure in report["failures"]]

@@ -46,27 +46,48 @@ UNSIGNED_PENDING = "unsigned_pending"
 PROVENANCE_STATES: Tuple[str, ...] = (MRL_OWNED, FOREIGN_MARKED, UNSIGNED_PENDING)
 
 
-def Mrliou_MRL_source_signature(row: Mapping[str, Any]) -> Optional[str]:
-    """回傳來源列自己攜帶的權威簽名；沒有任何簽名欄位時回 None。
+def Mrliou_MRL_source_signatures(row: Mapping[str, Any]) -> Tuple[str, ...]:
+    """回傳來源列上**所有**已填寫的權威簽名，依 ORIGIN_KEYS 順序。
+
+    必須看全部而不是看到第一個就回傳：一列可能同時帶 origin 與
+    origin_signature（例如合併過或遷移到一半的列），兩者有可能互相矛盾。
+    只看第一個會讓 origin="MrLiouWord" 掩護掉另一欄的他方簽名，LAW-0 就被繞過。
 
     空字串與僅含空白的值一律視為沒有簽名，不當成有效權威。
     """
+    found = []
     for key in ORIGIN_KEYS:
         value = row.get(key)
         if value is None:
             continue
         text = str(value).strip()
         if text:
-            return text
-    return None
+            found.append(text)
+    return tuple(found)
+
+
+def Mrliou_MRL_source_signature(row: Mapping[str, Any]) -> Optional[str]:
+    """回傳來源列的首選權威簽名（母體鍵名 origin 優先）；沒有時回 None。
+
+    這是給顯示與紀錄用的便利函式。判定權威請用
+    Mrliou_MRL_classify_source，它會檢查全部簽名欄位而不只是第一個。
+    """
+    signatures = Mrliou_MRL_source_signatures(row)
+    return signatures[0] if signatures else None
 
 
 def Mrliou_MRL_classify_source(row: Mapping[str, Any]) -> str:
-    """判定來源列的出身，回傳 PROVENANCE_STATES 之一。"""
-    signature = Mrliou_MRL_source_signature(row)
-    if signature is None:
+    """判定來源列的出身，回傳 PROVENANCE_STATES 之一。
+
+    檢查所有已填寫的簽名欄位，**任何一個**不是 MrLiouWord 就判為
+    foreign_marked——包含兩欄互相矛盾的情況（例如 origin="MrLiouWord" 搭配
+    origin_signature="SomeOtherVendor"）。矛盾即他方：寧可擋下來讓人確認，
+    也不要讓一半是他方的列被當成 MRL 自有。
+    """
+    signatures = Mrliou_MRL_source_signatures(row)
+    if not signatures:
         return UNSIGNED_PENDING
-    if signature == ORIGIN_SIGNATURE:
+    if all(signature == ORIGIN_SIGNATURE for signature in signatures):
         return MRL_OWNED
     return FOREIGN_MARKED
 
