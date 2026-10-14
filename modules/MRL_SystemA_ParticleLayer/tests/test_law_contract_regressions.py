@@ -13,7 +13,7 @@ from pathlib import Path
 MODULE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(MODULE_DIR))
 
-from MRL_SystemA_ParticleLayer import (
+from MRL_SystemA_ParticleLayer import (  # noqa: E402 - legacy module import path
     FileIndexAdapter,
     MemoryAdapter,
     OriginSignatureError,
@@ -22,8 +22,12 @@ from MRL_SystemA_ParticleLayer import (
     RoundtripViolation,
     verify_law2,
 )
-from Mrliou_MRL_Law2_Report_v1 import Mrliou_MRL_build_law2_report as build_report
-from Mrliou_MRL_Provenance_v1 import Mrliou_MRL_classify_source as classify
+from Mrliou_MRL_Law2_Report_v1 import (  # noqa: E402
+    Mrliou_MRL_build_law2_report as build_report,
+)
+from Mrliou_MRL_Provenance_v1 import (  # noqa: E402
+    Mrliou_MRL_classify_source as classify,
+)
 
 
 class LawContractRegressions(unittest.TestCase):
@@ -73,6 +77,7 @@ class LawContractRegressions(unittest.TestCase):
 
     def test_original_exception_instance_propagates(self):
         error = ValueError("original diagnostic")
+
         class RaisingAdapter(PersonaAdapter):
             def roundtrip_check(self, row):
                 raise error
