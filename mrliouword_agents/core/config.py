@@ -57,9 +57,7 @@ class MrliouwordConfig(PydanticBaseSettings):
     # API 設定
     # 綁全介面是容器化部署的刻意選擇（docker-compose.yml 的 uvicorn --host 0.0.0.0、
     # config/default.yaml 皆同），且可用 API_HOST 環境變數覆寫。
-    api_host: str = Field(  # nosec B104 - 容器內綁 0.0.0.0，由 API_HOST 覆寫
-        default="0.0.0.0", validation_alias="API_HOST"
-    )
+    api_host: str = Field(default="0.0.0.0", validation_alias="API_HOST")  # nosec B104
     api_port: int = Field(default=8000, validation_alias="API_PORT")
     api_workers: int = Field(default=4, validation_alias="API_WORKERS")
 
