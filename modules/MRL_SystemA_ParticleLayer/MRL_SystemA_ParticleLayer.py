@@ -21,7 +21,29 @@ from abc import ABC
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Type
 
-from unified_particle import ORIGIN_SIGNATURE, UnifiedParticle
+try:  # 套件內匯入：讓母體可以 import modules.MRL_SystemA_ParticleLayer
+    from .unified_particle import ORIGIN_SIGNATURE, UnifiedParticle
+    from .Mrliou_MRL_Law2_Report_v1 import (
+        ENV_UNSPECIFIED,
+        Mrliou_MRL_build_law2_report,
+    )
+    from .Mrliou_MRL_Provenance_v1 import (
+        FOREIGN_MARKED,
+        Mrliou_MRL_classify_source,
+    )
+except ImportError:  # 相容既有用法：cd 進本目錄後直接 import
+    from unified_particle import (  # type: ignore[no-redef]
+        ORIGIN_SIGNATURE,
+        UnifiedParticle,
+    )
+    from Mrliou_MRL_Law2_Report_v1 import (  # type: ignore[no-redef]
+        ENV_UNSPECIFIED,
+        Mrliou_MRL_build_law2_report,
+    )
+    from Mrliou_MRL_Provenance_v1 import (  # type: ignore[no-redef]
+        FOREIGN_MARKED,
+        Mrliou_MRL_classify_source,
+    )
 
 
 class ParticleLayerError(RuntimeError):
@@ -73,6 +95,8 @@ class SystemAAdapter(ABC):
             proof=proof,
             tags=tags,
             origin_signature=ORIGIN_SIGNATURE,
+            # 粒子簽名恆為 MrLiouWord（LAW-0），但來源的出身另記，不抹掉。
+            source_provenance=Mrliou_MRL_classify_source(source_row),
         )
 
     def from_unified(self, particle: UnifiedParticle) -> Dict[str, Any]:
@@ -93,8 +117,15 @@ class SystemAAdapter(ABC):
             raise RoundtripViolation(f"LAW-2 violation in {self.table_name}")
 
     def _validate_row_origin(self, row: Mapping[str, Any]) -> None:
-        value = row.get("origin_signature")
-        if value is not None and value != ORIGIN_SIGNATURE:
+        """標了他方簽名就拒絕；完全未簽名則放行但由 source_provenance 記錄。
+
+        行為與原版一致（LAW-2 不覆蓋），差別只在改用 Mrliou_MRL_Provenance_v1
+        判定，因此母體鍵名 `origin` 也會被認出來，不再只看 `origin_signature`。
+        未簽名的列不在這裡擋下——擋了會讓既有資料無法轉換；它的出身改由
+        UnifiedParticle.source_provenance 標成 unsigned_pending，並在
+        Mrliou_MRL_Law2_Report 裡逐筆定位，不會被洗成 MRL 權威。
+        """
+        if Mrliou_MRL_classify_source(row) == FOREIGN_MARKED:
             raise OriginSignatureError(
                 f"{self.table_name}: origin_signature must be {ORIGIN_SIGNATURE}"
             )
@@ -144,7 +175,14 @@ class MemoryAdapter(SystemAAdapter):
 
 class FileIndexAdapter(SystemAAdapter):
     table_name = "mrl_file_index"
-    domain = "file_index"
+    # 母體 core/particle_dict.json 的 domains 只有九個：memory / logic / code /
+    # language / signal / trace / persona / flow / meta——沒有 file_index，那是
+    # 外部造的詞。檔案索引的語意正是 fx.trace.anchor（錨定／創建檢查點）與
+    # fx.trace.merkle（Merkle 驗證），與本層 _extract_proof 收
+    # hash/sha256/checksum/signature 完全同一件事，因此對到 trace。
+    # 舊值不刪除，保留在 legacy_domain 可回溯（LAW-2）。
+    domain = "trace"
+    legacy_domain = "file_index"
 
 
 ADAPTERS: Dict[str, Type[SystemAAdapter]] = {
@@ -167,24 +205,34 @@ def verify_law2(
     rows: Iterable[Mapping[str, Any]],
     sample_n: int = 100,
 ) -> Dict[str, Any]:
-    """Verify up to sample_n rows and return a deployment-friendly report."""
-    checked = 0
-    failures: List[Any] = []
-    for row in rows:
-        if checked >= sample_n:
-            break
-        checked += 1
-        if not adapter.roundtrip_check(row):
-            failures.append(row.get("id", row.get("seed_id", f"row-{checked}")))
+    """Verify up to sample_n rows and return a deployment-friendly report.
 
-    if failures:
+    合約不變（LAW-2 不覆蓋）：回傳鍵名、成功時的值、以及失敗時丟出的例外型別
+    與訊息格式都與原版相同，既有呼叫端與測試不需改動。
+
+    內部改由 Mrliou_MRL_build_law2_report 執行，因此失敗時能拿到完整定位而不是
+    只有前五筆。要一份「不會說謊」的報告——明寫抽樣範圍、能表達失敗、帶環境與
+    來源權威三態——請直接呼叫 Mrliou_MRL_build_law2_report，這個包裝函式為了
+    維持舊合約，仍然會在有違規時丟例外而不產出報告。
+    """
+    report = Mrliou_MRL_build_law2_report(
+        adapter, rows, environment=ENV_UNSPECIFIED, sample_n=sample_n
+    )
+
+    # 維持原本的例外傳遞：他方簽名照舊丟 OriginSignatureError。
+    for failure in report["failures"]:
+        if failure["reason"] == "OriginSignatureError":
+            raise OriginSignatureError(failure["detail"])
+
+    if report["failures"]:
+        located = [failure["located"] for failure in report["failures"]]
         raise RoundtripViolation(
-            f"LAW-2 violation on {len(failures)} rows: {failures[:5]}"
+            f"LAW-2 violation on {len(located)} rows: {located[:5]}"
         )
 
     return {
         "table": adapter.table_name,
-        "checked": checked,
+        "checked": report["checked"],
         "failures": 0,
         "law": "LAW-2",
         "status": "PASS",

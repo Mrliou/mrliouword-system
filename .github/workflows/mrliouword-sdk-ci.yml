@@ -26,14 +26,14 @@ jobs:
 
       - name: Lint with flake8
         run: |
-          flake8 mrliouword_agents/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 mrliouword_agents/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+          flake8 mrliouword_agents/ modules/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 mrliouword_agents/ modules/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
 
       - name: Check formatting with black
-        run: black --check mrliouword_agents/
+        run: black --check mrliouword_agents/ modules/
 
       - name: Type check with mypy
-        run: mypy mrliouword_agents/ --ignore-missing-imports
+        run: mypy mrliouword_agents/ modules/ --ignore-missing-imports
 
   test:
     name: Run Tests
@@ -83,7 +83,7 @@ jobs:
           pip install bandit safety
 
       - name: Run Bandit Security Scan
-        run: bandit -r mrliouword_agents/ -ll
+        run: bandit -r mrliouword_agents/ modules/ -ll
 
       - name: Run Safety Check
         run: safety check --json || true
