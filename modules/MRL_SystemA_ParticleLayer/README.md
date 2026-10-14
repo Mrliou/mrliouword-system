@@ -69,3 +69,31 @@ Before v0.2, confirm:
 4. Whether `mrl_particle` must become a fourth adapter.
 
 Until those are confirmed, the adapter preserves the complete source row in `UnifiedParticle.state`, which provides a safe reversible baseline without inventing field mappings.
+
+# PR #18 authority and sampling contract
+
+`origin` and `origin_signature` are both inspected. Any populated foreign
+signature makes the source `foreign_marked`, including a conflict with
+`MrLiouWord` in the other field. Sources without signatures remain
+`unsigned_pending`; conversion preserves their original row and provenance.
+
+`verify_law2()` propagates the original conversion exception, including
+`ParticleLayerError` for a missing identifier. A false round-trip comparison
+still raises `RoundtripViolation`.
+
+`Mrliou_MRL_build_law2_report(..., sample_n=100)` now reads at most 100 rows,
+including for database cursors and infinite generators. At the limit it reports
+`total_rows=None`, `total_rows_known=False`, `coverage=None`, and
+`global_claim=False`. It does not fetch a 101st row to guess whether the input
+ended. A shorter exhausted source has a known total. Full verification with
+`sample_n=None` still consumes all rows. Explicit `count_total=True` opts into
+scanning the remaining input to calculate exact totals and coverage.
+
+Regression checks (also collected by the existing ParticleLayer pytest CI):
+
+```bash
+python -m unittest discover -s modules/MRL_SystemA_ParticleLayer/tests -p test_law_contract_regressions.py -v
+```
+
+These checks use repository data and do not establish DL580 deployment status.
+
