@@ -21,12 +21,13 @@ LAW-2 的可逆往返（to_unified → from_unified → 原列）就是 Trace �
    自己在哪裡跑，報告原文帶出。
 5. 報告自身帶 MRL 身分與簽名，不是一包看不出所屬的通用鍵名。
 
-記憶體：rows 只走一遍。前 sample_n 列做往返驗證，其餘只計數不驗證，
-因此 total_rows 誠實而不需要把整張表讀進記憶體。
+rows 只走一遍。抽樣預設最多讀取 sample_n 列；只有明確指定
+count_total=True 才會掃描其餘來源以計數。未知總數不推測為全局驗證。
 """
 
 from __future__ import annotations
 
+from itertools import islice
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 try:  # 套件內匯入（從母體 import modules.MRL_SystemA_ParticleLayer 時）
@@ -65,7 +66,7 @@ def Mrliou_MRL_build_law2_report(
     rows: Iterable[Mapping[str, Any]],
     environment: str,
     sample_n: Optional[int] = None,
-    count_total: bool = True,
+    count_total: bool = False,
     catch_errors: bool = True,
 ) -> Dict[str, Any]:
     """驗證 LAW-2 可逆往返並回傳一份不會說謊的報告。
@@ -76,7 +77,7 @@ def Mrliou_MRL_build_law2_report(
         environment: 必填。這次驗收實際跑在哪裡（sandbox / dl580）。
         sample_n: 只驗前 N 列；None 表示全驗。
         count_total: 達到 sample_n 之後是否繼續把剩下的列「數完」以求出
-            total_rows。預設 True，報告因此能講出真實覆蓋率。但這代表會把整個
+            total_rows。預設 False，抽樣讀取有界。指定 True 會把整個
             可迭代物走完——對資料庫 cursor 是整表掃描，對無界的產生器則永不返回。
             呼叫端若需要「到 sample_n 就停」的有界消耗，傳 False：此時不會謊報
             總數，而是 total_rows=None、total_rows_known=False、coverage=None。
@@ -98,12 +99,10 @@ def Mrliou_MRL_build_law2_report(
     unsigned_located: List[str] = []
     foreign_located: List[str] = []
 
-    for row in rows:
+    bounded = sample_n is not None and not count_total
+    selected_rows = islice(rows, max(0, sample_n)) if bounded else rows
+    for row in selected_rows:
         if sample_n is not None and checked >= sample_n:
-            if not count_total:
-                # 有界消耗：到抽樣上限就停，不把剩下的列走完。
-                stopped_early = True
-                break
             # 已達抽樣上限：只計數，不再驗證，讓 total_rows 保持誠實。
             total_rows += 1
             continue
@@ -158,6 +157,9 @@ def Mrliou_MRL_build_law2_report(
                     "source_provenance": state,
                 }
             )
+
+    if bounded and checked >= max(0, sample_n):
+        stopped_early = True
 
     # stopped_early 表示為了有界消耗而提前停下，剩下有幾列無從得知。
     # 此時絕不猜一個總數：寧可明說「總數未知」，也不要讓局部看起來像全局。
@@ -250,3 +252,4 @@ def Mrliou_MRL_format_law2_report(report: Mapping[str, Any]) -> str:
             f" {failure['reason']} — {failure['detail']}"
         )
     return "\n".join(lines)
+
