@@ -1,0 +1,132 @@
+# Mrliou MRL 授權宣告矛盾盤點 v1
+
+```
+document: Mrliou_MRL_授權宣告矛盾盤點_v1
+version: 1.0.0
+origin_signature: MrLiouWord
+status: 待權利人裁定
+scanned_at: 2026-10-15
+scanned_commit: a9303530630292af975c41e3e4791b3564833ee9
+```
+
+## 一句話
+
+這個 **public** 倉庫同時宣告 MIT、PROPRIETARY、All Rights Reserved，以及一份
+**不存在**的「MrLiouWord System 授權協議」；而四種宣告唯一能當準據的根
+`LICENSE` 檔**不存在**。
+
+談商業模式之前必須先看清這件事：MIT 是一份不可撤回的開放授權，寫在 public
+倉庫的 `pyproject.toml` 裡，任何人都可以據此主張他有權拿走、修改、再散布，
+**並且移除簽名**（MIT 只要求保留版權聲明與授權全文，不要求保留
+`origin_signature`）。這與 `.mrliou/authority-lock.json` 要求
+「Every derivative or projection using MrLiouWord must declare artifact_owner,
+source_repo, projection_role, and origin_signature」正面衝突。
+
+## 逐一盤點（行號已逐檔核對）
+
+| 位置 | 宣告原文 | 性質 |
+|---|---|---|
+| `pyproject.toml:11` | `license = {text = "MIT"}` | 開放授權，機器可讀，套件索引會採用 |
+| `README_SDK.md:4` | MIT 徽章，連向 `LICENSE` | 開放授權，連結 404 |
+| `README_SDK.md:141` | 「本專案採用 MIT 授權 - 詳見 [LICENSE](LICENSE) 檔案。」 | 開放授權，連結 404 |
+| `CONTRIBUTING.md:142` | 「貢獻的程式碼將採用 MIT 授權。」 | 開放授權，對貢獻者的承諾 |
+| `particle-chat-v42/package.json:19` | `"license": "MIT"` | 開放授權，機器可讀 |
+| `containers/package.json:12` | `"license": "PROPRIETARY"` | 專有，機器可讀 |
+| `containers/README.md:209` | `© 2024-2026 Mr. Liou. All Rights Reserved.` | 保留全部權利 |
+| `docs/API_REFERENCE.md:457` | 同上 | 保留全部權利 |
+| `docs/CONTAINER_SPEC.md:277` | 同上 | 保留全部權利 |
+| `docs/INTELLIGENT_SYNC_README.md:155` | 「本專案遵循 MrLiouWord System 授權協議」 | **該協議檔不存在** |
+| `docs/README.md:427` | 連向 `../LICENSE` | **404** |
+| 倉庫根目錄 | — | **沒有 LICENSE 檔**（`git ls-files` 亦為 0） |
+
+## 唯一一份 MRL 自撰的授權
+
+`docs/references/licenses/chatserver-license.txt` —— 全倉庫唯一由本權威撰寫的
+授權條文，且是專有授權：
+
+```
+ChatServer Universal DNS License
+origin_signature: MrLiouWord
+
+GRANT OF LICENSE:
+1. The Software must retain the origin_signature: MrLiouWord in all copies.
+2. The Software may be used, copied, and modified for personal or internal
+   business purposes within the MrLiouWord ecosystem.
+3. Redistribution of the Software outside the MrLiouWord system requires
+   prior written permission from MR.liou.
+```
+
+它的第 1 條就是權威邊界的核心，而且**已經被程式化**：
+`modules/MRL_SystemB_CommerceLayer/Mrliou_MRL_License_v1.py` 的
+`Mrliou_MRL_check_signature_retention()` 檢查的就是這一條。
+
+問題是它的涵蓋範圍只寫了 ChatServer 的 Universal DNS 元件，不是全系統。
+
+## 第三方噪音（已排除，不計入上表）
+
+倉庫根目錄混入了一整份 git 專案的原始碼樹（`git-p4.py`、大量 `.c/.h`、
+`integrations/COPYING` 是 GPLv2），`docs/containers/` 底下 17 份是 Google
+Nomulus／ICANN 的網域註冊商文件。這些會在搜尋 license / trademark /
+proprietary 時製造大量假命中，與 MRL 的授權狀態無關。
+
+`integrations/COPYING`（GPLv2）特別需要注意：它與 MIT 宣告並存在同一個倉庫裡，
+而 GPLv2 有傳染性。這不是 MRL 自己的授權，但第三方看到會先問。
+
+## 後果（事實，不是推測）
+
+1. **MIT 一旦生效即不可撤回。** 把 `pyproject.toml` 改掉只影響之後的版本；
+   在改之前取得過原始碼的人，仍可依當時的宣告主張權利。
+2. **宣告互相矛盾時，爭議中通常對宣告者不利。** 四種宣告並存，而最寬鬆的那個
+   （MIT）同時是唯一機器可讀且被套件索引採用的那個。
+3. **`CONTRIBUTING.md:142` 是對貢獻者的承諾。** 單方面改掉會影響已依該條款
+   貢獻過的人；這不只是技術變更。
+4. **準據檔缺失使所有宣告都無從解釋。** 三處連結指向不存在的 `LICENSE`，
+   一處引用不存在的「MrLiouWord System 授權協議」。
+
+## 待權利人裁定（我不替你決定）
+
+本次交付**不動**上表任何一個檔案，只提供草案與盤點。要處理的話，三個選項：
+
+**選項 A — 補上根 `LICENSE`，維持 MIT。**
+把 `MRL_LICENSE_v1.md` 僅作為母體語料與 `modules/MRL_System*` 的附加條款，
+程式碼維持 MIT。最不衝突，但 `origin_signature` 的保留要求在 MIT 下沒有強制力。
+
+**選項 B — 根 `LICENSE` 用 `MRL_LICENSE_v1.md`（專有），同步改四處 MIT 宣告。**
+權威邊界最完整，與 authority-lock 一致。代價：變更貢獻者條款、既往的 MIT
+宣告不會追溯失效、可能影響既有使用者。
+
+**選項 C — 分層授權。**
+`mrliouword_agents/`（SDK，五個 agent 仍是 stub）維持 MIT；
+`core/particle_dict.json` 等母體語料與 `modules/MRL_System*` 走
+`MRL_LICENSE_v1.md`。每個子樹各放一份 `LICENSE`，根目錄放一份索引說明哪個子樹
+適用哪一份。**這一條與既有的 `chatserver-license.txt` 作法一致**（它本來就是
+只涵蓋一個元件的分層授權），也最貼近倉庫現狀。
+
+> 我的建議是 **選項 C**：它不需要單方面撕毀對貢獻者的 MIT 承諾，又能讓母體語料
+> 與粒子層受 `origin_signature` 保留條款保護——也就是商業模式四條軸裡真正值錢
+> 的那兩條。但這是權利人的決定，不是我的。
+
+## 另外兩件同樣要你一句話的
+
+### 明碼個資在 public 倉庫
+
+`core/ai_world_particle_personality_registry.json` 的 `creators` 欄位有
+**兩個 email 與一組電話號碼**，倉庫是 public。
+
+依 LAW-2（NO_DELETE）我不刪除，只定位。處置選項：
+(a) 新增一個遮蔽後的版本，舊檔保留可回溯；(b) 倉庫轉 private；
+(c) 原樣保留。注意該檔目前**只被一個測試讀取驗證欄位存在**，沒有任何執行程式
+使用它，所以 (a) 的技術風險很低。
+
+### Git LFS 指標檔，內容不在本機
+
+`FlowAgent_專利技術說明書.pdf`（31 KB）與 15 個 `.zip` / `.tar.gz`
+（每個 128–131 bytes）全部是 Git LFS pointer。要把專利與封存材料納入商業模式
+的智財清單，需先 `git lfs pull`。**我不對它們的內容作任何推測。**
+
+## 狀態標記
+
+- 上表每一行的檔案與行號：**已對上原始檔**（逐檔 `grep -n` 核對）
+- `chatserver-license.txt` 條文：**已對上原始檔**
+- `.mrliou/authority-lock.json` 的四欄宣告 invariant：**已對上原始檔**
+- 專利說明書與 15 個封存檔的內容：**待找回**（LFS pointer）

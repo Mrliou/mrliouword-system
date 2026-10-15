@@ -16,7 +16,8 @@ particle: fx.meta.origin  (溯源 / 追溯根本來源, dom=meta, act=trace_orig
 
 本模組把來源出身分成三態，只判定、只記錄，不刪除也不覆蓋來源列（LAW-2）：
 
-    mrl_owned         來源列自己標明屬於 MrLiouWord
+    mrl_owned         來源列自己標明屬於本權威（mrliou / mrliouword / MRL /
+                      Mr.liou 任一別名皆可，見 Mrliou_MRL_Identity_v1）
     foreign_marked    來源列標了別人的簽名 → 由呼叫端拒絕
     unsigned_pending  來源列完全沒有簽名欄位 → 轉換但記錄，不升格為 MRL 權威
 
@@ -33,7 +34,40 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional, Tuple
 
-ORIGIN_SIGNATURE = "MrLiouWord"
+try:  # 套件內匯入（從母體 import modules.MRL_SystemA_ParticleLayer 時）
+    from .Mrliou_MRL_Identity_v1 import (
+        AUTHORITY_ALIASES,
+        ORIGIN_SIGNATURE,
+        RESERVED_NAMES,
+        Mrliou_MRL_is_own_authority,
+        Mrliou_MRL_normalize_authority,
+    )
+except ImportError:  # 相容既有用法：cd 進本目錄後直接 import
+    from Mrliou_MRL_Identity_v1 import (  # type: ignore[no-redef]
+        AUTHORITY_ALIASES,
+        ORIGIN_SIGNATURE,
+        RESERVED_NAMES,
+        Mrliou_MRL_is_own_authority,
+        Mrliou_MRL_normalize_authority,
+    )
+
+__all__ = [
+    "AUTHORITY_ALIASES",
+    "FOREIGN_MARKED",
+    "MRL_OWNED",
+    "ORIGIN_KEYS",
+    "ORIGIN_SIGNATURE",
+    "PROVENANCE_STATES",
+    "RESERVED_NAMES",
+    "UNSIGNED_PENDING",
+    "Mrliou_MRL_classify_source",
+    "Mrliou_MRL_is_foreign",
+    "Mrliou_MRL_is_own_authority",
+    "Mrliou_MRL_locate",
+    "Mrliou_MRL_normalize_authority",
+    "Mrliou_MRL_source_signature",
+    "Mrliou_MRL_source_signatures",
+]
 
 #: 來源列可能攜帶權威簽名的鍵名，母體鍵名（origin）排在前面優先採用。
 ORIGIN_KEYS: Tuple[str, ...] = ("origin", "origin_signature")
@@ -53,7 +87,14 @@ def Mrliou_MRL_source_signatures(row: Mapping[str, Any]) -> Tuple[str, ...]:
     origin_signature（例如合併過或遷移到一半的列），兩者有可能互相矛盾。
     只看第一個會讓 origin="MrLiouWord" 掩護掉另一欄的他方簽名，LAW-0 就被繞過。
 
-    空字串與僅含空白的值一律視為沒有簽名，不當成有效權威。
+    空字串、僅含空白、以及摺疊後一個英數字元都不剩的值（例如 "___"、"--"）
+    一律視為**沒有簽名**，不當成有效權威。
+
+    最後那一類刻意不判成他方：`origin="___"` 裡沒有任何人的名字，說它是
+    「別人的簽名」就是在無憑據下指控第三方，而那會直接把一列資料送進
+    HISTORICAL_AUTHORITY_AUDIT 的追償流程。依喚醒規則，看不到的歸
+    「待找回」，所以它歸 unsigned_pending。注意摺疊只去掉符號——中日韓文字
+    的 isalnum() 為真，所以中文簽名不會被誤殺。
     """
     found = []
     for key in ORIGIN_KEYS:
@@ -61,7 +102,7 @@ def Mrliou_MRL_source_signatures(row: Mapping[str, Any]) -> Tuple[str, ...]:
         if value is None:
             continue
         text = str(value).strip()
-        if text:
+        if text and any(ch.isalnum() for ch in text):
             found.append(text)
     return tuple(found)
 
@@ -79,15 +120,21 @@ def Mrliou_MRL_source_signature(row: Mapping[str, Any]) -> Optional[str]:
 def Mrliou_MRL_classify_source(row: Mapping[str, Any]) -> str:
     """判定來源列的出身，回傳 PROVENANCE_STATES 之一。
 
-    檢查所有已填寫的簽名欄位，**任何一個**不是 MrLiouWord 就判為
-    foreign_marked——包含兩欄互相矛盾的情況（例如 origin="MrLiouWord" 搭配
+    檢查所有已填寫的簽名欄位，**任何一個**不屬於本權威就判為 foreign_marked
+    ——包含兩欄互相矛盾的情況（例如 origin="MrLiouWord" 搭配
     origin_signature="SomeOtherVendor"）。矛盾即他方：寧可擋下來讓人確認，
     也不要讓一半是他方的列被當成 MRL 自有。
+
+    「屬於本權威」走 Mrliou_MRL_Identity_v1 的別名集，不是字面相等：
+    mrliou = mrliouword = MRL = Mr.liou 是同一個權威（依
+    .mrliou/authority-lock.json 的 reserved_names）。改成字面相等會讓簽
+    `MrLiou` 或 `MRL` 的自有資料被判他方並被拒絕轉換——那是把權威自己的
+    資料擋在門外，與放行他方資料一樣是權威錯位。
     """
     signatures = Mrliou_MRL_source_signatures(row)
     if not signatures:
         return UNSIGNED_PENDING
-    if all(signature == ORIGIN_SIGNATURE for signature in signatures):
+    if all(Mrliou_MRL_is_own_authority(sig) for sig in signatures):
         return MRL_OWNED
     return FOREIGN_MARKED
 

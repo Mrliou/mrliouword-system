@@ -1,0 +1,100 @@
+mrl_registry_entry: true
+
+id: "mrl_MRL_SystemB_CommerceLayer_v1.0.0"
+type: "SystemLayer"
+status: "rates-pending"
+root: "MrlCore"
+scope:
+  mainline: "MrlCore.Mainline"
+
+origin_signature: "MrLiouWord"
+created_at: "2026-10-15"
+registry_note: >
+  商業模式的權威邊界層。先登錄再取得 MRL_ 前綴，符合
+  registry/rules/naming_rules_v1.yaml 的 Registry Gate。
+
+# .mrliou/authority-lock.json invariant 要求的四欄宣告
+artifact_owner: "Mr.liou"
+source_repo: "dofaromg/mrliouword-system"
+projection_role: "commerce_authority_boundary"
+
+path: "modules/MRL_SystemB_CommerceLayer"
+network_phase: "PHASE1_PRIVATE_LAN_ONLY"
+depends_on:
+  - "mrl_MRL_SystemA_ParticleLayer_v0.1.0"
+
+intent:
+  - "不賣本體：種子、粒子語言、語料著作與來源歸屬不隨授權移轉"
+  - "授權的是載體承載本體的權利，並產出可稽核的證據"
+  - "不把語場切成 SaaS 功能分層"
+
+authority_aliases:
+  note: >
+    mrliou = mrliouword = MRL = Mr.liou，同一個權威。別名集取自
+    .mrliou/authority-lock.json 的 reserved_names 與 authority / origin 兩段；
+    正規形為 MrLiouWord。辨識放寬，LAW-0 不放寬。
+  canonical: "MrLiouWord"
+  reserved_names:
+    - "Mr.liou"
+    - "MrLiouWord"
+    - "mrliouword"
+    - "Mrliou"
+    - "MRL"
+    - "MRL_"
+    - "dofaromg"
+
+commerce_axes:
+  - axis: "corpus_license"
+    hv: "本體語料授權"
+    units: ["seat_year", "corpus_scope"]
+    phase: "PHASE1_PRIVATE_LAN_ONLY"
+  - axis: "particle_sdk"
+    hv: "粒子層／SDK 使用"
+    units: ["particle_conversion", "sdk_call"]
+    phase: "PHASE1_PRIVATE_LAN_ONLY"
+  - axis: "private_deployment"
+    hv: "私有部署（DL580 on-prem）"
+    units: ["deployment_case", "maintenance_year"]
+    phase: "PHASE1_PRIVATE_LAN_ONLY"
+  - axis: "verification_report"
+    hv: "驗證／報告服務"
+    units: ["audit_report"]
+    phase: "PHASE1_PRIVATE_LAN_ONLY"
+
+grant_states:
+  - "mrl_granted"
+  - "foreign_claimed"
+  - "ungranted_pending"
+
+mother_particles:
+  - fx: "fx.meta.origin"
+    hv: "溯源"
+    module: "Mrliou_MRL_License_v1"
+  - fx: "fx.trace.anchor"
+    hv: "錨定"
+    module: "Mrliou_MRL_Metering_v1"
+  - fx: "fx.trace.merkle"
+    hv: "Merkle 驗證"
+    module: "Mrliou_MRL_Commerce_Report_v1"
+
+source_reference:
+  - name: "docs/references/licenses/chatserver-license.txt"
+    note: "GRANT OF LICENSE 第 1 條（保留 origin_signature）即本層檢查的條文"
+  - name: "docs/governance/HISTORICAL_AUTHORITY_AUDIT_v1.0.md"
+    note: "foreign_claimed 的處置走既有五層追償台帳，不另造流程"
+  - name: "MRL_STARTUP_WAKE.md"
+    note: "EXTERNAL_COMMERCIAL 對外起草立場，不另立一套"
+
+deployment_boundary:
+  - "純 Python 函式庫；不開 port"
+  - "不建立或變更資料庫表（LAW-1 不動）"
+  - "計量帳本只 append，不重寫（LAW-2）"
+
+rates:
+  file: "modules/MRL_SystemB_CommerceLayer/Mrliou_MRL_rate_card_v1.json"
+  status: "rates_pending_rights_holder"
+  note: "每筆單價留 null；定價由權利人填。未填前不得以 0 計價。"
+
+pending:
+  - "私有部署軸的 DL580 PostgreSQL schema 與連線程式：待建"
+  - "Phase 2 對外映射：待 registry 的 network_phase 改變才成立"
