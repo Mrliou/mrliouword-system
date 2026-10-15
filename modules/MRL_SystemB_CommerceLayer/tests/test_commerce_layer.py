@@ -6,10 +6,12 @@ origin_signature: MrLiouWord
 """
 
 import json
+import math
 import sys
 import tempfile
 import unittest
 from copy import deepcopy
+from decimal import Decimal
 from pathlib import Path
 
 MODULE_DIR = Path(__file__).resolve().parents[1]
@@ -22,9 +24,16 @@ from modules.MRL_SystemA_ParticleLayer import (  # noqa: E402
     PersonaAdapter,
     Mrliou_MRL_classify_source,
     Mrliou_MRL_normalize_authority,
+    Mrliou_MRL_source_signature_values,
 )
 from modules.MRL_SystemB_CommerceLayer import (  # noqa: E402
     AXIS_CORPUS,
+    MrliouMRLRateCardAuthorityError,
+    Mrliou_MRL_invalid_usage,
+    Mrliou_MRL_rate,
+    Mrliou_MRL_rate_card_currency,
+    Mrliou_MRL_sum_usage,
+    Mrliou_MRL_usage_problem,
     AXIS_PARTICLE,
     AXIS_VERIFICATION,
     COMMERCE_AXES,
@@ -72,6 +81,15 @@ FOREIGN_SPELLINGS = (
     "MrLiouWordFake",
     "mrliouword-system",
 )
+
+
+def _priced_card(rate="0.5", currency="TWD", axis=AXIS_PARTICLE,
+                 unit="sdk_call"):
+    """複製一份出貨費率表，填上單價與幣別——計價的兩個前提都要齊。"""
+    card = deepcopy(Mrliou_MRL_load_rate_card())
+    card["currency"] = currency
+    card["rates"][axis][unit] = rate
+    return card
 
 
 def _grant(**overrides):
@@ -134,6 +152,43 @@ class AuthorityAliasEquivalence(unittest.TestCase):
             row = {"id": "c", "origin": origin, "origin_signature": signature}
             self.assertEqual(Mrliou_MRL_classify_grant(row), FOREIGN_CLAIMED)
             self.assertEqual(Mrliou_MRL_classify_source(row), "foreign_marked")
+
+    def test_structured_values_never_fold_into_an_alias(self):
+        """摺疊會去掉標點，所以 str(["MRL"]) 曾摺成 "mrl" 而取得 MRL 權威。
+
+        這是權威洗白，方向與未簽名資料被蓋章完全相同。只有真正的 str 能進入
+        別名比對；結構化或畸形的值欄位裡有東西，但不是本權威的簽名。
+        """
+        for value in (["MRL"], ["MrLiouWord"], ["M", "R", "L"], ("MRL",),
+                      {"MRL"}, {"a": "MRL"}, 0, 123, 1.5, b"MRL"):
+            row = {"id": "s", "origin": value}
+            self.assertIsNone(
+                Mrliou_MRL_normalize_authority(value), repr(value)
+            )
+            self.assertEqual(
+                Mrliou_MRL_classify_grant(row), FOREIGN_CLAIMED, repr(value)
+            )
+            self.assertEqual(
+                Mrliou_MRL_classify_source(row), "foreign_marked", repr(value)
+            )
+            self.assertFalse(
+                Mrliou_MRL_check_signature_retention(row)["retained"],
+                repr(value),
+            )
+            with self.assertRaises(OriginSignatureError, msg=repr(value)):
+                MemoryAdapter().to_unified(row)
+
+    def test_both_layers_classify_through_the_same_values(self):
+        """License 與 Provenance 必須對同一列給同一個判定，否則一層擋了
+        另一層會漏。"""
+        pairs = [(MRL_GRANTED, "mrl_owned"), (FOREIGN_CLAIMED, "foreign_marked"),
+                 (UNGRANTED_PENDING, "unsigned_pending")]
+        rows = [{"id": "g", "origin": "MRL"},
+                {"id": "f", "origin": ["MRL"]},
+                {"id": "u"}]
+        for row, (grant_state, source_state) in zip(rows, pairs):
+            self.assertEqual(Mrliou_MRL_classify_grant(row), grant_state)
+            self.assertEqual(Mrliou_MRL_classify_source(row), source_state)
 
     def test_unsigned_stays_pending_and_is_not_upgraded(self):
         row = {"id": "u", "payload": {"x": 1}}
@@ -281,6 +336,33 @@ class MeteringContract(unittest.TestCase):
                     ledger, "acme", AXIS_PARTICLE, "sdk_call", -1, ENV_SANDBOX
                 )
 
+    def test_non_finite_and_non_numeric_quantities_never_reach_the_ledger(self):
+        """NaN / ±Inf 通得過 `qty < 0`，但 json 會寫成 NaN / Infinity——
+
+        那不是合法 JSON，別的解析器讀不回來，而這是 append-only 的帳本：
+        寫壞的那一行永遠在裡面。
+        """
+        self.assertFalse(float("nan") < 0)  # 舊的負數檢查擋不住它
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "usage.jsonl"
+            for qty in (float("nan"), float("inf"), float("-inf"),
+                        "5", True, None, [1]):
+                with self.assertRaises(MrliouMRLMeterError, msg=repr(qty)):
+                    Mrliou_MRL_record_usage(
+                        ledger, "acme", AXIS_PARTICLE, "sdk_call", qty,
+                        ENV_SANDBOX,
+                    )
+            self.assertFalse(ledger.exists())
+            # 合法的值照寫，且寫出來是能讀回來的合法 JSON
+            Mrliou_MRL_record_usage(
+                ledger, "acme", AXIS_PARTICLE, "sdk_call", 2.5, ENV_SANDBOX
+            )
+            text = ledger.read_text(encoding="utf-8")
+            self.assertNotIn("NaN", text)
+            self.assertNotIn("Infinity", text)
+            self.assertEqual(json.loads(text)["qty"], 2.5)
+            self.assertTrue(math.isfinite(json.loads(text)["qty"]))
+
     def test_malformed_line_is_surfaced_not_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
             ledger = Path(tmp) / "usage.jsonl"
@@ -330,9 +412,51 @@ class UnpricedNeverZero(unittest.TestCase):
                 Mrliou_MRL_price(card, AXIS_PARTICLE, "sdk_call", 1)
 
     def test_filled_rate_prices_correctly(self):
-        card = deepcopy(self.card)
-        card["rates"][AXIS_PARTICLE]["sdk_call"] = 0.25
-        self.assertEqual(Mrliou_MRL_price(card, AXIS_PARTICLE, "sdk_call", 40), 10.0)
+        card = _priced_card(rate="0.25")
+        self.assertEqual(
+            Mrliou_MRL_price(card, AXIS_PARTICLE, "sdk_call", 40), Decimal("10.00")
+        )
+
+    def test_currency_is_required_before_any_price(self):
+        """單價填了但幣別沒填，仍然不得輸出金額。"""
+        card = _priced_card(currency=None)
+        with self.assertRaises(MrliouMRLUnpricedUnitError):
+            Mrliou_MRL_rate_card_currency(card)
+        with self.assertRaises(MrliouMRLUnpricedUnitError):
+            Mrliou_MRL_price(card, AXIS_PARTICLE, "sdk_call", 10)
+        for blank in ("", "   ", 123, []):
+            with self.assertRaises(MrliouMRLUnpricedUnitError, msg=repr(blank)):
+                Mrliou_MRL_rate_card_currency(_priced_card(currency=blank))
+
+    def test_rate_card_authority_checked_at_the_point_of_pricing(self):
+        """只在 load 檢查簽名是不夠的——呼叫端可以自己湊一個 dict 傳進來。"""
+        card = _priced_card()
+        card["origin_signature"] = "SomeOtherVendor"
+        with self.assertRaises(MrliouMRLRateCardAuthorityError):
+            Mrliou_MRL_rate(card, AXIS_PARTICLE, "sdk_call")
+        with self.assertRaises(MrliouMRLRateCardAuthorityError):
+            Mrliou_MRL_price(card, AXIS_PARTICLE, "sdk_call", 1)
+        for spelling in AUTHORITY_SPELLINGS:  # 別名簽的費率表仍可用
+            ok = _priced_card()
+            ok["origin_signature"] = spelling
+            self.assertEqual(
+                Mrliou_MRL_rate(ok, AXIS_PARTICLE, "sdk_call"), Decimal("0.5")
+            )
+
+    def test_money_uses_exact_decimal_not_binary_float(self):
+        """0.1 × 3 在 float 下是 0.30000000000000004；金額不得長這樣。"""
+        self.assertNotEqual(0.1 * 3, 0.3)
+        card = _priced_card(rate="0.1")
+        self.assertEqual(
+            Mrliou_MRL_price(card, AXIS_PARTICLE, "sdk_call", 3), Decimal("0.3")
+        )
+        report = Mrliou_MRL_build_commerce_report(
+            [{"id": "a", "origin": "MRL"}], ENV_SANDBOX,
+            usage_records=[{"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 3}],
+            rate_card=card,
+        )
+        self.assertEqual(report["amount_total"], "0.3")
+        self.assertEqual(report["currency"], "TWD")
 
     def test_foreign_signed_rate_card_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -424,47 +548,115 @@ class ReportHonesty(unittest.TestCase):
             ],
         )
         self.assertEqual(report["usage"], [
-            {"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 15.0}
+            {"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": "15"}
         ])
         self.assertIsNone(report["amount_total"])
+        self.assertIsNone(report["currency"])
         self.assertFalse(report["priced"])
         self.assertEqual(report["unpriced"], [])
 
     def test_unpriced_units_are_listed_and_total_is_not_zeroed(self):
-        report = Mrliou_MRL_build_commerce_report(
-            [{"id": "a", "origin": "MRL"}],
-            ENV_SANDBOX,
-            usage_records=[{"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 10}],
-            rate_card=Mrliou_MRL_load_rate_card(),
-        )
-        self.assertEqual(
-            report["unpriced"],
-            [{"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 10.0}],
-        )
-        self.assertIsNone(report["amount_total"])
-        self.assertFalse(report["priced"])
-        self.assertIn("無法計價", Mrliou_MRL_format_commerce_report(report))
-
-    def test_priced_usage_totals(self):
         card = deepcopy(Mrliou_MRL_load_rate_card())
-        card["rates"][AXIS_PARTICLE]["sdk_call"] = 0.5
+        card["currency"] = "TWD"  # 幣別有了，但單價仍未填
         report = Mrliou_MRL_build_commerce_report(
             [{"id": "a", "origin": "MRL"}],
             ENV_SANDBOX,
             usage_records=[{"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 10}],
             rate_card=card,
         )
-        self.assertEqual(report["amount_total"], 5.0)
+        self.assertEqual(
+            report["unpriced"],
+            [{"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": "10"}],
+        )
+        self.assertIsNone(report["amount_total"])
+        self.assertFalse(report["priced"])
+        self.assertIn("無法計價", Mrliou_MRL_format_commerce_report(report))
+
+    def test_priced_usage_totals(self):
+        report = Mrliou_MRL_build_commerce_report(
+            [{"id": "a", "origin": "MRL"}],
+            ENV_SANDBOX,
+            usage_records=[{"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 10}],
+            rate_card=_priced_card(),
+        )
+        self.assertEqual(report["amount_total"], "5.0")
+        self.assertEqual(report["currency"], "TWD")
         self.assertTrue(report["priced"])
         self.assertEqual(report["unpriced"], [])
+        self.assertIn("合計 5.0 TWD", Mrliou_MRL_format_commerce_report(report))
 
-    def test_unknown_axis_in_ledger_is_reported(self):
-        report = Mrliou_MRL_build_commerce_report(
-            [], ENV_SANDBOX,
-            usage_records=[{"axis": "saas_tier", "unit": "seat", "qty": 1}],
+    def test_report_never_prices_with_an_unusable_rate_card(self):
+        """他方簽名或沒有幣別的費率表：整張不採用，且報告不得丟例外。"""
+        foreign = _priced_card()
+        foreign["origin_signature"] = "SomeOtherVendor"
+        for card, reason in (
+            (foreign, "MrliouMRLRateCardAuthorityError"),
+            (_priced_card(currency=None), "MrliouMRLUnpricedUnitError"),
+        ):
+            report = Mrliou_MRL_build_commerce_report(
+                [{"id": "a", "origin": "MRL"}], ENV_SANDBOX,
+                usage_records=[
+                    {"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 10}
+                ],
+                rate_card=card,
+            )
+            self.assertEqual(report["status"], "FAIL", reason)
+            self.assertFalse(report["priced"])
+            self.assertIsNone(report["amount_total"])
+            self.assertIn(
+                reason, [f["reason"] for f in report["failures"]]
+            )
+            self.assertEqual(
+                [f["located"] for f in report["failures"]], ["rate_card"]
+            )
+
+    def test_unknown_axis_or_unit_in_ledger_is_reported_in_both_modes(self):
+        """已知軸 + 未知單位曾讓『永不丟例外』的報告直接炸掉。"""
+        for records in (
+            [{"axis": "saas_tier", "unit": "seat", "qty": 1}],
+            [{"axis": AXIS_PARTICLE, "unit": "bogus_unit", "qty": 1}],
+        ):
+            for card in (None, _priced_card()):
+                report = Mrliou_MRL_build_commerce_report(
+                    [], ENV_SANDBOX, usage_records=records, rate_card=card
+                )
+                self.assertEqual(report["status"], "FAIL", str(records))
+                self.assertIn(
+                    "InvalidUsageRecord",
+                    [f["reason"] for f in report["failures"]],
+                )
+                self.assertEqual(report["usage"], [])
+
+    def test_invalid_quantities_are_surfaced_not_dropped(self):
+        """qty 缺漏、字串或 bool 的列不得被靜默跳過後報 PASS。"""
+        for qty in (None, "10", True, [1]):
+            record = {"axis": AXIS_PARTICLE, "unit": "sdk_call"}
+            if qty is not None:
+                record["qty"] = qty
+            report = Mrliou_MRL_build_commerce_report(
+                [], ENV_SANDBOX, usage_records=[record]
+            )
+            self.assertEqual(report["status"], "FAIL", repr(qty))
+            self.assertEqual(report["usage"], [], repr(qty))
+            self.assertIn(
+                "InvalidUsageRecord",
+                [f["reason"] for f in report["failures"]],
+            )
+        self.assertIsNotNone(
+            Mrliou_MRL_usage_problem(
+                {"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": "10"}
+            )
+        )
+        self.assertIsNone(
+            Mrliou_MRL_usage_problem(
+                {"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 10}
+            )
         )
         self.assertEqual(
-            [f["reason"] for f in report["failures"]], ["UnknownCommerceAxis"]
+            Mrliou_MRL_sum_usage(
+                [{"axis": AXIS_PARTICLE, "unit": "sdk_call", "qty": 10}]
+            ),
+            {(AXIS_PARTICLE, "sdk_call"): Decimal(10)},
         )
 
     def test_malformed_usage_generator_is_not_silently_dropped(self):
@@ -476,9 +668,13 @@ class ReportHonesty(unittest.TestCase):
             [], ENV_SANDBOX, usage_records=records()
         )
         self.assertEqual(
-            [f["reason"] for f in report["failures"]], ["MalformedUsageRecord"]
+            [f["reason"] for f in report["failures"]], ["InvalidUsageRecord"]
         )
         self.assertEqual(report["failures"][0]["located"], "usage.jsonl:2")
+        self.assertEqual(
+            Mrliou_MRL_invalid_usage([{"malformed": True, "detail": "x"}]),
+            [{"located": "usage-1", "detail": "x"}],
+        )
 
 
 class MotherCorpusAcceptance(unittest.TestCase):

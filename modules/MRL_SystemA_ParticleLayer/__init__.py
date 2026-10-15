@@ -35,6 +35,7 @@ from .Mrliou_MRL_Provenance_v1 import (
     Mrliou_MRL_is_foreign,
     Mrliou_MRL_locate,
     Mrliou_MRL_source_signature,
+    Mrliou_MRL_source_signature_values,
     Mrliou_MRL_source_signatures,
 )
 from .Mrliou_MRL_Law2_Report_v1 import (
@@ -80,6 +81,7 @@ __all__ = [
     "Mrliou_MRL_locate",
     "Mrliou_MRL_normalize_authority",
     "Mrliou_MRL_source_signature",
+    "Mrliou_MRL_source_signature_values",
     "Mrliou_MRL_source_signatures",
     "ORIGIN_KEYS",
     "ORIGIN_SIGNATURE",

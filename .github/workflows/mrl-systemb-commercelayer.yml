@@ -7,12 +7,18 @@ on:
       # 本層依賴 SystemA 的 Identity / Provenance，所以 SystemA 一動就要重驗
       - 'modules/MRL_SystemA_ParticleLayer/**'
       - 'registry/patterns/mrl_MRL_System*.yaml'
+      # 階段門在執行期從這個檔讀 network_phase，所以它一動就要跑階段測試：
+      # 改 Phase 1→2、改鍵名格式、或任何讓解析失敗的編輯，都必須被這裡攔到。
+      - 'registry/system_registry.yaml'
       - '.github/workflows/mrl-systemb-commercelayer.yml'
   pull_request:
     paths:
       - 'modules/MRL_SystemB_CommerceLayer/**'
       - 'modules/MRL_SystemA_ParticleLayer/**'
       - 'registry/patterns/mrl_MRL_System*.yaml'
+      # 階段門在執行期從這個檔讀 network_phase，所以它一動就要跑階段測試：
+      # 改 Phase 1→2、改鍵名格式、或任何讓解析失敗的編輯，都必須被這裡攔到。
+      - 'registry/system_registry.yaml'
       - '.github/workflows/mrl-systemb-commercelayer.yml'
 
 jobs:

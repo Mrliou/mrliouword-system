@@ -73,8 +73,13 @@ def Mrliou_MRL_fold_authority(value: Any) -> str:
     這樣 `Mr.liou`、`MR.liou`、`Mr. Liou`、`MrLiou` 全部摺成 `mrliou`，
     `MRL_` 摺成 `mrl`。repo 內這些寫法都實際出現過（例如 MRL_STARTUP_WAKE.md
     用 `MR.liou`，docs 的頁尾用 `Mr. Liou`），不是假想的輸入。
+
+    非字串一律摺成空字串。原因見 Mrliou_MRL_normalize_authority：摺疊會去掉
+    標點，所以 `str(["MRL"])` 會變成 `"mrl"`——那會讓結構化的值取得權威。
     """
-    return "".join(ch for ch in str(value).lower() if ch.isalnum())
+    if not isinstance(value, str):
+        return ""
+    return "".join(ch for ch in value.lower() if ch.isalnum())
 
 
 #: 正規化後的別名集。比對用這個，且必須是完全相等。
@@ -89,8 +94,14 @@ def Mrliou_MRL_normalize_authority(value: Any) -> Optional[str]:
     空值、空字串、只有空白、以及摺疊後為空（例如 "___"）一律回 None——
     那是「沒有簽名」，不是「簽名是自己」。沒有簽名的列由呼叫端歸
     unsigned_pending（待找回），不得逕自升格為自有。
+
+    **只有真正的 `str` 能進入別名比對。** 摺疊會去掉所有非英數字元，所以若
+    先用 str() 轉換再摺，`["MRL"]` → `"['MRL']"` → `"mrl"` 就會命中別名，
+    `["MrLiouWord"]`、`("MRL",)`、`{"MRL"}` 同理——結構化或畸形的值就這樣
+    取得了 MRL 權威。那是權威洗白，方向與未簽名資料被蓋章完全相同。
+    非字串在這裡回 None，由呼叫端依「欄位有東西但不是本權威」判他方。
     """
-    if value is None:
+    if not isinstance(value, str):
         return None
     folded = Mrliou_MRL_fold_authority(value)
     if not folded:

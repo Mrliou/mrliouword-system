@@ -53,6 +53,7 @@ try:  # 套件內匯入（從母體 import modules.MRL_SystemB_CommerceLayer 時
     )
     from ..MRL_SystemA_ParticleLayer.Mrliou_MRL_Provenance_v1 import (
         Mrliou_MRL_locate,
+        Mrliou_MRL_source_signature_values,
         Mrliou_MRL_source_signatures,
     )
 except ImportError:  # 相容 cd 進本目錄後直接 import
@@ -69,6 +70,7 @@ except ImportError:  # 相容 cd 進本目錄後直接 import
     )
     from Mrliou_MRL_Provenance_v1 import (  # type: ignore[no-redef]
         Mrliou_MRL_locate,
+        Mrliou_MRL_source_signature_values,
         Mrliou_MRL_source_signatures,
     )
 
@@ -227,15 +229,19 @@ class MrliouMRLGrant:
 def Mrliou_MRL_classify_grant(record: Mapping[str, Any]) -> str:
     """判定一筆授權紀錄的權威歸屬，回傳 GRANT_STATES 之一。
 
-    與 Mrliou_MRL_classify_source 完全同構：讀**所有**簽名欄位（ORIGIN_KEYS），
-    任何一個不屬於本權威就判 foreign_claimed——包含兩欄互相矛盾的情況。
-    矛盾即他方。沒有任何簽名欄位則是 ungranted_pending（待補，不是不存在，
-    也不得逕自升格為已授權）。
+    與 Mrliou_MRL_classify_source 完全同構：讀**所有**簽名欄位（ORIGIN_KEYS）的
+    **原值**，任何一個不屬於本權威就判 foreign_claimed——包含兩欄互相矛盾的
+    情況。矛盾即他方。沒有任何簽名欄位則是 ungranted_pending（待補，不是
+    不存在，也不得逕自升格為已授權）。
+
+    用原值而不是 str() 後的字串：摺疊會去掉標點，所以 str(["MRL"]) 摺完就是
+    "mrl"，一個 list 就取得了授權。兩層必須用同一支判定函式，否則
+    Provenance 擋下的列會從 License 這邊漏進來——那正是本次修掉的漏洞。
     """
-    signatures = Mrliou_MRL_source_signatures(record)
-    if not signatures:
+    values = Mrliou_MRL_source_signature_values(record)
+    if not values:
         return UNGRANTED_PENDING
-    if all(Mrliou_MRL_is_own_authority(sig) for sig in signatures):
+    if all(Mrliou_MRL_is_own_authority(value) for value in values):
         return MRL_GRANTED
     return FOREIGN_CLAIMED
 

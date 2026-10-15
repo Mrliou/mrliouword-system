@@ -24,6 +24,14 @@ particle: fx.trace.anchor  (錨定 / 創建檢查點, dom=trace, act=checkpoint)
 
 cost_tracker.py 本身**不改**（LAW-2 不覆蓋既有合約）。這裡是另記一本。
 
+金額一律用 Decimal，不用二進位浮點：0.1 × 3 在 float 下是
+0.30000000000000004，把那個數字當成商業金額呈現就是在說謊。費率從費率表讀出
+時即轉成 Decimal（經由 str()，避免先變成 float 就已經失真），乘法與加總全程
+在 Decimal 下進行，報告輸出精確的十進位字串。
+
+四捨五入位數與方式刻意**不訂**：那和費率一樣是權利人的商業決定，程式不代訂。
+報告給的是精確值，要怎麼進位由費率表日後宣告。
+
 費率不在程式裡：`Mrliou_MRL_rate_card_v1.json` 由權利人填。定價是權利人的
 決定，猜一個數字寫進 repo 就是把推測當成事實。
 """
@@ -31,7 +39,9 @@ cost_tracker.py 本身**不改**（LAW-2 不覆蓋既有合約）。這裡是另
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple
 
@@ -89,6 +99,64 @@ class MrliouMRLMeterError(MrliouMRLCommerceError):
     """計量輸入本身不合法（軸別、單位、數量或簽名）。"""
 
 
+class MrliouMRLRateCardAuthorityError(MrliouMRLMeterError):
+    """費率表的簽名不屬於本權威。
+
+    費率表是合約文件的一部分。讓他方簽名的費率表能用來對帳，等於讓第三方替
+    本權威定價——那和讓他方簽名的資料取得 MRL 權威是同一類錯位。
+    """
+
+
+def Mrliou_MRL_assert_rate_card_authority(rate_card: Mapping[str, Any]) -> None:
+    """費率表的 origin_signature 必須屬於本權威，否則丟
+    MrliouMRLRateCardAuthorityError。
+
+    這支由 Mrliou_MRL_load_rate_card **和** Mrliou_MRL_rate 兩邊都呼叫。
+    只在 load 檢查是不夠的：呼叫端完全可以自己 json.loads 或直接湊一個 dict
+    傳進 Mrliou_MRL_rate / 報告 API，於是他方簽名的費率就被採用了。
+    把檢查放在真正取價的那一步，才沒有繞道。
+    """
+    signature = rate_card.get("origin_signature")
+    if Mrliou_MRL_normalize_authority(signature) is None:
+        raise MrliouMRLRateCardAuthorityError(
+            f"rate card origin_signature {signature!r} does not belong to "
+            "this authority"
+        )
+
+
+def Mrliou_MRL_rate_card_currency(rate_card: Mapping[str, Any]) -> str:
+    """回傳費率表宣告的幣別；未宣告或空白則丟 MrliouMRLUnpricedUnitError。
+
+    單價填了但幣別沒填，報告就會印出「合計 5.0」這種沒有幣別的數字——
+    那在商業上是無法解讀的，和「未填價以 0 計」是同一類毛病：一個看起來
+    確定、實際上無法據以請款的數字。所以幣別與單價一樣是計價的前提。
+    """
+    currency = rate_card.get("currency")
+    if not isinstance(currency, str) or not currency.strip():
+        raise MrliouMRLUnpricedUnitError(
+            f"rate card currency is not set ({currency!r}); "
+            "幣別未填前不得輸出金額"
+        )
+    return currency.strip()
+
+
+def Mrliou_MRL_to_decimal(value: Any, what: str) -> Decimal:
+    """把費率表或帳本裡的數字轉成 Decimal，經由 str() 以免先失真。
+
+    bool 不算數字（True 是 int 的子類，但 True 當金額沒有意義）；
+    NaN 與 ±Inf 一律拒絕——它們能通過大小比較，卻會汙染整本帳。
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float, str, Decimal)):
+        raise MrliouMRLMeterError(f"{what} is not a number: {value!r}")
+    try:
+        result = Decimal(str(value))
+    except (InvalidOperation, ValueError) as exc:
+        raise MrliouMRLMeterError(f"{what} is not a number: {value!r}") from exc
+    if not result.is_finite():
+        raise MrliouMRLMeterError(f"{what} must be finite, got {value!r}")
+    return result
+
+
 def Mrliou_MRL_validate_unit(axis: str, unit: str) -> None:
     """軸別與單位必須都是已定義的，否則丟 MrliouMRLMeterError。"""
     if axis not in COMMERCE_AXES:
@@ -121,6 +189,12 @@ def Mrliou_MRL_record_usage(
     Mrliou_MRL_validate_unit(axis, unit)
     if not str(grantee).strip():
         raise MrliouMRLMeterError("grantee must not be empty")
+    if isinstance(qty, bool) or not isinstance(qty, (int, float)):
+        raise MrliouMRLMeterError(f"qty must be a number, got {qty!r}")
+    if not math.isfinite(qty):
+        # json.dumps 會把這些寫成 NaN / Infinity——那不是合法 JSON，別的解析器
+        # 讀不回來，而這是 append-only 的帳本：寫壞的那一行永遠在裡面。
+        raise MrliouMRLMeterError(f"qty must be finite, got {qty!r}")
     if qty < 0:
         raise MrliouMRLMeterError(f"qty must not be negative, got {qty!r}")
     env = str(environment).strip()
@@ -148,7 +222,11 @@ def Mrliou_MRL_record_usage(
     path = Path(ledger_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+        # allow_nan=False 是第二道防線：萬一上面的檢查被繞過，寧可寫入失敗
+        # 也不要讓一行非法 JSON 永久留在帳本裡。
+        handle.write(
+            json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n"
+        )
     return record
 
 
@@ -193,22 +271,31 @@ def Mrliou_MRL_load_rate_card(path: Any = None) -> Dict[str, Any]:
     """
     card_path = Path(path) if path else Path(__file__).with_name(DEFAULT_RATE_CARD)
     card = json.loads(card_path.read_text(encoding="utf-8"))
-    signature = card.get("origin_signature")
-    if Mrliou_MRL_normalize_authority(signature) is None:
-        raise MrliouMRLMeterError(
-            f"rate card {card_path.name} origin_signature {signature!r} "
-            "does not belong to this authority"
-        )
+    try:
+        Mrliou_MRL_assert_rate_card_authority(card)
+    except MrliouMRLRateCardAuthorityError as exc:
+        raise MrliouMRLRateCardAuthorityError(
+            f"rate card {card_path.name}: {exc}"
+        ) from exc
     return card
 
 
-def Mrliou_MRL_rate(rate_card: Mapping[str, Any], axis: str, unit: str) -> float:
-    """取出單價。缺漏、null 或非數字一律丟 MrliouMRLUnpricedUnitError。
+def Mrliou_MRL_rate(
+    rate_card: Mapping[str, Any], axis: str, unit: str
+) -> Decimal:
+    """取出單價（Decimal）。缺漏、null 或非數字一律丟
+    MrliouMRLUnpricedUnitError。
 
     這是本模組與 cost_tracker.py 最關鍵的差別：**不回 0**。
     費率表交付時所有單價都是 null（權利人還沒填），所以在填價之前任何對帳
     嘗試都會明確失敗，而不是算出一張全部免費的帳單。
+
+    取價前先驗兩件事，缺一不可：
+    - 費率表的簽名屬於本權威（否則第三方就替本權威定了價）
+    - 費率表宣告了幣別（否則算出來的數字無法據以請款）
     """
+    Mrliou_MRL_assert_rate_card_authority(rate_card)
+    Mrliou_MRL_rate_card_currency(rate_card)
     Mrliou_MRL_validate_unit(axis, unit)
     rates = rate_card.get("rates") or {}
     axis_rates = rates.get(axis)
@@ -222,42 +309,86 @@ def Mrliou_MRL_rate(rate_card: Mapping[str, Any], axis: str, unit: str) -> float
             f"rate for axis={axis!r} unit={unit!r} is not set yet "
             "(費率由權利人填寫；未填前不得以 0 計價)"
         )
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise MrliouMRLUnpricedUnitError(
-            f"rate for axis={axis!r} unit={unit!r} is not a number: {value!r}"
-        )
-    return float(value)
+    try:
+        return Mrliou_MRL_to_decimal(value, f"rate for {axis}/{unit}")
+    except MrliouMRLMeterError as exc:
+        raise MrliouMRLUnpricedUnitError(str(exc)) from exc
 
 
 def Mrliou_MRL_price(
-    rate_card: Mapping[str, Any], axis: str, unit: str, qty: float
-) -> float:
-    """單價 × 數量。單價未填就丟例外，不以 0 計價。"""
-    return Mrliou_MRL_rate(rate_card, axis, unit) * float(qty)
+    rate_card: Mapping[str, Any], axis: str, unit: str, qty: Any
+) -> Decimal:
+    """單價 × 數量，全程 Decimal。單價未填就丟例外，不以 0 計價。"""
+    rate = Mrliou_MRL_rate(rate_card, axis, unit)
+    return rate * Mrliou_MRL_to_decimal(qty, "qty")
+
+
+def Mrliou_MRL_usage_problem(record: Mapping[str, Any]) -> Optional[str]:
+    """這一筆用量紀錄有什麼問題？沒有問題回 None。
+
+    加總時不能靜默跳過有問題的列：一列 qty 寫成字串、或根本沒有 qty，
+    跳過之後報告會說 PASS 而那筆真實用量憑空消失。本模組的合約是
+    「壞行要被看見」，所以問題在這裡被講出來，由報告逐筆列出。
+    """
+    if record.get("malformed"):
+        return str(record.get("detail") or "malformed ledger line")
+    axis = record.get("axis")
+    unit = record.get("unit")
+    if not isinstance(axis, str) or not axis:
+        return f"axis is missing or not a string: {axis!r}"
+    if not isinstance(unit, str) or not unit:
+        return f"unit is missing or not a string: {unit!r}"
+    if axis not in COMMERCE_AXES:
+        return f"unknown commerce axis: {axis!r}"
+    if unit not in AXIS_UNITS[axis]:
+        return f"unit {unit!r} is not valid for axis {axis!r}"
+    qty = record.get("qty")
+    # 讀的規則與 Mrliou_MRL_record_usage 寫的規則一致：qty 必須是 JSON 數字。
+    # 一列 qty 寫成 "10" 不是本模組寫出來的，是帳本被手改過；靜默接受它等於
+    # 替手改的帳本背書。寬鬆讀入與嚴格寫出並存，帳就對不起來。
+    if isinstance(qty, bool) or not isinstance(qty, (int, float)):
+        return f"qty must be a number, got {qty!r}"
+    try:
+        quantity = Mrliou_MRL_to_decimal(qty, "qty")
+    except MrliouMRLMeterError as exc:
+        return str(exc)
+    if quantity < 0:
+        return f"qty must not be negative, got {qty!r}"
+    return None
+
+
+def Mrliou_MRL_invalid_usage(
+    records: Iterable[Mapping[str, Any]],
+) -> List[Dict[str, Any]]:
+    """列出所有有問題的用量紀錄，附上可定位的位置。不丟例外。"""
+    problems: List[Dict[str, Any]] = []
+    for index, record in enumerate(records, start=1):
+        problem = Mrliou_MRL_usage_problem(record)
+        if problem is not None:
+            problems.append(
+                {
+                    "located": record.get("located") or f"usage-{index}",
+                    "detail": problem,
+                }
+            )
+    return problems
 
 
 def Mrliou_MRL_sum_usage(
     records: Iterable[Mapping[str, Any]],
-) -> Dict[Tuple[str, str], float]:
-    """把用量按 (axis, unit) 加總。malformed 的行不計入，但也不被丟掉——
+) -> Dict[Tuple[str, str], Decimal]:
+    """把合法的用量按 (axis, unit) 加總，全程 Decimal。
 
-    呼叫端要知道有壞行，請自己從 Mrliou_MRL_read_usage 的輸出篩
-    `malformed`；或直接看 Mrliou_MRL_Commerce_Report_v1 的報告，
-    它會把壞行逐筆列出來。
+    有問題的列不計入，但**不被丟掉**：用 Mrliou_MRL_invalid_usage 取得它們，
+    或直接看 Mrliou_MRL_Commerce_Report_v1 的報告——它會把每一筆逐一列出。
     """
-    totals: Dict[Tuple[str, str], float] = {}
+    totals: Dict[Tuple[str, str], Decimal] = {}
     for record in records:
-        if record.get("malformed"):
+        if Mrliou_MRL_usage_problem(record) is not None:
             continue
-        axis = record.get("axis")
-        unit = record.get("unit")
-        qty = record.get("qty")
-        if not isinstance(axis, str) or not isinstance(unit, str):
-            continue
-        if isinstance(qty, bool) or not isinstance(qty, (int, float)):
-            continue
-        key = (axis, unit)
-        totals[key] = totals.get(key, 0.0) + float(qty)
+        key = (str(record["axis"]), str(record["unit"]))
+        quantity = Mrliou_MRL_to_decimal(record.get("qty"), "qty")
+        totals[key] = totals.get(key, Decimal(0)) + quantity
     return totals
 
 

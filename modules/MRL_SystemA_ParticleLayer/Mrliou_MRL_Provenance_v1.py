@@ -66,6 +66,7 @@ __all__ = [
     "Mrliou_MRL_locate",
     "Mrliou_MRL_normalize_authority",
     "Mrliou_MRL_source_signature",
+    "Mrliou_MRL_source_signature_values",
     "Mrliou_MRL_source_signatures",
 ]
 
@@ -78,6 +79,32 @@ UNSIGNED_PENDING = "unsigned_pending"
 
 #: 三態的固定順序，報告統計依此輸出，不隨 dict 插入順序漂移。
 PROVENANCE_STATES: Tuple[str, ...] = (MRL_OWNED, FOREIGN_MARKED, UNSIGNED_PENDING)
+
+
+def Mrliou_MRL_source_signature_values(row: Mapping[str, Any]) -> Tuple[Any, ...]:
+    """回傳來源列上所有「有填東西」的簽名欄位的**原值**，依 ORIGIN_KEYS 順序。
+
+    判定權威必須看原值，不能先 str()。摺疊會去掉所有非英數字元，所以
+    str(["MRL"]) == "['MRL']" 摺完就是 "mrl"，命中別名——一個 list 就取得了
+    MRL 權威。Mrliou_MRL_source_signatures 回字串是給顯示與紀錄用的，
+    Mrliou_MRL_classify_source 走這一支。
+
+    「有填東西」的定義：不是 None；若是字串，則去空白後非空且至少有一個
+    英數字元（純符號如 "___" 裡沒有任何人的名字，算沒有簽名）。非字串只要
+    不是 None 就算有填——欄位裡有東西，只是不是本權威的簽名。
+    """
+    found = []
+    for key in ORIGIN_KEYS:
+        value = row.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            text = value.strip()
+            if text and any(ch.isalnum() for ch in text):
+                found.append(value)
+            continue
+        found.append(value)
+    return tuple(found)
 
 
 def Mrliou_MRL_source_signatures(row: Mapping[str, Any]) -> Tuple[str, ...]:
@@ -131,10 +158,10 @@ def Mrliou_MRL_classify_source(row: Mapping[str, Any]) -> str:
     `MrLiou` 或 `MRL` 的自有資料被判他方並被拒絕轉換——那是把權威自己的
     資料擋在門外，與放行他方資料一樣是權威錯位。
     """
-    signatures = Mrliou_MRL_source_signatures(row)
-    if not signatures:
+    values = Mrliou_MRL_source_signature_values(row)
+    if not values:
         return UNSIGNED_PENDING
-    if all(Mrliou_MRL_is_own_authority(sig) for sig in signatures):
+    if all(Mrliou_MRL_is_own_authority(value) for value in values):
         return MRL_OWNED
     return FOREIGN_MARKED
 

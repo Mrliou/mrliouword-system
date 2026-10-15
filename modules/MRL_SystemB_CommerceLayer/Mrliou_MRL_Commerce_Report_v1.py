@@ -19,10 +19,18 @@ particle: fx.trace.merkle  (Merkle 驗證, dom=trace, act=verify)
   自己是在哪個階段下做的判定；階段讀不到就 phase_known=False，
   「不知道」不會被讀成「已開放」。
 - unpriced：有用量但費率未填的 (軸別, 單位)。逐一列出，不以 0 計價充數。
+- currency 與 Decimal 金額：金額以精確的十進位字串輸出並附幣別。沒有幣別就
+  不是可請款的金額；用二進位浮點算出的 0.30000000000000004 也不是。
+- 壞帳逐筆列出：帳本裡軸別、單位或 qty 不合法的列不會被靜默跳過。那種跳過
+  會讓報告說 PASS 而真實用量憑空消失。
+
+本函式**永不丟例外**這件事涵蓋費率表本身：他方簽名的費率表、沒有幣別的費率表、
+帳本裡的未知單位，全部變成報告裡的 failure，而不是把報告炸掉。
 """
 
 from __future__ import annotations
 
+from decimal import Decimal
 from itertools import islice
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
@@ -41,9 +49,13 @@ try:  # 套件內匯入
         Mrliou_MRL_check_signature_retention,
         Mrliou_MRL_read_network_phase,
     )
+    from .Mrliou_MRL_License_v1 import MrliouMRLCommerceError
     from .Mrliou_MRL_Metering_v1 import (
         MrliouMRLUnpricedUnitError,
+        AXIS_UNITS,
+        Mrliou_MRL_invalid_usage,
         Mrliou_MRL_rate,
+        Mrliou_MRL_rate_card_currency,
         Mrliou_MRL_sum_usage,
     )
 except ImportError:  # 相容 cd 進本目錄後直接 import
@@ -65,9 +77,15 @@ except ImportError:  # 相容 cd 進本目錄後直接 import
         Mrliou_MRL_check_signature_retention,
         Mrliou_MRL_read_network_phase,
     )
+    from Mrliou_MRL_License_v1 import (  # type: ignore[no-redef]
+        MrliouMRLCommerceError,
+    )
     from Mrliou_MRL_Metering_v1 import (  # type: ignore[no-redef]
         MrliouMRLUnpricedUnitError,
+        AXIS_UNITS,
+        Mrliou_MRL_invalid_usage,
         Mrliou_MRL_rate,
+        Mrliou_MRL_rate_card_currency,
         Mrliou_MRL_sum_usage,
     )
 
@@ -186,58 +204,81 @@ def Mrliou_MRL_build_commerce_report(
     # 用量與金額：費率未填就列進 unpriced，絕不以 0 計價
     # 先 materialize 一次：usage_records 常常是 Mrliou_MRL_read_usage 的
     # 產生器，走第二遍會是空的，壞行就會被靜默漏掉。
-    records = list(usage_records or [])
+    records = [r for r in (usage_records or []) if isinstance(r, Mapping)]
     usage_totals = Mrliou_MRL_sum_usage(records)
-    malformed_usage = [
-        record.get("located", "usage:?")
-        for record in records
-        if isinstance(record, Mapping) and record.get("malformed")
-    ]
+
+    # 帳本裡軸別／單位／qty 不合法的列：逐筆列出，不靜默跳過。
+    for problem in Mrliou_MRL_invalid_usage(records):
+        failures.append(
+            {
+                "located": problem["located"],
+                "reason": "InvalidUsageRecord",
+                "detail": problem["detail"],
+                "grant_state": None,
+            }
+        )
+
+    # 費率表先整體驗一次：簽名屬於本權威、且宣告了幣別。任一不成立就整張
+    # 費率表不採用——他方定的價與沒有幣別的數字都不是可請款的金額。
+    # 這裡絕不讓例外逃出去：報告的合約是永不丟例外。
+    currency: Optional[str] = None
+    rate_card_usable = rate_card is not None
+    if rate_card is not None:
+        try:
+            currency = Mrliou_MRL_rate_card_currency(rate_card)
+            # 取一次價以觸發簽名檢查，不管結果（單價未填是另一回事）
+            try:
+                Mrliou_MRL_rate(rate_card, COMMERCE_AXES[0],
+                                next(iter(AXIS_UNITS[COMMERCE_AXES[0]])))
+            except MrliouMRLUnpricedUnitError:
+                pass
+        except MrliouMRLCommerceError as exc:
+            rate_card_usable = False
+            currency = None
+            failures.append(
+                {
+                    "located": "rate_card",
+                    "reason": type(exc).__name__,
+                    "detail": str(exc),
+                    "grant_state": None,
+                }
+            )
+
     usage: List[Dict[str, Any]] = []
     unpriced: List[Dict[str, Any]] = []
-    amount_total: Optional[float] = 0.0 if rate_card is not None else None
+    amount_sum: Optional[Decimal] = Decimal(0) if rate_card_usable else None
 
     for axis in COMMERCE_AXES:
         for (rec_axis, unit), qty in sorted(usage_totals.items()):
             if rec_axis != axis:
                 continue
-            entry: Dict[str, Any] = {"axis": axis, "unit": unit, "qty": qty}
-            if rate_card is not None:
+            entry: Dict[str, Any] = {
+                "axis": axis,
+                "unit": unit,
+                "qty": str(qty),
+            }
+            if rate_card_usable and rate_card is not None:
                 try:
                     rate = Mrliou_MRL_rate(rate_card, axis, unit)
-                except MrliouMRLUnpricedUnitError as exc:
+                except MrliouMRLCommerceError as exc:
                     entry["amount"] = None
                     entry["unpriced_reason"] = str(exc)
-                    unpriced.append({"axis": axis, "unit": unit, "qty": qty})
-                    amount_total = None
+                    unpriced.append(
+                        {"axis": axis, "unit": unit, "qty": str(qty)}
+                    )
+                    amount_sum = None
                 else:
-                    entry["rate"] = rate
-                    entry["amount"] = rate * qty
-                    if amount_total is not None:
-                        amount_total += entry["amount"]
+                    entry["rate"] = str(rate)
+                    amount = rate * qty
+                    entry["amount"] = str(amount)
+                    entry["currency"] = currency
+                    if amount_sum is not None:
+                        amount_sum += amount
             usage.append(entry)
 
-    # 軸別出現在帳本裡但不在 COMMERCE_AXES（例如帳本被手改過）
-    for (rec_axis, unit), qty in sorted(usage_totals.items()):
-        if rec_axis not in COMMERCE_AXES:
-            failures.append(
-                {
-                    "located": f"usage:{rec_axis}/{unit}",
-                    "reason": "UnknownCommerceAxis",
-                    "detail": f"axis {rec_axis!r} is not one of {COMMERCE_AXES}",
-                    "grant_state": None,
-                }
-            )
-
-    for located in malformed_usage:
-        failures.append(
-            {
-                "located": located,
-                "reason": "MalformedUsageRecord",
-                "detail": "帳本有無法解析的行；不靜默跳過",
-                "grant_state": None,
-            }
-        )
+    amount_total: Optional[str] = (
+        str(amount_sum) if amount_sum is not None else None
+    )
 
     total_rows_known = not stopped_early
     sampled = stopped_early or (sample_n is not None and total_rows > checked)
@@ -272,7 +313,8 @@ def Mrliou_MRL_build_commerce_report(
         "usage": usage,
         "unpriced": unpriced,
         "amount_total": amount_total,
-        "priced": rate_card is not None and not unpriced,
+        "currency": currency,
+        "priced": rate_card_usable and bool(currency) and not unpriced,
         # 階段門：對外授權在 Phase 1 下不成立
         "network_phase": network_phase,
         "phase_known": phase_known,
@@ -309,9 +351,11 @@ def Mrliou_MRL_format_commerce_report(report: Mapping[str, Any]) -> str:
     )
 
     if report.get("priced"):
-        money = f"合計 {report.get('amount_total')}"
-    elif report.get("amount_total") is None and report.get("unpriced"):
+        money = f"合計 {report.get('amount_total')} {report.get('currency')}"
+    elif report.get("unpriced"):
         money = f"無法計價（{len(report['unpriced'])} 個單位未填費率）"
+    elif report.get("amount_total") is None and report.get("usage"):
+        money = "無法計價（費率表不可採用：簽名或幣別未過）"
     else:
         money = "未提供費率表，只計量不計價"
 
@@ -333,7 +377,10 @@ def Mrliou_MRL_format_commerce_report(report: Mapping[str, Any]) -> str:
 
     for entry in report.get("usage", []):
         amount = entry.get("amount")
-        shown = "未填費率" if amount is None else amount
+        if amount is None:
+            shown = "未填費率"
+        else:
+            shown = f"{amount} {entry.get('currency') or ''}".strip()
         lines.append(
             f"  用量      : {entry['axis']}/{entry['unit']}"
             f" × {entry['qty']} → {shown}"
