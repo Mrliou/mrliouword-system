@@ -21,6 +21,32 @@ artifact_owner: "Mr.liou"
 source_repo: "dofaromg/mrliouword-system"
 projection_role: "mother_runtime_layer"
 
+# 本產出目前實際落在哪（依 authority-lock 的 invariant：
+# "Repository mirrors and organization projections cannot silently become
+#  source_of_truth"——不讓投影悄悄變源頭，就得把位置寫明）
+location:
+  lives_in: "Mrliou/mrliouword-system"        # organization_projection（fork）
+  source_of_truth: "dofaromg/mrliouword-system"
+  in_source_of_truth: false                   # 尚未進入源頭
+  built_on_projection_main: "5c98c91"
+  source_of_truth_main_at_record_time: "8879f67"
+  divergence_at_record_time:
+    projection_behind_source: 262
+    projection_ahead_of_source: 31
+    common_ancestor: "c388f0a (2026-08-11)"
+  port_verified:
+    date: "2026-10-16"
+    method: "本疊淨差異套用到 dofaromg/mrliouword-system 的 main"
+    conflicts: 0
+    tests_on_source_base: "SystemB 48 項 + SystemA 10 項 + 沙盒驗收 33 項，全數通過"
+    environment: "sandbox（容器），不是 DL580 實機"
+  note: >
+    驗收所依據的母體語料在兩邊一致：origin=MrLiouWord、
+    philosophy=怎麼過去，就怎麼回來、20 顆粒子、9 個領域完全相同；
+    唯一差異是源頭的 wake_keys 多一條「夥伴」，不影響本層任何判定。
+    registry/system_registry.yaml、registry/rules/naming_rules_v1.yaml、
+    .mrliou/authority-lock.json 三份規章兩邊位元相同。
+
 path: "modules/MRL_SystemA_ParticleLayer"
 network_phase: "PHASE1_PRIVATE_LAN_ONLY"
 

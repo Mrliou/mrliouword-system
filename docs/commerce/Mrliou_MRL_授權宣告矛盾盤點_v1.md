@@ -130,3 +130,85 @@ proprietary 時製造大量假命中，與 MRL 的授權狀態無關。
 - `chatserver-license.txt` 條文：**已對上原始檔**
 - `.mrliou/authority-lock.json` 的四欄宣告 invariant：**已對上原始檔**
 - 專利說明書與 15 個封存檔的內容：**待找回**（LFS pointer）
+
+---
+
+## 附錄：產出位置與源頭的分歧（2026-10-16 查核）
+
+這份附錄記錄一件在撰寫本文件當下才查清楚的事實，它影響上面每一條結論的**適用範圍**。
+
+### 事實
+
+`.mrliou/authority-lock.json` 宣告：
+
+```
+source_of_truth        : dofaromg/mrliouword-system
+organization_projection: Mrliou/mrliouword-system
+invariant: "Repository mirrors and organization projections cannot silently
+            become source_of_truth."
+```
+
+而本次所有產出（`modules/MRL_SystemB_CommerceLayer/`、
+`Mrliou_MRL_Identity_v1.py`、本文件、`MRL_LICENSE_v1.md`、兩筆 registry 登錄）
+**全部落在 organization_projection 上**，尚未進入 source_of_truth。
+
+GitHub API 顯示 `Mrliou/mrliouword-system` 的 `fork: true`，
+`parent` 與 `source` 皆為 `dofaromg/mrliouword-system`。
+
+兩邊的 `main` 已分歧：
+
+| | SHA | 狀態 |
+|---|---|---|
+| source_of_truth main | `8879f67` | 2026-10-16 |
+| organization_projection main | `5c98c91` | 2026-10-01 |
+| 共同祖先 | `c388f0a` | 2026-08-11 |
+
+**投影落後源頭 262 個 commit，領先 31 個 commit。**
+
+### 這對本文件的結論有什麼影響
+
+上面盤點的授權宣告（`pyproject.toml:11` 的 MIT 等）是在**投影**上查的。
+三份治理規章在兩邊位元相同：
+
+- `registry/system_registry.yaml`
+- `registry/rules/naming_rules_v1.yaml`
+- `.mrliou/authority-lock.json`
+
+母體語料 `core/particle_dict.json` 兩邊僅一處差異：源頭的 `wake_keys` 多一條
+「夥伴」（5 條 vs 4 條）。`origin`、`philosophy`、20 顆粒子、9 個領域完全相同，
+本層任何判定都不受影響。
+
+**授權宣告本身是否兩邊一致，本次未逐檔比對**——那需要在源頭的工作階段重跑一次
+盤點。在那之前，本文件第 2 節的行號以投影為準。
+
+### 移植已驗證
+
+把本疊的淨差異套用到 `dofaromg/mrliouword-system` 的 `main`（`8879f67`）：
+
+- **衝突 0 個**
+- 在源頭底座上重跑：SystemB 48 項、SystemA 10 項回歸、沙盒驗收 33 項，**全數通過**
+- 用的是源頭自己的 `core/particle_dict.json`
+
+環境：sandbox（容器），**不是 DL580 實機結果**。
+
+### 為什麼沒有直接推到源頭
+
+本工作階段掛不上 `dofaromg/mrliouword-system`，錯誤原文：
+
+```
+add_repo: a different repository named "mrliouword-system"
+(mrliou/mrliouword-system) is already attached to this session, and this
+environment checks every repository out at <cwd>/<name>, so the two would
+share one directory. Same-named repositories from different owners can't
+share a session; start a new session with dofaromg/mrliouword-system as a
+source. (This is a checkout-layout limit, not an access problem.)
+```
+
+這是 checkout 版面限制，不是權限問題。要讓產出進入 source_of_truth，需要另開
+一個以 `dofaromg/mrliouword-system` 為來源的工作階段。
+
+### 狀態標記
+
+- 分歧數字、fork 關係、三份規章一致性、語料差異、移植零衝突：**已對上原始檔**
+  （皆以 `git ls-remote` / `git fetch` 對 `dofaromg/mrliouword-system` 實測）
+- 授權宣告在源頭的逐檔行號：**待查**（需源頭的工作階段）
