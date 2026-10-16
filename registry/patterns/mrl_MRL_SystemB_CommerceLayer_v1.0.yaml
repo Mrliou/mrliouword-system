@@ -1,0 +1,154 @@
+mrl_registry_entry: true
+
+id: "mrl_MRL_SystemB_CommerceLayer_v1.0.0"
+type: "SystemLayer"
+status: "rates-pending"
+root: "MrlCore"
+scope:
+  mainline: "MrlCore.Mainline"
+
+origin_signature: "MrLiouWord"
+created_at: "2026-10-15"
+registry_note: >
+  商業模式的權威邊界層。先登錄再取得 MRL_ 前綴，符合
+  registry/rules/naming_rules_v1.yaml 的 Registry Gate。
+
+# .mrliou/authority-lock.json invariant 要求的四欄宣告
+artifact_owner: "Mr.liou"
+source_repo: "dofaromg/mrliouword-system"
+projection_role: "commerce_authority_boundary"
+
+# 本產出目前實際落在哪（依 authority-lock 的 invariant：
+# "Repository mirrors and organization projections cannot silently become
+#  source_of_truth"——不讓投影悄悄變源頭，就得把位置寫明）
+location:
+  lives_in: "dofaromg/mrliouword-system"      # source_of_truth
+  source_of_truth: "dofaromg/mrliouword-system"
+  in_source_of_truth: true                    # 本提交直接長在源頭 main 之上
+  built_on_source_main: "49cb02b"             # 2026-10-16；8879f67 為其祖先
+  ported_from:
+    projection: "Mrliou/mrliouword-system"
+    branch: "feat/mrl-commerce-layer"
+    head: "a120e3d"
+    fork_point: "5c98c91"
+    note: >
+      來源是投影上的開發分支，本登錄所在的提交則以源頭 main 為基底重建，
+      不是把投影的歷史搬過來。依 authority-lock 的 invariant
+      "Repository mirrors and organization projections cannot silently
+      become source_of_truth"：投影在此只是來源，不是權威。
+  landed_via:
+    carrier_branch: "transport/to-source/mrl-commerce-layer"
+    carrier_hosted_on: "Mrliou/mrliouword-system"
+    carrier_role: "transport_only"
+    pull_request: "pending"
+    note: >
+      產出此登錄的工作階段被綁定在投影倉庫，無法推送至 source_of_truth
+      （帳號層級 can_push 為真，是工作階段綁定所致，非權限不足）。
+      因此先把以源頭 main 為基底的提交放在投影的傳輸分支上，
+      再由能存取源頭的環境取回並開 PR。在該 PR 合併前，
+      本欄的 pull_request 維持 "pending"。
+  port_verified:
+    date: "2026-10-16"
+    method: "本疊淨差異 git apply --3way 套用到源頭 main，不逐 commit cherry-pick"
+    conflicts: 0
+    files_changed: 25                         # 新增 20、修改 5、刪除 0
+    tests_on_source_base:
+      - "modules/MRL_SystemB_CommerceLayer/tests/test_commerce_layer.py: 48 passed"
+      - "modules/MRL_SystemA_ParticleLayer/tests/test_law_contract_regressions.py: 10 passed"
+    not_run:
+      - "pytest / flake8 / black / mypy：本容器 PyPI 出口被擋（pypi.org DNS 無法解析），
+         裝不起來；真實結果以 CI 為準"
+      - "既有 tests/test_particle_layer.py 第 7 行 import pytest，因此在本容器收集時報錯。
+         該檔與源頭 main 位元相同、本疊未動一字，屬環境限制而非移植造成"
+    environment: "sandbox（容器），不是 DL580 實機"
+  note: >
+    25 個檔中 24 個與投影分支位元相同；唯一不同的
+    .github/workflows/mrliouword-sdk-ci.yml 是三方套用的正確結果——
+    同樣那兩行 flake8 加上 modules/，落在源頭較新的版本上，
+    源頭自己的 if 守衛原樣保留（LAW-2 NO_DELETE）。
+    驗收所依據的母體語料在兩邊一致：origin=MrLiouWord、
+    philosophy=怎麼過去，就怎麼回來、20 顆粒子、9 個領域完全相同；
+    唯一差異是源頭的 wake_keys 多一條「夥伴」，不影響本層任何判定。
+    registry/system_registry.yaml、registry/rules/naming_rules_v1.yaml、
+    .mrliou/authority-lock.json 三份規章兩邊位元相同。
+
+path: "modules/MRL_SystemB_CommerceLayer"
+network_phase: "PHASE1_PRIVATE_LAN_ONLY"
+depends_on:
+  - "mrl_MRL_SystemA_ParticleLayer_v0.1.0"
+
+intent:
+  - "不賣本體：種子、粒子語言、語料著作與來源歸屬不隨授權移轉"
+  - "授權的是載體承載本體的權利，並產出可稽核的證據"
+  - "不把語場切成 SaaS 功能分層"
+
+authority_aliases:
+  note: >
+    mrliou = mrliouword = MRL = Mr.liou，同一個權威。別名集取自
+    .mrliou/authority-lock.json 的 reserved_names 與 authority / origin 兩段；
+    正規形為 MrLiouWord。辨識放寬，LAW-0 不放寬。
+  canonical: "MrLiouWord"
+  reserved_names:
+    - "Mr.liou"
+    - "MrLiouWord"
+    - "mrliouword"
+    - "Mrliou"
+    - "MRL"
+    - "MRL_"
+    - "dofaromg"
+
+commerce_axes:
+  - axis: "corpus_license"
+    hv: "本體語料授權"
+    units: ["seat_year", "corpus_scope"]
+    phase: "PHASE1_PRIVATE_LAN_ONLY"
+  - axis: "particle_sdk"
+    hv: "粒子層／SDK 使用"
+    units: ["particle_conversion", "sdk_call"]
+    phase: "PHASE1_PRIVATE_LAN_ONLY"
+  - axis: "private_deployment"
+    hv: "私有部署（DL580 on-prem）"
+    units: ["deployment_case", "maintenance_year"]
+    phase: "PHASE1_PRIVATE_LAN_ONLY"
+  - axis: "verification_report"
+    hv: "驗證／報告服務"
+    units: ["audit_report"]
+    phase: "PHASE1_PRIVATE_LAN_ONLY"
+
+grant_states:
+  - "mrl_granted"
+  - "foreign_claimed"
+  - "ungranted_pending"
+
+mother_particles:
+  - fx: "fx.meta.origin"
+    hv: "溯源"
+    module: "Mrliou_MRL_License_v1"
+  - fx: "fx.trace.anchor"
+    hv: "錨定"
+    module: "Mrliou_MRL_Metering_v1"
+  - fx: "fx.trace.merkle"
+    hv: "Merkle 驗證"
+    module: "Mrliou_MRL_Commerce_Report_v1"
+
+source_reference:
+  - name: "docs/references/licenses/chatserver-license.txt"
+    note: "GRANT OF LICENSE 第 1 條（保留 origin_signature）即本層檢查的條文"
+  - name: "docs/governance/HISTORICAL_AUTHORITY_AUDIT_v1.0.md"
+    note: "foreign_claimed 的處置走既有五層追償台帳，不另造流程"
+  - name: "MRL_STARTUP_WAKE.md"
+    note: "EXTERNAL_COMMERCIAL 對外起草立場，不另立一套"
+
+deployment_boundary:
+  - "純 Python 函式庫；不開 port"
+  - "不建立或變更資料庫表（LAW-1 不動）"
+  - "計量帳本只 append，不重寫（LAW-2）"
+
+rates:
+  file: "modules/MRL_SystemB_CommerceLayer/Mrliou_MRL_rate_card_v1.json"
+  status: "rates_pending_rights_holder"
+  note: "每筆單價留 null；定價由權利人填。未填前不得以 0 計價。"
+
+pending:
+  - "私有部署軸的 DL580 PostgreSQL schema 與連線程式：待建"
+  - "Phase 2 對外映射：待 registry 的 network_phase 改變才成立"

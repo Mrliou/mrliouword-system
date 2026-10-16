@@ -32,6 +32,11 @@ class UnifiedParticle:
     proof: Dict[str, Any] = field(default_factory=dict)
     tags: List[str] = field(default_factory=list)
     origin_signature: str = ORIGIN_SIGNATURE
+    #: 來源列的出身，三態定義在 Mrliou_MRL_Provenance_v1（粒子 fx.meta.origin）。
+    #: 粒子自身的 origin_signature 恆為 MrLiouWord（LAW-0 不可變，它確實是 MRL
+    #: 粒子），但「來源本來有沒有簽名」是另一件事，必須另記一欄，不得被抹掉——
+    #: 否則未簽名的第三方資料會被洗成 MRL 權威。預設取最保守的一態。
+    source_provenance: str = "unsigned_pending"
 
     def __post_init__(self) -> None:
         if self.origin_signature != ORIGIN_SIGNATURE:

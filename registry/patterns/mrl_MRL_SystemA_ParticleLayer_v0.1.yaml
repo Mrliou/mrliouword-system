@@ -1,0 +1,103 @@
+mrl_registry_entry: true
+
+id: "mrl_MRL_SystemA_ParticleLayer_v0.1.0"
+type: "SystemLayer"
+status: "schema-pending"
+root: "MrlCore"
+scope:
+  mainline: "MrlCore.Mainline"
+
+origin_signature: "MrLiouWord"
+created_at: "2026-10-15"
+registry_note: >
+  補登。本層自建立起即使用 MRL_ 前綴與 Mrliou_MRL_* 檔名，但 registry 內
+  一直沒有對應條目。依 registry/rules/naming_rules_v1.yaml 的 Registry Gate
+  ——「No unrecorded artifact may receive an mrl_ key or appear in index」
+  ——以及 .mrliou/authority-lock.json 的「The MRL_ prefix is reserved for
+  registry-approved artifacts only」，此條目補上該閘。只新增，不改既有條目。
+
+# .mrliou/authority-lock.json invariant 要求的四欄宣告
+artifact_owner: "Mr.liou"
+source_repo: "dofaromg/mrliouword-system"
+projection_role: "mother_runtime_layer"
+
+# 本產出目前實際落在哪（依 authority-lock 的 invariant：
+# "Repository mirrors and organization projections cannot silently become
+#  source_of_truth"——不讓投影悄悄變源頭，就得把位置寫明）
+location:
+  lives_in: "dofaromg/mrliouword-system"      # source_of_truth
+  source_of_truth: "dofaromg/mrliouword-system"
+  in_source_of_truth: true                    # 本提交直接長在源頭 main 之上
+  built_on_source_main: "49cb02b"             # 2026-10-16；8879f67 為其祖先
+  ported_from:
+    projection: "Mrliou/mrliouword-system"
+    branch: "feat/mrl-commerce-layer"
+    head: "a120e3d"
+    fork_point: "5c98c91"
+    note: >
+      來源是投影上的開發分支，本登錄所在的提交則以源頭 main 為基底重建，
+      不是把投影的歷史搬過來。依 authority-lock 的 invariant
+      "Repository mirrors and organization projections cannot silently
+      become source_of_truth"：投影在此只是來源，不是權威。
+  landed_via:
+    carrier_branch: "transport/to-source/mrl-commerce-layer"
+    carrier_hosted_on: "Mrliou/mrliouword-system"
+    carrier_role: "transport_only"
+    pull_request: "pending"
+    note: >
+      產出此登錄的工作階段被綁定在投影倉庫，無法推送至 source_of_truth
+      （帳號層級 can_push 為真，是工作階段綁定所致，非權限不足）。
+      因此先把以源頭 main 為基底的提交放在投影的傳輸分支上，
+      再由能存取源頭的環境取回並開 PR。在該 PR 合併前，
+      本欄的 pull_request 維持 "pending"。
+  port_verified:
+    date: "2026-10-16"
+    method: "本疊淨差異 git apply --3way 套用到源頭 main，不逐 commit cherry-pick"
+    conflicts: 0
+    files_changed: 25                         # 新增 20、修改 5、刪除 0
+    tests_on_source_base:
+      - "modules/MRL_SystemB_CommerceLayer/tests/test_commerce_layer.py: 48 passed"
+      - "modules/MRL_SystemA_ParticleLayer/tests/test_law_contract_regressions.py: 10 passed"
+    not_run:
+      - "pytest / flake8 / black / mypy：本容器 PyPI 出口被擋（pypi.org DNS 無法解析），
+         裝不起來；真實結果以 CI 為準"
+      - "既有 tests/test_particle_layer.py 第 7 行 import pytest，因此在本容器收集時報錯。
+         該檔與源頭 main 位元相同、本疊未動一字，屬環境限制而非移植造成"
+    environment: "sandbox（容器），不是 DL580 實機"
+  note: >
+    25 個檔中 24 個與投影分支位元相同；唯一不同的
+    .github/workflows/mrliouword-sdk-ci.yml 是三方套用的正確結果——
+    同樣那兩行 flake8 加上 modules/，落在源頭較新的版本上，
+    源頭自己的 if 守衛原樣保留（LAW-2 NO_DELETE）。
+    驗收所依據的母體語料在兩邊一致：origin=MrLiouWord、
+    philosophy=怎麼過去，就怎麼回來、20 顆粒子、9 個領域完全相同；
+    唯一差異是源頭的 wake_keys 多一條「夥伴」，不影響本層任何判定。
+    registry/system_registry.yaml、registry/rules/naming_rules_v1.yaml、
+    .mrliou/authority-lock.json 三份規章兩邊位元相同。
+
+path: "modules/MRL_SystemA_ParticleLayer"
+network_phase: "PHASE1_PRIVATE_LAN_ONLY"
+
+laws:
+  - "LAW-0: origin_signature 不可變，正規形恆為 MrLiouWord"
+  - "LAW-1: DL580 上的 PostgreSQL 仍是權威持久層"
+  - "LAW-2: NO_DELETE / ADDITIVE / REVERSIBLE"
+
+mother_particles:
+  - fx: "fx.meta.origin"
+    hv: "溯源"
+    module: "Mrliou_MRL_Identity_v1 + Mrliou_MRL_Provenance_v1"
+  - fx: "fx.trace.anchor"
+    hv: "錨定"
+    module: "Mrliou_MRL_Law2_Report_v1"
+  - fx: "fx.trace.merkle"
+    hv: "Merkle 驗證"
+    module: "Mrliou_MRL_Law2_Report_v1"
+
+deployment_boundary:
+  - "純 Python 函式庫；不開 port"
+  - "不建立或變更資料庫表"
+  - "零外部依賴"
+
+pending:
+  - "LAW-1 的 System A 三表（mrl_persona / mrl_memory / mrl_file_index）schema：待找回"

@@ -1,0 +1,27 @@
+{
+  "Mrliou_MRL_rate_card": "Mrliou_MRL_rate_card_v1",
+  "version": "1.0.0",
+  "origin_signature": "MrLiouWord",
+  "status": "rates_pending_rights_holder",
+  "note": "每一筆單價都刻意留 null。定價是權利人（Mr.liou）的決定，程式不代填；未填前 Mrliou_MRL_rate 會丟 MrliouMRLUnpricedUnitError，不以 0 計價。",
+  "currency_note": "幣別與單價一樣是計價的前提。currency 為 null 時即使單價填了也不輸出金額——沒有幣別的數字無法據以請款。填 ISO 4217 代碼，例如 TWD / USD。",
+  "currency": null,
+  "rate_format_note": "單價可以填數字或十進位字串（例如 \"0.1\"）。金額全程以 Decimal 計算，不用二進位浮點。四捨五入位數與方式刻意不訂，那與費率同屬權利人的商業決定；報告輸出的是精確值。",
+  "rates": {
+    "corpus_license": {
+      "seat_year": null,
+      "corpus_scope": null
+    },
+    "particle_sdk": {
+      "particle_conversion": null,
+      "sdk_call": null
+    },
+    "private_deployment": {
+      "deployment_case": null,
+      "maintenance_year": null
+    },
+    "verification_report": {
+      "audit_report": null
+    }
+  }
+}

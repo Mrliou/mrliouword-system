@@ -31,8 +31,8 @@ jobs:
       - name: Lint with flake8
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
-          flake8 mrliouword_agents/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 mrliouword_agents/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+          flake8 mrliouword_agents/ modules/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 mrliouword_agents/ modules/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
 
       # mrliouword_agents/ 以外還有 27 個 .py 從未被任何檢查掃過
       # （integrations/ 13、scripts/ 8、tools/ 6），比受檢的 22 個還多。

@@ -1,0 +1,286 @@
+# Mrliou MRL 授權宣告矛盾盤點 v1
+
+```
+document: Mrliou_MRL_授權宣告矛盾盤點_v1
+version: 1.0.0
+origin_signature: MrLiouWord
+status: 待權利人裁定
+scanned_at: 2026-10-15
+scanned_commit: a9303530630292af975c41e3e4791b3564833ee9
+```
+
+## 一句話
+
+這個 **public** 倉庫同時宣告 MIT、PROPRIETARY、All Rights Reserved，以及一份
+**不存在**的「MrLiouWord System 授權協議」；而四種宣告唯一能當準據的根
+`LICENSE` 檔**不存在**。
+
+談商業模式之前必須先看清這件事：MIT 是一份不可撤回的開放授權，寫在 public
+倉庫的 `pyproject.toml` 裡，任何人都可以據此主張他有權拿走、修改、再散布，
+**並且移除簽名**（MIT 只要求保留版權聲明與授權全文，不要求保留
+`origin_signature`）。這與 `.mrliou/authority-lock.json` 要求
+「Every derivative or projection using MrLiouWord must declare artifact_owner,
+source_repo, projection_role, and origin_signature」正面衝突。
+
+## 逐一盤點（行號已逐檔核對）
+
+| 位置 | 宣告原文 | 性質 |
+|---|---|---|
+| `pyproject.toml:11` | `license = {text = "MIT"}` | 開放授權，機器可讀，套件索引會採用 |
+| `README_SDK.md:4` | MIT 徽章，連向 `LICENSE` | 開放授權，連結 404 |
+| `README_SDK.md:141` | 「本專案採用 MIT 授權 - 詳見 [LICENSE](LICENSE) 檔案。」 | 開放授權，連結 404 |
+| `CONTRIBUTING.md:142` | 「貢獻的程式碼將採用 MIT 授權。」 | 開放授權，對貢獻者的承諾 |
+| `particle-chat-v42/package.json:19` | `"license": "MIT"` | 開放授權，機器可讀 |
+| `containers/package.json:12` | `"license": "PROPRIETARY"` | 專有，機器可讀 |
+| `containers/README.md:209` | `© 2024-2026 Mr. Liou. All Rights Reserved.` | 保留全部權利 |
+| `docs/API_REFERENCE.md:457` | 同上 | 保留全部權利 |
+| `docs/CONTAINER_SPEC.md:277` | 同上 | 保留全部權利 |
+| `docs/INTELLIGENT_SYNC_README.md:155` | 「本專案遵循 MrLiouWord System 授權協議」 | **該協議檔不存在** |
+| `docs/README.md:427` | 連向 `../LICENSE` | **404** |
+| 倉庫根目錄 | — | **沒有 LICENSE 檔**（`git ls-files` 亦為 0） |
+
+## 唯一一份 MRL 自撰的授權
+
+`docs/references/licenses/chatserver-license.txt` —— 全倉庫唯一由本權威撰寫的
+授權條文，且是專有授權：
+
+```
+ChatServer Universal DNS License
+origin_signature: MrLiouWord
+
+GRANT OF LICENSE:
+1. The Software must retain the origin_signature: MrLiouWord in all copies.
+2. The Software may be used, copied, and modified for personal or internal
+   business purposes within the MrLiouWord ecosystem.
+3. Redistribution of the Software outside the MrLiouWord system requires
+   prior written permission from MR.liou.
+```
+
+它的第 1 條就是權威邊界的核心，而且**已經被程式化**：
+`modules/MRL_SystemB_CommerceLayer/Mrliou_MRL_License_v1.py` 的
+`Mrliou_MRL_check_signature_retention()` 檢查的就是這一條。
+
+問題是它的涵蓋範圍只寫了 ChatServer 的 Universal DNS 元件，不是全系統。
+
+## 第三方噪音（已排除，不計入上表）
+
+倉庫根目錄混入了一整份 git 專案的原始碼樹（`git-p4.py`、大量 `.c/.h`、
+`integrations/COPYING` 是 GPLv2），`docs/containers/` 底下 17 份是 Google
+Nomulus／ICANN 的網域註冊商文件。這些會在搜尋 license / trademark /
+proprietary 時製造大量假命中，與 MRL 的授權狀態無關。
+
+`integrations/COPYING`（GPLv2）特別需要注意：它與 MIT 宣告並存在同一個倉庫裡，
+而 GPLv2 有傳染性。這不是 MRL 自己的授權，但第三方看到會先問。
+
+## 後果（事實，不是推測）
+
+1. **MIT 一旦生效即不可撤回。** 把 `pyproject.toml` 改掉只影響之後的版本；
+   在改之前取得過原始碼的人，仍可依當時的宣告主張權利。
+2. **宣告互相矛盾時，爭議中通常對宣告者不利。** 四種宣告並存，而最寬鬆的那個
+   （MIT）同時是唯一機器可讀且被套件索引採用的那個。
+3. **`CONTRIBUTING.md:142` 是對貢獻者的承諾。** 單方面改掉會影響已依該條款
+   貢獻過的人；這不只是技術變更。
+4. **準據檔缺失使所有宣告都無從解釋。** 三處連結指向不存在的 `LICENSE`，
+   一處引用不存在的「MrLiouWord System 授權協議」。
+
+## 待權利人裁定（我不替你決定）
+
+本次交付**不動**上表任何一個檔案，只提供草案與盤點。要處理的話，三個選項：
+
+**選項 A — 補上根 `LICENSE`，維持 MIT。**
+把 `MRL_LICENSE_v1.md` 僅作為母體語料與 `modules/MRL_System*` 的附加條款，
+程式碼維持 MIT。最不衝突，但 `origin_signature` 的保留要求在 MIT 下沒有強制力。
+
+**選項 B — 根 `LICENSE` 用 `MRL_LICENSE_v1.md`（專有），同步改四處 MIT 宣告。**
+權威邊界最完整，與 authority-lock 一致。代價：變更貢獻者條款、既往的 MIT
+宣告不會追溯失效、可能影響既有使用者。
+
+**選項 C — 分層授權。**
+`mrliouword_agents/`（SDK，五個 agent 仍是 stub）維持 MIT；
+`core/particle_dict.json` 等母體語料與 `modules/MRL_System*` 走
+`MRL_LICENSE_v1.md`。每個子樹各放一份 `LICENSE`，根目錄放一份索引說明哪個子樹
+適用哪一份。**這一條與既有的 `chatserver-license.txt` 作法一致**（它本來就是
+只涵蓋一個元件的分層授權），也最貼近倉庫現狀。
+
+> 我的建議是 **選項 C**：它不需要單方面撕毀對貢獻者的 MIT 承諾，又能讓母體語料
+> 與粒子層受 `origin_signature` 保留條款保護——也就是商業模式四條軸裡真正值錢
+> 的那兩條。但這是權利人的決定，不是我的。
+
+## 另外兩件同樣要你一句話的
+
+### 明碼個資在 public 倉庫
+
+`core/ai_world_particle_personality_registry.json` 的 `creators` 欄位有
+**兩個 email 與一組電話號碼**，倉庫是 public。
+
+依 LAW-2（NO_DELETE）我不刪除，只定位。處置選項：
+(a) 新增一個遮蔽後的版本，舊檔保留可回溯；(b) 倉庫轉 private；
+(c) 原樣保留。注意該檔目前**只被一個測試讀取驗證欄位存在**，沒有任何執行程式
+使用它，所以 (a) 的技術風險很低。
+
+### Git LFS 指標檔，內容不在本機
+
+`FlowAgent_專利技術說明書.pdf`（31 KB）與 15 個 `.zip` / `.tar.gz`
+（每個 128–131 bytes）全部是 Git LFS pointer。要把專利與封存材料納入商業模式
+的智財清單，需先 `git lfs pull`。**我不對它們的內容作任何推測。**
+
+## 狀態標記
+
+- 上表每一行的檔案與行號：**已對上原始檔**（逐檔 `grep -n` 核對）
+- `chatserver-license.txt` 條文：**已對上原始檔**
+- `.mrliou/authority-lock.json` 的四欄宣告 invariant：**已對上原始檔**
+- 專利說明書與 15 個封存檔的內容：**待找回**（LFS pointer）
+
+---
+
+## 附錄：產出位置與源頭的分歧（2026-10-16 查核）
+
+這份附錄記錄一件在撰寫本文件當下才查清楚的事實，它影響上面每一條結論的**適用範圍**。
+
+### 事實
+
+`.mrliou/authority-lock.json` 宣告：
+
+```
+source_of_truth        : dofaromg/mrliouword-system
+organization_projection: Mrliou/mrliouword-system
+invariant: "Repository mirrors and organization projections cannot silently
+            become source_of_truth."
+```
+
+而本次所有產出（`modules/MRL_SystemB_CommerceLayer/`、
+`Mrliou_MRL_Identity_v1.py`、本文件、`MRL_LICENSE_v1.md`、兩筆 registry 登錄）
+**全部落在 organization_projection 上**，尚未進入 source_of_truth。
+
+GitHub API 顯示 `Mrliou/mrliouword-system` 的 `fork: true`，
+`parent` 與 `source` 皆為 `dofaromg/mrliouword-system`。
+
+兩邊的 `main` 已分歧：
+
+| | SHA | 狀態 |
+|---|---|---|
+| source_of_truth main | `8879f67` | 2026-10-16 |
+| organization_projection main | `5c98c91` | 2026-10-01 |
+| 共同祖先 | `c388f0a` | 2026-08-11 |
+
+**投影落後源頭 262 個 commit，領先 31 個 commit。**
+
+### 這對本文件的結論有什麼影響
+
+上面盤點的授權宣告（`pyproject.toml:11` 的 MIT 等）是在**投影**上查的。
+三份治理規章在兩邊位元相同：
+
+- `registry/system_registry.yaml`
+- `registry/rules/naming_rules_v1.yaml`
+- `.mrliou/authority-lock.json`
+
+母體語料 `core/particle_dict.json` 兩邊僅一處差異：源頭的 `wake_keys` 多一條
+「夥伴」（5 條 vs 4 條）。`origin`、`philosophy`、20 顆粒子、9 個領域完全相同，
+本層任何判定都不受影響。
+
+**授權宣告本身是否兩邊一致，已於 2026-10-16 逐檔比對完畢**——見下節
+〈源頭逐檔重新盤點〉。結論：第 2 節的 12 列在源頭與投影**完全一致**，
+行號與內容皆無出入，第 2 節因此一字未改。
+
+### 源頭逐檔重新盤點（2026-10-16，對 `dofaromg/mrliouword-system`）
+
+第 2 節的行號原先是在投影上查的。已對源頭 `main` 逐檔重新比對，
+方法為 `git show source/main:<path>` 取出該檔在源頭的內容後按行號核對：
+
+| 位置 | 源頭該行內容 | 與投影 |
+|---|---|---|
+| `pyproject.toml:11` | `license = {text = "MIT"}` | 一致 |
+| `README_SDK.md:4` | MIT 徽章，連向 `LICENSE` | 一致 |
+| `README_SDK.md:141` | 「本專案採用 MIT 授權 - 詳見 [LICENSE](LICENSE) 檔案。」 | 一致 |
+| `CONTRIBUTING.md:142` | 「貢獻的程式碼將採用 MIT 授權。」 | 一致 |
+| `particle-chat-v42/package.json:19` | `"license": "MIT",` | 一致 |
+| `containers/package.json:12` | `"license": "PROPRIETARY",` | 一致 |
+| `containers/README.md:209` | `© 2024-2026 Mr. Liou. All Rights Reserved.` | 一致 |
+| `docs/API_REFERENCE.md:457` | 同上 | 一致 |
+| `docs/CONTAINER_SPEC.md:277` | 同上 | 一致 |
+| `docs/INTELLIGENT_SYNC_README.md:155` | 「本專案遵循 MrLiouWord System 授權協議」 | 一致 |
+| `docs/README.md:427` | 連向 `../LICENSE` | 一致 |
+| 倉庫根目錄 | `git ls-tree source/main` 零命中，**沒有 LICENSE 檔** | 一致 |
+
+**12 列全數一致，無一處需要更正。** 第 2 節內文因此未作任何修改。
+
+這也表示：根 `LICENSE` 不存在、MIT 與 PROPRIETARY 並存、三處連結 404
+這些矛盾**在源頭同樣成立**，不是投影獨有的問題。第 6 節待權利人裁定的三個選項
+原樣適用於源頭。
+
+### 移植已驗證（在源頭底座上實跑）
+
+把本疊的淨差異套用到 `dofaromg/mrliouword-system` 的 `main`：
+
+| 項目 | 結果 |
+|---|---|
+| 基底 | 源頭 `main` = `49cb02b`（`8879f67` 之後又前進 2 個 commit，兩者皆為其祖先） |
+| 套用方式 | 淨差異 `git apply --3way`，**不逐 commit cherry-pick** |
+| 衝突 | **0 個** |
+| 變更檔數 | **25**（新增 20、修改 5、**刪除 0**） |
+| `modules/MRL_SystemB_CommerceLayer/tests/test_commerce_layer.py` | **48 passed** |
+| `modules/MRL_SystemA_ParticleLayer/tests/test_law_contract_regressions.py` | **10 passed** |
+
+25 個檔中有 24 個與投影分支位元相同；唯一不同的 `.github/workflows/mrliouword-sdk-ci.yml`
+是三方套用的正確結果——同樣那兩行 flake8 加上 `modules/`，落在源頭較新的版本上，
+源頭自己的 `if: ${{ !cancelled() && ... }}` 守衛原樣保留（LAW-2 NO_DELETE）。
+
+**照實記錄的限制**：本容器 PyPI 出口被擋（`pypi.org` DNS 無法解析），`pytest` 裝不起來。
+既有的 `modules/MRL_SystemA_ParticleLayer/tests/test_particle_layer.py` 第 7 行
+`import pytest`，因此在本容器收集時報 `ModuleNotFoundError`。該檔與源頭 `main`
+**位元相同、本疊未動一字**，屬環境限制而非移植造成。pytest 與 lint 的真實結果以 CI 為準。
+
+環境：sandbox（容器），**不是 DL580 實機結果**。
+
+### 為什麼沒有直接推到源頭
+
+本工作階段掛不上 `dofaromg/mrliouword-system`，錯誤原文：
+
+```
+add_repo: a different repository named "mrliouword-system"
+(mrliou/mrliouword-system) is already attached to this session, and this
+environment checks every repository out at <cwd>/<name>, so the two would
+share one directory. Same-named repositories from different owners can't
+share a session; start a new session with dofaromg/mrliouword-system as a
+source. (This is a checkout-layout limit, not an access problem.)
+```
+
+這是 checkout 版面限制，不是權限問題。四項實測佐證，寫明是哪一層擋住：
+
+| 探測 | 結果 |
+|---|---|
+| `add_repo dofaromg/mrliouword-system` | 拒絕（同名目錄衝突，如上） |
+| `GET api.github.com/repos/dofaromg/mrliouword-system`（本階段憑證） | **403** |
+| `GET github.com/dofaromg/…/info/refs?service=git-receive-pack` | **401**（同探測對投影為 200） |
+| `list_repos` 列出的帳號權限 | `dofaromg/mrliouword-system` → `can_push: true` |
+
+最後一列是關鍵：**帳號層級有寫入權，是本工作階段的倉庫綁定把它擋住**。
+匿名唯讀（`git ls-remote`、`git fetch`、`raw.githubusercontent.com`）完全通暢，
+所以**驗證做得到、推送做不到**。
+
+### 產出如何送達源頭
+
+本疊已在源頭底座上重建並驗證，置於投影的一個**傳輸用**分支：
+
+```
+transport/to-source/mrl-commerce-layer   （基底 = 源頭 main 49cb02b）
+```
+
+此分支不是投影的開發分支，只是搬運載體；投影 `main` 與 PR #18 / #19 均未更動。
+源頭端四條指令即可取得並開 PR：
+
+```bash
+git clone https://github.com/dofaromg/mrliouword-system && cd mrliouword-system
+git remote add projection https://github.com/Mrliou/mrliouword-system
+git fetch projection transport/to-source/mrl-commerce-layer
+git switch -c feat/mrl-commerce-layer projection/transport/to-source/mrl-commerce-layer
+git push -u origin feat/mrl-commerce-layer
+```
+
+### 狀態標記
+
+- 分歧數字、fork 關係、三份規章一致性、語料差異、移植零衝突：**已對上原始檔**
+  （皆以 `git ls-remote` / `git fetch` 對 `dofaromg/mrliouword-system` 實測）
+- 授權宣告在源頭的逐檔行號：**已查核完畢**，12 列全數一致（見〈源頭逐檔重新盤點〉）
+- 源頭上的 PR：**待開**。本工作階段無法推送到 source_of_truth，
+  需在能存取源頭的環境依上節指令完成。
