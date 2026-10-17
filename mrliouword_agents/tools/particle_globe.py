@@ -79,7 +79,7 @@ class ParticleGlobe:
 
     @staticmethod
     def _validate_coordinate(
-        latitude: float, longitude: float, altitude: float
+        latitude: Any, longitude: Any, altitude: Any
     ) -> None:
         if latitude is None or longitude is None:
             raise ValueError("latitude and longitude are required")
@@ -105,9 +105,9 @@ class ParticleGlobe:
             return point
 
         if isinstance(point, dict):
-            latitude = point.get("latitude", point.get("lat"))
-            longitude = point.get("longitude", point.get("lng", point.get("lon")))
-            altitude = point.get("altitude", point.get("alt", 0.0))
+            latitude: Any = point.get("latitude", point.get("lat"))
+            longitude: Any = point.get("longitude", point.get("lng", point.get("lon")))
+            altitude: Any = point.get("altitude", point.get("alt", 0.0))
             timestamp = point.get("timestamp") or _utc_now()
             meta = dict(default_meta or {})
             meta.update(point.get("meta", {}))
@@ -350,7 +350,7 @@ class ParticleGlobe:
         binding.lifecycle["updated_at"] = event.timestamp
         return binding.to_dict()
 
-    def scale_particle(self, particle_id: str, factor: float) -> Dict[str, float]:
+    def scale_particle(self, particle_id: str, factor: float) -> Dict[str, Any]:
         """縮放粒子結構。"""
 
         if factor <= 0:
@@ -361,7 +361,7 @@ class ParticleGlobe:
         binding.lifecycle["updated_at"] = _utc_now()
         return {"particle_id": particle_id, "scale": next_scale}
 
-    def set_zoom(self, particle_id: str, zoom: float) -> Dict[str, float]:
+    def set_zoom(self, particle_id: str, zoom: float) -> Dict[str, Any]:
         """設定粒子縮放倍率。"""
 
         if zoom <= 0:

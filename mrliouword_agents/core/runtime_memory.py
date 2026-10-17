@@ -94,7 +94,8 @@ class ParticleRuntimeMemory:
         if not self.particle_dict_path.exists():
             return {"particles": {}}
         with open(self.particle_dict_path, "r", encoding="utf-8") as file:
-            return json.load(file)
+            data: Dict[str, Any] = json.load(file)
+            return data
 
     def _default_warehouse_registry(self) -> Dict[str, Any]:
         return {
@@ -117,7 +118,7 @@ class ParticleRuntimeMemory:
         if not self._warehouse_registry_path.exists():
             return self._default_warehouse_registry()
         with open(self._warehouse_registry_path, "r", encoding="utf-8") as file:
-            registry = json.load(file)
+            registry: Dict[str, Any] = json.load(file)
 
         categories = registry.setdefault("categories", {})
         for category, metadata in self.WAREHOUSE_CATEGORIES.items():

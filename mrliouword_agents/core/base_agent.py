@@ -38,7 +38,7 @@ class BaseAgent(ABC):
         self.logger.info(f"初始化 {name} Agent")
 
     @abstractmethod
-    async def execute(self, *args, **kwargs) -> AsyncGenerator[str, None]:
+    def execute(self, *args: Any, **kwargs: Any) -> AsyncGenerator[str, None]:
         """
         執行 Agent 任務
 
