@@ -478,3 +478,53 @@ def test_worker_factory_rechecks_private_lan_boundary(monkeypatch):
     monkeypatch.setenv(server._MRL_LAUNCH_BIND_ENV, '["0.0.0.0", 8127]')
     with pytest.raises(MrlApiBindRefused):
         server._Mrliou_MRL_create_server_app()
+
+
+
+def test_installed_wheel_uses_explicit_existing_corpus(monkeypatch, tmp_path):
+    """A wheel outside the checkout must use the existing corpus, never copy it."""
+    import hashlib
+    import os
+    from pathlib import Path
+    import subprocess
+    import sys
+
+    root = Path(__file__).resolve().parents[2]
+    corpus = root / "core" / "particle_dict.json"
+    before = hashlib.sha256(corpus.read_bytes()).hexdigest()
+    wheel_dir = tmp_path / "wheels"
+    wheel_dir.mkdir()
+    subprocess.run(
+        [
+            sys.executable, "-m", "pip", "wheel", "--no-index", "--no-deps",
+            "--no-build-isolation", "--wheel-dir", str(wheel_dir), str(root),
+        ],
+        check=True, capture_output=True, text=True,
+    )
+    wheels = list(wheel_dir.glob("*.whl"))
+    assert len(wheels) == 1
+    wheel = str(wheels[0])
+    script = (
+        "import json; from fastapi.testclient import TestClient; "
+        "import mrliouword_agents.api.Mrliou_MRL_Api_Server_v1 as server; "
+        f"assert server.__file__.startswith({wheel!r}); "
+        "response=TestClient(server.create_app()).get('/mrl/world'); "
+        "print(json.dumps({'status': response.status_code, 'body': response.json()}))"
+    )
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = wheel
+    environment.pop(PARTICLE_DICT_ENV, None)
+    missing = json.loads(subprocess.check_output(
+        [sys.executable, "-c", script], cwd=tmp_path,
+        env=environment, text=True,
+    ))
+    assert missing["status"] == 503
+    environment[PARTICLE_DICT_ENV] = str(corpus)
+    loaded = json.loads(subprocess.check_output(
+        [sys.executable, "-c", script], cwd=tmp_path,
+        env=environment, text=True,
+    ))
+    assert loaded["status"] == 200
+    assert loaded["body"]["corpus_origin"] == ORIGIN
+    assert loaded["body"]["philosophy"] == "怎麼過去，就怎麼回來"
+    assert hashlib.sha256(corpus.read_bytes()).hexdigest() == before
