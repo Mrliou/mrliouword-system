@@ -78,9 +78,7 @@ class ParticleGlobe:
         self._particle_index: Dict[str, List[str]] = {}
 
     @staticmethod
-    def _validate_coordinate(
-        latitude: Any, longitude: Any, altitude: Any
-    ) -> None:
+    def _validate_coordinate(latitude: Any, longitude: Any, altitude: Any) -> None:
         if latitude is None or longitude is None:
             raise ValueError("latitude and longitude are required")
         if not -90 <= latitude <= 90:
