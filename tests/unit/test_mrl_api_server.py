@@ -27,6 +27,7 @@ from mrliouword_agents.api import (
     ENDPOINTS,
     LAW1_TABLES,
     MOTHER_MEMBERS,
+    NOT_COVERED,
     PARTICLE_DICT_ENV,
     STATES,
     MrlApiBindRefused,
@@ -60,6 +61,48 @@ def test_endpoint_paths_are_unique():
     """同一條路徑不得綁兩個成員"""
     paths = [endpoint.path for endpoint in ENDPOINTS]
     assert len(paths) == len(set(paths))
+
+
+def test_every_mother_member_is_accounted_for_exactly_once():
+    """十五個母體成員必須被這張表完整切分：要嘛實作，要嘛明寫不涵蓋
+
+    NOT_COVERED 的存在理由就是「避免沒看到就當它缺」，但這件事原本沒有測試
+    守著：MrlApiEndpoint.__init__ 只擋得住路由自造成員，NOT_COVERED 的鍵名
+    完全沒有人驗。所以 NOT_COVERED 裡打錯一個字（或母體日後增減成員）時，
+    會靜悄悄出現一個既沒實作也沒被宣告的成員，而 /mrl/contract 照樣照發。
+    """
+    covered = {endpoint.mother_member for endpoint in ENDPOINTS}
+    not_covered = set(NOT_COVERED)
+
+    # 不能既宣稱實作、又宣告不涵蓋
+    assert covered.isdisjoint(not_covered)
+    # 兩者聯集必須正好是母體成員，不多也不少
+    assert covered | not_covered == set(MOTHER_MEMBERS)
+
+
+def test_no_route_exists_without_a_contract_entry():
+    """沒有對應成員的路由不得存在——唯一例外是契約表自己寫明的單顆取用
+
+    /mrl/particles/{fx} 不另立條目，而是寫在 /mrl/particles 的 summary 裡。
+    這裡把那個例外釘死成一個具名集合並回頭核對 summary，所以日後新增的
+    路由不能躲在「它也是子資源」後面混進來。
+    """
+    from mrliouword_agents.api import create_app
+
+    subresources = {"/mrl/particles/{fx}"}
+
+    routed = {
+        route.path
+        for route in create_app().routes
+        if getattr(route, "path", "").startswith("/mrl")
+    }
+    declared = {endpoint.path for endpoint in ENDPOINTS}
+
+    assert routed - declared == subresources
+    assert declared - routed == set()
+    # 例外必須真的有被記錄下來，否則它就只是個沒人說明的未宣告路由
+    for path in subresources:
+        assert path in Mrliou_MRL_endpoint_for("/mrl/particles").summary
 
 
 def test_cannot_invent_a_mother_member():
