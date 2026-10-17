@@ -6,3 +6,10 @@ pytest>=7.0.0
 pytest-asyncio>=0.21.0
 pytest-cov>=4.0.0
 pytest-mock>=3.11.0
+
+# tests/test_intelligent_sync.py 直接 import numpy（TestAttentionFilter 的
+# 向量運算三項），但先前沒有任何 requirements 宣告它，CI 於是在收集階段就
+# ModuleNotFoundError。注意 integrations/webgpu/attention_filter.py 是以
+# try/except + HAS_NUMPY 當選用依賴處理，所以這裡宣告的是**測試**對 numpy
+# 的直接需求，不是把它變成生產必需。
+numpy>=1.24.0
