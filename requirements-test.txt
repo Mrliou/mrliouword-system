@@ -6,3 +6,6 @@ pytest>=7.0.0
 pytest-asyncio>=0.21.0
 pytest-cov>=4.0.0
 pytest-mock>=3.11.0
+
+# integrations/ 的向量運算需要（attention_filter、logical_extractor）
+numpy>=1.24.0
