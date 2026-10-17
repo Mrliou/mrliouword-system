@@ -1,0 +1,152 @@
+mrl_registry_entry: true
+
+id: "mrl_-postgrest_v0.1.0"
+type: "ExternalForkReference"
+status: "recorded"
+root: "MrlCore"
+
+origin_signature: "MrLiouWord"
+created_at: "2026-10-17"
+
+naming_note: >
+  依 registry/rules/naming_rules_v1.yaml：registry_key_format 為
+  mrl_<OriginalName>，invariants 第一條「Original names are NEVER changed」。
+  原名是 `-postgrest`（含開頭連字號），故登錄鍵為 `mrl_-postgrest`，
+  連字號原樣保留，不「修正」成 postgrest。Registry Gate 要求
+  「Artifact must have an explicit registry entry before entering
+  naming/index rules」——本條目即是該閘，先有條目才有 mrl_ 名字。
+
+registry_note: >
+  2026-10-17 依擁有者指示登錄。本條目記錄一個外部 fork 的來源與核對結果，
+  不是把該 fork 的內容納為 MRL 原創。依源頭
+  registry/evidence/EXTERNAL_FORK_REFERENCES.md 的 Upstream Boundary
+  ——「同時保留既有作者與授權，不把上游權利誤歸 MRL」。
+
+# .mrliou/authority-lock.json invariant 要求的四欄宣告
+artifact_owner: "Mr.liou"            # 指本登錄條目本身，不指被登錄的上游著作
+source_repo: "PostgREST/postgrest"   # 上游，不是本帳號
+projection_role: "external_fork_reference"
+
+# ATTRIBUTION_AND_PROVENANCE_POLICY_v1.0.md 第 4 節欄位
+canonical_authority: "Joe Nelson (2014) / Steve Chavez (2019) / Wolfgang Walther (2026)"
+source_artifact: "github.com/PostgREST/postgrest"
+source_version: "c35eb7a6c2f506c18de2b47ae3ea2a4af684c977"
+derivative_role: "mirror"            # 零自有 commit，樹與上游該 commit 完全相同
+contributors:
+  - "Claude（本倉庫：只讀核對 fork 歸屬與建構歷史，未修改該 fork 任何檔案）"
+transformation: >
+  無。只做 clone（只讀）、git fetch 驗證 commit 歸屬、GitHub API 讀取後設資料、
+  全樹關鍵字搜尋。未修改、未匯入、未推送該 fork 任何內容。
+verification_status: "partial"
+
+# 本條目不主張任何權威
+canonical_authority_claim: false
+governance_authority: false
+naming_authority: false
+
+repository:
+  full_name: "dofaromg/-postgrest"
+  visibility: "public"
+  fork: true
+  parent: "PostgREST/postgrest"
+  source: "PostgREST/postgrest"        # parent == source，直接 fork 自上游
+  license: "MIT"
+  default_branch: "main"
+  archived: false
+  disabled: false
+
+measured:
+  recorded_at: "2026-10-17"
+  method: "git clone --depth 1 + git fetch upstream <sha> + gh api + 全樹 grep"
+  fork_head: "c35eb7a6c2f506c18de2b47ae3ea2a4af684c977"
+  fork_head_author: "Taimoor Zaeem <taimoorzaeem@gmail.com>（上游維護者）"
+  fork_head_date: "2026-02-02"
+  upstream_main_at_record_time: "c042567494b1cbb5009005b82c78d9e5da8b4a2a"
+  branches: 1                          # 只有 main
+  tags: 0
+  own_commits: 0
+  own_commits_evidence: >
+    `git fetch --depth 1 upstream c35eb7a` 從 PostgREST/postgrest 取得成功，
+    證明 fork 的 main 尖端就是上游歷史中的 commit；加上只有 main 一條分支、
+    零 tag，故無任何自有內容。
+  created_at: "2026-02-03T06:23:19Z"
+  pushed_at: "2026-02-02T23:45:00Z"
+  pushed_before_created: true
+  pushed_before_created_note: >
+    pushed_at 早於 created_at，是 fork 建立後從未被推送過的特徵
+    ——該欄在建立時承襲上游最後一次推送的時間。
+  issues_all_states: 0
+  has_issues: false
+  pull_requests_all_states: 0
+  actions_runs_total: 0
+  files: 384
+  size: "5.4 MB"
+  keyword_scan:
+    terms: ["mrl", "mrliou", "MRL", "mrl_"]
+    hits: 0
+    scope: "全倉庫（排除 .git）"
+    caveat: >
+      依源頭該帳本 2026-09-26 的更正，關鍵字零命中「不能作為內容來源比例或
+      無本地變換的證明」。本條目不以關鍵字下結論；無本地變換是由上述
+      own_commits_evidence 的 git 層證據確立的。
+  attestation_scan:
+    terms: ["attest", "slsa", "provenance"]
+    scope: ".github/"
+    hits: 0
+
+build_attribution:
+  builds_attributed_to_account: 0
+  evidence: "gh api repos/dofaromg/-postgrest/actions/runs → total_count: 0"
+  note: >
+    該 fork 的 ci.yaml 在 push 到 main 時觸發、release.yaml 在推 v* tag 時觸發。
+    目前零自有 commit、零 tag、零執行紀錄，所以**沒有任何建構以 dofaromg
+    名義跑過**。只要往這個 fork 推一次，Actions 就會以本帳號名義執行。
+  unread:
+    - "repos/dofaromg/-postgrest/actions/permissions：本工作階段讀不到，原文：
+       Access to this GitHub Actions path is not permitted through this proxy. (HTTP 403)"
+
+anomaly:
+  repository_name_leading_hyphen: true
+  detail: >
+    倉庫名開頭是連字號（`-postgrest`），不是正常命名，像是建立時被貼歪。
+  disposition: >
+    不在本條目處置。naming_rules_v1.yaml 的 invariants 第一條是
+    「Original names are NEVER changed」，改倉庫名不是命名規範能動的事，
+    屬權利人決定。此處只記錄為事實。
+  temporal_cluster:
+    note: >
+      源頭 EXTERNAL_FORK_REFERENCES.md 第 1 筆
+      `features-feature_terraform_1.4.2` 建立日期為 2026-02-02，
+      本 fork 建立於 2026-02-03。兩者日期相鄰，是否同一批次建立
+      **未經查核**，此處不作因果主張。
+
+mother_core_reference:
+  checked_with: "tools/mother_core_registry.py --find（源頭工具，投影沒有）"
+  note: >
+    母體已有 MRL_API_CORE（15 成員，含 MRL_REST_API）與
+    MRL_DL580_RUNTIME_CORE → MRL_DL580_PostgreSQL / MRL_DL580_ServiceLayer。
+    本 fork 若日後使用，只能是那些 CORE 的 implementation／adapter，
+    必須標明 derivative_role，不得宣稱自己是該 CORE。詳見
+    docs/evidence/Mrliou_MRL_PostgREST_API層評估_v1.md。
+
+location:
+  lives_in: "Mrliou/mrliouword-system"      # organization_projection
+  source_of_truth: "dofaromg/mrliouword-system"
+  in_source_of_truth: false
+  canonical_ledger: "dofaromg/mrliouword-system registry/evidence/EXTERNAL_FORK_REFERENCES.md"
+  pending_source_merge: true
+  reason: >
+    registry/evidence/ 在本投影不存在（實測 ls 回 No such file or directory），
+    該帳本只在源頭。為避免同一本證據帳本分岔成兩份
+    ——.mrliou/authority-lock.json 的 invariant 正是要防這件事
+    ——本輪不在投影建立 registry/evidence/，可附加到源頭的條目原文改放
+    docs/evidence/Mrliou_MRL_ExternalForkReference_待併入源頭_v1.md。
+
+laws:
+  - "LAW-0: origin_signature 不可變，正規形恆為 MrLiouWord"
+  - "LAW-2: NO_DELETE / ADDITIVE / REVERSIBLE（本條目只新增，不改任何既有條目）"
+
+boundary:
+  - "本條目不匯入該 fork 任何檔案"
+  - "不對該 fork 推送、不開 PR、不改其設定"
+  - "不裁定本倉庫既有的授權宣告矛盾"
