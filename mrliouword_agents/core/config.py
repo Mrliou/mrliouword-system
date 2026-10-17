@@ -1,6 +1,7 @@
 """
 統一的配置管理系統
 """
+
 from typing import List, Optional
 import yaml
 from pydantic import Field
@@ -12,6 +13,7 @@ try:
         BaseSettings as PydanticBaseSettings,
         SettingsConfigDict as PydanticSettingsConfigDict,
     )
+
     HAS_PYDANTIC_SETTINGS = True
 except ImportError:  # pragma: no cover - pydantic v1 fallback
     from pydantic import BaseSettings as PydanticBaseSettings  # type: ignore
@@ -80,9 +82,12 @@ class MrliouwordConfig(PydanticBaseSettings):
 
     # 成本追蹤
     track_costs: bool = Field(default=True, validation_alias="TRACK_COSTS")
-    cost_alert_threshold: float = Field(default=100.0, validation_alias="COST_ALERT_THRESHOLD")
+    cost_alert_threshold: float = Field(
+        default=100.0, validation_alias="COST_ALERT_THRESHOLD"
+    )
 
     if not HAS_PYDANTIC_SETTINGS:
+
         class Config:
             env_file = ".env"
             env_file_encoding = "utf-8"

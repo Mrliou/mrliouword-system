@@ -1,6 +1,7 @@
 """
 基礎 Agent 類別
 """
+
 import inspect
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -40,9 +41,9 @@ class BaseAgent(ABC):
     async def execute(self, *args, **kwargs) -> AsyncGenerator[str, None]:
         """
         執行 Agent 任務
-        
+
         子類必須實現此方法
-        
+
         Yields:
             執行過程中的消息
         """
