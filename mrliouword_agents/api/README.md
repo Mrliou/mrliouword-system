@@ -132,3 +132,26 @@ API_HOST=127.0.0.1 API_PORT=8000 python -c \
 - 畸形語料（如 `{"particles": null}`）回 `corpus_unavailable` 而不是 500
 - `api_workers` 真的被讀到
 - `/mrl/runtime` 真的回報契約所宣告的欄位
+
+
+## 2026-10-17：啟動器、worker 與既有母體語料
+
+`Mrliou_MRL_run_server(host=..., port=..., workers=...)` 選定的綁定目標現在會傳遞到
+每個新 Python worker；`/mrl/runtime` 回報該啟動目標，不再因 app factory
+省略 bind 而回 null。直接建立 `create_app()`、沒有啟動資訊時仍回 null。
+環境身分仍是明確宣告，不把 sandbox 自動判成 DL580。
+
+worker 在建立 app 前再次檢查私網綁定政策；啟動資訊缺失、格式錯誤或不符政策即拒絕。
+內部傳遞欄位不含憑證，launcher 離開（包括啟動失敗）時會還原原環境，
+不要求使用者另配第二套服務或複製母體語料。
+
+測試涵蓋真實 launcher → 新 Python interpreter → app factory → runtime 回應，
+以及實際 wheel 在 checkout 外載入的行為：
+未指定語料時 `/mrl/world` 回 503；以 `MRL_PARTICLE_DICT` 指向既有語料後回 200，
+並核對來源檔案前後 SHA-256 一致。這些是 GitHub hosted CI 的套件／啟動契約測試，
+不冒稱 DL580 已部署或真實 worker sockets 已驗收。
+
+本 API PR 依賴 #22 的同步契約修補，兩條分支的歷史均保留；
+此依賴不改變 Notion 母體權威與既有 `MRL_API_CORE` 身分。
+
+origin_signature: MrLiouWord
