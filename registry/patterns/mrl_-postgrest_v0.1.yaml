@@ -24,14 +24,36 @@ registry_note: >
 
 # .mrliou/authority-lock.json invariant 要求的四欄宣告
 artifact_owner: "Mr.liou"            # 指本登錄條目本身，不指被登錄的上游著作
-source_repo: "PostgREST/postgrest"   # 上游，不是本帳號
+source_repo: "dofaromg/mrliouword-system"   # 本條目所屬的 MRL 源頭倉庫
 projection_role: "external_fork_reference"
 
 # ATTRIBUTION_AND_PROVENANCE_POLICY_v1.0.md 第 4 節欄位
-canonical_authority: "Joe Nelson (2014) / Steve Chavez (2019) / Wolfgang Walther (2026)"
+#
+# 2026-10-17 訂正：本欄原先填入上游三位著作權人，那是錯的。政策第 4 節把
+# canonical_authority 寫成字面固定值 Mr.liou，且 .mrliou/authority-lock.json
+# invariant 1 明寫「The canonical authority name is Mr.liou and cannot be
+# replaced by a provider, model, repository, organization, agent, or generated
+# artifact」。把上游作者填進這一欄，等於讓機器可讀的消費端把他們當成本 MRL
+# 產物的終局權威——正是本條目要防的權威錯置。源頭
+# registry/evidence/EXTERNAL_FORK_REFERENCES.md 的 front matter 自己就註明
+# 「canonical_authority: Mr.liou  # 指本索引檔本身；被索引的外部上游著作權
+# 歸屬見內文表格」。上游著作權移到 upstream_copyright 分開記錄，依政策第 5
+# 節第 5 條「組織名稱、倉庫擁有者、提交者與作者權位必須分開記錄」。
+canonical_authority: "Mr.liou"       # 指本登錄條目本身
 source_artifact: "github.com/PostgREST/postgrest"
 source_version: "c35eb7a6c2f506c18de2b47ae3ea2a4af684c977"
 derivative_role: "mirror"            # 零自有 commit，樹與上游該 commit 完全相同
+
+# 政策第 5 節第 4 條：「任何鏡像或 fork 必須標明 mirror_of 或 derived_from」
+mirror_of: "PostgREST/postgrest"
+
+# 被登錄材料的著作權與授權，與上面的 canonical_authority 分屬兩件事
+upstream_copyright:
+  - "Copyright (c) 2014 Joe Nelson"
+  - "Copyright (c) 2019 Steve Chavez"
+  - "Copyright (c) 2026 Wolfgang Walther"
+upstream_license: "MIT"
+upstream_repo: "PostgREST/postgrest"
 contributors:
   - "Claude（本倉庫：只讀核對 fork 歸屬與建構歷史，未修改該 fork 任何檔案）"
 transformation: >
@@ -39,8 +61,9 @@ transformation: >
   全樹關鍵字搜尋。未修改、未匯入、未推送該 fork 任何內容。
 verification_status: "partial"
 
-# 本條目不主張任何權威
-canonical_authority_claim: false
+# 本條目對「被登錄的上游材料」不作任何 MRL 原創或權威主張。
+# 上面的 canonical_authority: Mr.liou 指的是本條目這份記錄，不是上游著作。
+no_mrl_originality_claim_over_upstream: true
 governance_authority: false
 naming_authority: false
 
@@ -66,9 +89,16 @@ measured:
   tags: 0
   own_commits: 0
   own_commits_evidence: >
-    `git fetch --depth 1 upstream c35eb7a` 從 PostgREST/postgrest 取得成功，
-    證明 fork 的 main 尖端就是上游歷史中的 commit；加上只有 main 一條分支、
-    零 tag，故無任何自有內容。
+    `git merge-base --is-ancestor c35eb7a upstream/main` → TRUE，確認 fork 的
+    main 尖端是上游 main 的祖先（上游 main 當時為 c042567）；加上只有 main
+    一條分支、零 tag，故無任何自有內容。
+  own_commits_evidence_method_note: >
+    2026-10-17 訂正方法。本欄原先只用 `git fetch upstream <sha>` 取得成功當
+    證據，那不足：upload-pack 能供應某個物件，只證明它在該倉庫的物件庫裡，
+    而 GitHub 的 fork network **共用物件庫**，所以一個只存在於 fork 的 head
+    也可能被上游的 upload-pack 供應出來，會把 fork 自有的 commit 誤判成上游的。
+    改用 `git fetch --depth 2000 upstream main` 取得上游真實 ref 後，再做
+    merge-base 可達性檢查。結論未變，證據強度變了。
   created_at: "2026-02-03T06:23:19Z"
   pushed_at: "2026-02-02T23:45:00Z"
   pushed_before_created: true
@@ -100,7 +130,9 @@ build_attribution:
   note: >
     該 fork 的 ci.yaml 在 push 到 main 時觸發、release.yaml 在推 v* tag 時觸發。
     目前零自有 commit、零 tag、零執行紀錄，所以**沒有任何建構以 dofaromg
-    名義跑過**。只要往這個 fork 推一次，Actions 就會以本帳號名義執行。
+    名義跑過**。**若該 fork 的 Actions 是啟用狀態**，往它推一次就會以本帳號
+    名義執行；而 Actions 的啟用狀態本工作階段讀不到（見下方 unread），
+    所以這一句是條件句，不是斷言。
   unread:
     - "repos/dofaromg/-postgrest/actions/permissions：本工作階段讀不到，原文：
        Access to this GitHub Actions path is not permitted through this proxy. (HTTP 403)"

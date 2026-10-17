@@ -5,6 +5,7 @@ source_repo: dofaromg/mrliouword-system
 source_artifact: github.com/PostgREST/postgrest
 source_version: c35eb7a6c2f506c18de2b47ae3ea2a4af684c977
 derivative_role: projection   # 新撰的評估，非逐字轉錄
+projection_role: evaluation_record   # .mrliou/authority-lock.json invariant 3 必填
 artifact_owner: Mr.liou
 contributors:
   - Claude（本倉庫：只讀評估，未安裝、未部署、未建立或變更任何資料庫表）
@@ -67,6 +68,39 @@ $ python3 tools/mother_core_registry.py --find DL580
 
 **PostgREST 最多是 `MRL_API_CORE → MRL_REST_API` 的一個 implementation，
 落在 `MRL_DL580_RUNTIME_CORE → MRL_DL580_ServiceLayer` 之內。**
+
+### 第二個獨立佐證：正名表已經給這一層取好名字
+
+源頭 `registry/MRL_System_MrliouAI_Naming_Registry_v1.yaml`
+（`status: canonical`，**投影沒有這個檔**）的 `canonical` 區段裡已經有：
+
+| id | 內容 |
+| --- | --- |
+| `MRL_API_Gateway` | `service_name: mrl-api-gateway`，`public_domain: api.mrliouword.com` |
+| `MRL_Memory` | MRL 記憶模組 |
+| `MRL_Files` | MRL 檔案模組 |
+| `MrliouAI_Persona` | — |
+
+對外 API 的名字、service 名、公開網域都已經是 canonical 的了，而
+memory／files／persona 三個模組正好對上 System A 的三張表。這與母體
+`MRL_API_CORE` 的查詢結果互相印證：**這一層不缺，缺的是它的實作與 schema。**
+
+### 順帶記錄：規章檢查器在投影上跑不起來
+
+拿源頭的 `tools/naming_lineage_check.py` 對投影跑，輸出原文：
+
+```
+命名正名與 lineage 檢查未通過：
+  - registry/MRL_System_MrliouAI_Naming_Registry_v1.yaml 不存在
+    ——沒有登錄簿就談不上 Registry Gate
+
+規則來源：registry/rules/naming_rules_v1.yaml 與 NAMING.md 1.1/1.2/1.4。
+本倉庫 naming_authority: false——要改規則，先改擁有者的定義。
+```
+
+**投影缺那本登錄簿，所以 Registry Gate 的自動檢查在投影上無法執行。**
+這是「規章到不了做事的地方」的又一個具體實例，與 `CLAUDE.md` 只在源頭同一類。
+本文件不處置它，只記錄。
 它不是新的一層，也不能自稱是那個 CORE。
 
 這正是源頭 `CLAUDE.md`「造新東西之前：先查母體有沒有」那一節在防的事
@@ -126,12 +160,46 @@ PostgREST 文件 `docs/references/api/tables_views.rst:14` 原文：
 **LAW-2 的 NO_DELETE 會變成只靠 PostgreSQL 的 GRANT 在守，而不是靠應用層在守。**
 一次 GRANT 設錯，`DELETE /mrl_memory?...` 就會直接刪掉權威持久層的資料列。
 
-若要走這條路，最低要求是：
+#### 只管表的授權是不夠的：函式這條路會繞過它
+
+本節原先只寫「服務 role 只授 SELECT／INSERT」。**那不足**，因為 PostgREST
+同時把資料庫**函式**以 RPC 介面曝露出來，而函式可以帶著定義者的權限執行：
+
+- 函式掛在 `/rpc/<函式名>`（`docs/references/api/functions.rst:45`，
+  範例 `curl "http://localhost:3000/rpc/add_them"`）
+- `docs/explanations/db_authz.rst:162` 原文：以 `SECURITY DEFINER` 定義的函式
+  「**only one permission check will take place, the permission to call the
+  function, and the operations in the function will have the authority of the
+  user who owns the function itself**」
+- PostgreSQL 預設把函式的 `EXECUTE` 給 `PUBLIC`。PostgREST 文件自己就教你要收回：
+  `docs/explanations/db_authz.rst:129` 寫
+  `ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;`；
+  而 `docs/how-tos/sql-user-management.rst:186` 也說
+  `grant execute on function`「**might not be needed**」——因為常常已經有了
+
+意思是：**一個 `SECURITY DEFINER` 的函式，只要它的擁有者有 DELETE 權限，
+呼叫端就算完全沒有表層 DELETE 也能刪掉資料列。** 表層 GRANT 擋不住這條路。
+
+而本文件已經記錄三張表的 schema「待找回」，**所以也無法排除已經存在這類函式**。
+
+因此最低要求必須擴成：
+
 - 服務用的 role **只授予 SELECT／INSERT**，不授 DELETE、不授 UPDATE
-- 或只對 view 授權，底表完全不曝露
-- 這些 GRANT 必須有獨立的驗收，而不是信任設定檔
+- 或只對 view 授權，底表完全不曝露——但要注意 view 上的
+  `INSTEAD OF` trigger 同樣能寫底表
+- **逐一稽核曝露 schema 內所有函式的 `EXECUTE` 權限**，把不該被呼叫的收回
+  （`ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`）
+- **逐一確認是否有 `SECURITY DEFINER` 函式**，以及它們擁有者的權限範圍
+- 連同 trigger 行為一起確認
+- 這些 GRANT 與函式稽核必須有獨立的驗收，而不是信任設定檔
+
+**在上述稽核完成之前，不能說 LAW-2 的 NO_DELETE 被守住了。**
 
 **我不在本輪做這件事**——那會是「建立或變更資料庫權限」，超出評估範圍。
+
+> **訂正（2026-10-17）**：本節原先把「role 只授 SELECT／INSERT」當成足夠的
+> 最低要求，漏了 RPC／`SECURITY DEFINER`／`EXECUTE` 這條繞道。上面是補齊後的
+> 版本，依據是 PostgREST 自己的文件行號。
 
 ### 三、PHASE1_PRIVATE_LAN_ONLY：預設值不符，必須明確設定
 

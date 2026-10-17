@@ -5,6 +5,8 @@ source_repo: dofaromg/-postgrest（外部 fork，非本倉庫產出）
 source_artifact: github.com/PostgREST/postgrest
 source_version: c35eb7a6c2f506c18de2b47ae3ea2a4af684c977
 derivative_role: projection   # 新撰的核對記錄，非逐字轉錄
+projection_role: external_fork_reference_handoff   # .mrliou/authority-lock.json invariant 3 必填
+mirror_of: PostgREST/postgrest   # 政策第 5 節第 4 條：鏡像或 fork 必須標明
 artifact_owner: Mr.liou  # 本交接單產物；被引用材料的作者與授權依原來源保留
 contributors:
   - Claude（本倉庫：只讀核對 fork 歸屬與建構歷史，未修改該 fork 任何檔案）
@@ -61,6 +63,7 @@ ls: cannot access 'registry/evidence/': No such file or directory
 | 上游專案 | `PostgREST/postgrest`（REST API for any Postgres database） |
 | 授權 | MIT License, **Copyright (c) 2014 Joe Nelson / (c) 2019 Steve Chavez / (c) 2026 Wolfgang Walther** |
 | fork 關係 | `fork: true`，`parent` 與 `source` 都是 `PostgREST/postgrest`——直接 fork 自上游，不是從別人的 fork 再 fork |
+| `mirror_of` | `PostgREST/postgrest`（政策第 5 節第 4 條要求鏡像或 fork 必須標明） |
 | 可見性 | public |
 | 分支 | 只有 `main` 一條 |
 | tag 數 | 0 |
@@ -80,13 +83,19 @@ ls: cannot access 'registry/evidence/': No such file or directory
 **一、沒有任何自有內容（git 層證據，不是關鍵字推論）**
 
 ```
-$ git fetch --depth 1 upstream c35eb7a6c2f506c18de2b47ae3ea2a4af684c977
-From https://github.com/PostgREST/postgrest
- * branch            c35eb7a... -> FETCH_HEAD
+$ git fetch --depth 2000 upstream main
+$ git merge-base --is-ancestor c35eb7a6c2f506c18de2b47ae3ea2a4af684c977 upstream/main
+（exit 0 → TRUE）
 ```
 
-上游取得該 commit 成功，證明這個 fork 的 `main` 尖端**就是上游歷史裡的
-commit**；而該 fork 只有 `main` 一條分支、零 tag。故沒有任何自有內容。
+fork 的 `main` 尖端是**上游 `main` 的祖先**（上游 `main` 當時為 `c042567`）；
+而該 fork 只有 `main` 一條分支、零 tag。故沒有任何自有內容。
+
+> **方法訂正（2026-10-17）**：本節原先只用 `git fetch upstream <sha>` 取得成功
+> 當證據。那不足——upload-pack 能供應某個物件，只證明它在該倉庫的物件庫裡，而
+> GitHub 的 fork network **共用物件庫**，所以一個只存在於 fork 的 head 也可能被
+> 上游的 upload-pack 供應出來，會把 fork 自有的 commit 誤判成上游的。改用取得
+> 上游真實 ref 後做 merge-base 可達性檢查。**結論未變，證據強度變了。**
 
 **二、從未被推送過**
 
@@ -103,7 +112,10 @@ $ gh api repos/dofaromg/-postgrest/actions/runs --jq .total_count
 
 該 fork 的 `ci.yaml` 在 push 到 `main` 時觸發、`release.yaml` 在推 `v*` tag
 時觸發。目前零自有 commit、零 tag、零執行紀錄，所以**從來沒有任何建構以
-`dofaromg` 名義跑過**。只要往這個 fork 推一次，Actions 就會以本帳號名義執行。
+`dofaromg` 名義跑過**。
+
+**若該 fork 的 Actions 是啟用狀態**，往它推一次就會以本帳號名義執行。
+這是條件句而不是斷言——Actions 的啟用狀態本工作階段讀不到，見下。
 
 讀不到的部分照實記錄——`repos/dofaromg/-postgrest/actions/permissions`
 在本工作階段被擋，原文：
