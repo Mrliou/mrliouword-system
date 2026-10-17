@@ -85,6 +85,12 @@ cp "docs/evidence/待併入_mrl_ai_system/MRL_Adapters/GitHub/MRL_SystemA_Partic
 **只新增一個檔，不改動母體任何既有檔**，符合母體 `CLAUDE.md` 的
 「母體整合法則（Additive-Only）：只新增、只定位、不刪除、不覆蓋」。
 
+**對照表 YAML 自己帶齊政策第 4 節的十欄與 `projection_role`。** 這點很重要：併入動作
+是複製那一個 YAML，**本交接單的 front matter 不會跟著過去**。政策第 4 節原文
+「缺少 `canonical_authority`、`source_artifact` 或 `derivative_role` 時，必須判定為
+provenance incomplete」，所以那十欄必須寫在被複製的那個檔案裡面。初稿只寫在本文件的
+front matter，已訂正。
+
 ### 為什麼放 `MRL_Adapters/GitHub/`
 
 `MRL_Adapters/` 底下八個目錄（`OpenAI`／`Docker`／`Cloudflare`／`DL580`／`MetaEnv`／
@@ -127,17 +133,39 @@ fltnz_path: Optional[str] = None
 > **不得反向取代主體命名。**
 
 所以對照表的欄位順序是**中文主體命名在前、英文 Adapter 對照在後**。
-三者的 `定位` 皆為 `completed_running`（原文）。
+
+**`定位` 欄的形式要照原樣。** 源頭把運轉狀態寫在 `定位` 欄的**括號裡**，
+不是另一個欄位 —— `MRL_Mother/MRL_World/README.md:8` 原文：
+
+```
+- 定位：世界投影與場態整合（completed_running）
+```
+
+對照表因此**整串含括號照原樣保留**，另附一個明確標為「本表推導」的
+`運轉狀態_本表推導` 欄供程式取用。初稿曾把它拆成 `定位` ＋ `狀態` 兩欄，
+那等於改寫源頭結構、且與宣告的五欄 schema 不一致，已訂正。
 
 工程鏡像側目前沒有對應這三個構件的實作 → 標 **待找回**，不標「不存在」。
 
 ### 第三層｜API 契約 ↔ 母體 `MRL_API_CORE`
 
-PR #23 的九條路由已逐條綁定母體成員。對照表補記一個缺口：
+PR #23 的九條路由已逐條綁定母體成員。但有兩層前提必須講清楚：
 
-**Replay 面「待起動」。** 鏡像的 `/mrl/world` 目前讀 `core/particle_dict.json`，
-**不讀** FlowRhythm 軌跡。依母體 `CLAUDE.md`「給位置、標『待起動』」，
-記成待起動，**不寫 PASS、不寫已完成**。
+**一、那個實作還沒合併。** 本交接單所在分支的 `mrliouword_agents/api/` 只有一個空的
+`__init__.py`；契約模組只存在於分支 `feat/MRL_Api_Server`（PR #23，未合併）。實測：
+
+```
+$ git ls-tree -r --name-only HEAD -- mrliouword_agents/api/
+mrliouword_agents/api/__init__.py
+```
+
+對照表裡每條路由的狀態欄已改名為 `契約狀態_在PR23分支`，層級另加
+`層級狀態: 待合併` 與依賴宣告。**PR #23 合併前，這些端點在 main 上一個都不存在。**
+初稿直接標 `available` 而沒標依賴，併入母體後會變成宣告了不存在的端點，已訂正。
+
+**二、Replay 面「待起動」。** `/mrl/world` 就算合併了也只讀
+`core/particle_dict.json`，**不讀** FlowRhythm 軌跡。依母體 `CLAUDE.md`
+「給位置、標『待起動』」，**不寫 PASS、不寫已完成**。
 
 ---
 
@@ -191,9 +219,12 @@ VERIFIED_VERB_KINDS = {"core"}
 ### 核對過程查出的三件事，已寫進對照表
 
 1. **`.pcode` 是 9 行**，不是 8 行 —— 最後一行沒有換行，所以 `wc -l` 回 8。
-2. **`structure.json` 的 `pcode` 欄不是逐位元組相同**：`.pcode` 用多個空白對齊
-   （`MOV    P1, FX.ADJ.112         ; 內省`），`structure.json` 寫單一空白且不帶
-   `;` 註解。收合空白後五條全部對上。**比對必須正規化，不能用字串相等。**
+2. **`structure.json` 的 `pcode` 欄不是逐位元組相同**：`.pcode` 用多個空白對齊且帶
+   `;` 尾註（`MOV    P1, FX.ADJ.112         ; 內省`），`structure.json` 寫單一空白
+   且不帶註解。
+   **正規化要兩步**：先去掉 `;` 及其後的註解，再收合連續空白。
+   實測：只收合空白 **0/5** 對上；兩步都做 **5/5** 對上 —— 空白收合移不掉尾註，
+   所以單一步驟不夠。**比對不可用字串相等。**
 3. **`sequence` 只覆蓋 8 個 op 中的 5 個**：
    - `LOAD   P0, CORE.ECHO.PERSONA`（`.pcode:2`）對應核心粒子 `⊕Core: Echo.Persona`，
      **在軌跡裡**（`trace.fltnz:3`，`::initiated`，`VERIFIED`）但不在 `sequence` 內
