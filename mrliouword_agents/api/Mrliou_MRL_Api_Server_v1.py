@@ -231,15 +231,21 @@ def Mrliou_MRL_resolve_bind(
         host = host if host is not None else runtime_config.api_host
         port = port if port is not None else runtime_config.api_port
 
-    bind_class = Mrliou_MRL_classify_bind(host)
+    # Mrliou_MRL_classify_bind 判定的是 strip 過的值，所以傳出去的也必須是
+    # 正規化後的值。否則 API_HOST=" 127.0.0.1 " 這種（.env 很容易寫出來）會被
+    # 守衛判成 loopback 放行，uvicorn 卻拿到帶空白的字串而在 getaddrinfo 階段
+    # 以 gaierror 啟動失敗——而且那個未正規化的值還會進到 worker 的啟動資訊
+    # 與 /mrl/runtime 的 bind_host 回報裡。
+    resolved_host = str(host).strip()
+    bind_class = Mrliou_MRL_classify_bind(resolved_host)
     if bind_class not in PERMITTED_BIND_CLASSES and not Mrliou_MRL_allow_public_bind():
         raise MrlApiBindRefused(
-            f"綁定目標 {host!r} 的分類是 {bind_class}，不在 PHASE1 允許的 "
+            f"綁定目標 {resolved_host!r} 的分類是 {bind_class}，不在 PHASE1 允許的 "
             f"{PERMITTED_BIND_CLASSES} 之內，與 registry 宣告的 {NETWORK_PHASE} "
             f"不符，拒絕啟動。確定要這麼做請設定 {ALLOW_PUBLIC_BIND_ENV}=1，"
             "或把 API_HOST 設成 loopback 或內網位址。"
         )
-    return host, int(port)
+    return resolved_host, int(port)
 
 
 def Mrliou_MRL_resolve_workers(workers: Optional[int] = None) -> int:
@@ -279,6 +285,34 @@ def _Mrliou_MRL_corpus_unavailable() -> Dict[str, Any]:
             ),
         }
     )
+
+
+def _Mrliou_MRL_validation_errors(exc: Any) -> List[Dict[str, Any]]:
+    """把 422 的細節轉成一定可序列化的形式
+
+    不能用 exc.json()：FastAPI 現行版本的 RequestValidationError（pydantic v2）
+    沒有這個方法，呼叫它會拋 AttributeError，422 於是變成**沒有封套的 500**，
+    本模組 docstring 承諾的「404 / 405 / 422 都帶 origin_signature」就成了假話。
+
+    框架自己的做法是 jsonable_encoder(exc.errors())，但 pydantic v2 的 error 可能
+    帶非 UTF-8 的 input 或 ctx 裡的例外物件，那會讓編碼本身拋錯。所以先照框架的
+    做法，失敗就退回逐欄位轉字串——封套一定要送得出去，寧可不帶 input / ctx
+    （那正是不可序列化的部分，也不該把原始請求內容照樣回送出去）。
+    """
+    from fastapi.encoders import jsonable_encoder
+
+    errors = list(exc.errors())
+    try:
+        return list(jsonable_encoder(errors))
+    except Exception:
+        return [
+            {
+                "type": str(error.get("type", "")),
+                "loc": [str(part) for part in error.get("loc", ())],
+                "msg": str(error.get("msg", "")),
+            }
+            for error in errors
+        ]
 
 
 def _Mrliou_MRL_schema_pending_detail(path: str) -> Dict[str, Any]:
@@ -336,7 +370,10 @@ def create_app(bind: Optional[Tuple[str, int]] = None) -> Any:
     @app.exception_handler(RequestValidationError)
     async def _mrl_validation_exception_handler(_request: Any, exc: Any) -> Any:
         body = _Mrliou_MRL_envelope(
-            {"state": "validation_error", "errors": json.loads(exc.json())}
+            {
+                "state": "validation_error",
+                "errors": _Mrliou_MRL_validation_errors(exc),
+            }
         )
         return JSONResponse(
             status_code=422, content={"detail": body, **_Mrliou_MRL_envelope({})}

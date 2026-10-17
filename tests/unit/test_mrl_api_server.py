@@ -7,7 +7,9 @@
 - 綁定到會曝露所有介面的位址時，預設拒絕啟動（PHASE1_PRIVATE_LAN_ONLY）
 """
 
+import asyncio
 import json
+import socket
 
 import pytest
 
@@ -173,6 +175,20 @@ def test_resolve_bind_allows_public_bind_with_explicit_optin(monkeypatch):
 def test_resolve_bind_passes_loopback(monkeypatch):
     monkeypatch.delenv(ALLOW_PUBLIC_BIND_ENV, raising=False)
     assert Mrliou_MRL_resolve_bind(host="127.0.0.1", port=8000) == ("127.0.0.1", 8000)
+
+
+@pytest.mark.parametrize("raw", [" 127.0.0.1", "127.0.0.1 ", "\t127.0.0.1\n"])
+def test_resolve_bind_normalises_surrounding_whitespace(monkeypatch, raw):
+    """守衛判定的是 strip 過的值，傳出去的也必須是
+
+    回歸測試：先前 classify 用 host.strip()、回傳卻是原字串，於是
+    API_HOST=" 127.0.0.1 " 會被判成 loopback 放行，uvicorn 再以 gaierror
+    啟動失敗。回傳值必須是真的能拿去綁定的字串。
+    """
+    monkeypatch.delenv(ALLOW_PUBLIC_BIND_ENV, raising=False)
+    host, port = Mrliou_MRL_resolve_bind(host=raw, port=8000)
+    assert (host, port) == ("127.0.0.1", 8000)
+    socket.getaddrinfo(host, port)
 
 
 # ── 母體語料：唯讀 ────────────────────────────────────────────────
@@ -622,3 +638,50 @@ def test_duplicate_source_declarations_fail_closed(monkeypatch, tmp_path):
     )
     monkeypatch.setenv(PARTICLE_DICT_ENV, str(target))
     assert Mrliou_MRL_load_particle_dict() is None
+
+
+# ── LAW-0：框架自己產生的 422 也必須帶封套 ────────────────────────
+
+
+def _validation_response(errors):
+    """用真正註冊的 handler 處理一個真的 RequestValidationError"""
+    from fastapi.exceptions import RequestValidationError
+    from mrliouword_agents.api import create_app
+
+    handler = create_app().exception_handlers[RequestValidationError]
+    return asyncio.run(handler(None, RequestValidationError(errors)))
+
+
+def test_validation_handler_envelopes_422():
+    """422 必須是帶封套的 422，不是 500
+
+    回歸測試：先前實作呼叫 exc.json()，而現行 FastAPI／pydantic v2 的
+    RequestValidationError 沒有這個方法，會拋 AttributeError——422 於是變成
+    沒有 origin_signature 的 500，與本模組 docstring 的承諾相反。
+    """
+    response = _validation_response(
+        [{"type": "int_parsing", "loc": ("path", "n"), "msg": "bad", "input": "x"}]
+    )
+    assert response.status_code == 422
+    payload = json.loads(response.body)
+    assert payload["origin_signature"] == ORIGIN
+    assert payload["detail"]["origin_signature"] == ORIGIN
+    assert payload["detail"]["state"] == "validation_error"
+    assert payload["detail"]["errors"][0]["msg"] == "bad"
+
+
+def test_validation_handler_survives_unserializable_error_input():
+    """pydantic v2 的 error 可能帶非 UTF-8 的 input，封套仍必須送得出去
+
+    jsonable_encoder 對 b"\\xff" 這種 input 會自己拋 UnicodeDecodeError，
+    所以實作必須有退路；少帶 input 可以，少帶封套不行。
+    """
+    response = _validation_response(
+        [{"type": "value_error", "loc": ("body", "b"), "msg": "boom", "input": b"\xff"}]
+    )
+    assert response.status_code == 422
+    payload = json.loads(response.body)
+    assert payload["detail"]["origin_signature"] == ORIGIN
+    assert payload["detail"]["state"] == "validation_error"
+    assert payload["detail"]["errors"][0]["msg"] == "boom"
+    assert payload["detail"]["errors"][0]["loc"] == ["body", "b"]
