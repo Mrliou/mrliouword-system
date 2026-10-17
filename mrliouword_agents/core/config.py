@@ -55,7 +55,9 @@ class MrliouwordConfig(PydanticBaseSettings):
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     # API 設定
-    api_host: str = Field(default="0.0.0.0", validation_alias="API_HOST")
+    # 綁全介面是容器化部署的刻意選擇（docker-compose.yml 的 uvicorn --host 0.0.0.0、
+    # config/default.yaml 皆同），且可用 API_HOST 環境變數覆寫。
+    api_host: str = Field(default="0.0.0.0", validation_alias="API_HOST")  # nosec B104
     api_port: int = Field(default=8000, validation_alias="API_PORT")
     api_workers: int = Field(default=4, validation_alias="API_WORKERS")
 
