@@ -13,6 +13,13 @@
  * Version: 2.0.0
  */
 
+import {
+  AccessTokenError,
+  hasRole,
+  tenantScopedVault,
+  verifyAccessToken
+} from './auth.mjs';
+
 // 常數定義
 const ORIGIN = 'MrLiouWord';
 const VERSION = '2.1.0';
@@ -286,26 +293,53 @@ class Persona {
 export default {
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname;
-    
+    const origin = req.headers.get('Origin');
+    const allowedOrigins = (env.ALLOWED_ORIGINS || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const originAllowed = !origin || allowedOrigins.includes(origin);
     const cors = {
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Master-Key',
-      'Content-Type': 'application/json'
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      'Vary': 'Origin'
     };
-    
+    if (origin && originAllowed) cors['Access-Control-Allow-Origin'] = origin;
+
+    if (!originAllowed) {
+      return new Response(JSON.stringify({ error: 'Origin not allowed', origin: ORIGIN }), {
+        status: 403,
+        headers: cors
+      });
+    }
     if (req.method === 'OPTIONS') {
       return new Response(null, { headers: cors });
     }
-    
-    const mem = new Memory(env.MRLIOUWORD_VAULT);
-    const persona = new Persona(env.MRLIOUWORD_VAULT);
-    
+
     const json = async () => { try { return await req.json(); } catch { return {}; } };
     const ok = (d) => new Response(JSON.stringify({ ...d, origin: ORIGIN }), { headers: cors });
     const err = (m, s = 400) => new Response(JSON.stringify({ error: m, origin: ORIGIN }), { status: s, headers: cors });
-    
+
     try {
+      const publicRoute =
+        req.method === 'GET' &&
+        (path === '/' || path === '/health' || path === '/frequencies');
+      const claims = publicRoute ? null : await verifyAccessToken(req, env);
+      if (
+        (path === '/persona/register' || path === '/persona/deregister') &&
+        !hasRole(claims, 'admin')
+      ) {
+        return err('Forbidden', 403);
+      }
+
+      const vault = claims
+        ? tenantScopedVault(env.MRLIOUWORD_VAULT, claims.tenant_id)
+        : env.MRLIOUWORD_VAULT;
+      const mem = new Memory(vault);
+      const persona = new Persona(vault);
+
       // 根路徑
       if (path === '/' && req.method === 'GET') {
         return ok({
@@ -313,20 +347,12 @@ export default {
           version: VERSION,
           philosophy: '怎麼過去，就怎麼回來',
           endpoints: [
-            'GET /status', 'POST /wake', 'POST /sleep',
+            'GET /health', 'GET /status', 'GET /frequencies',
+            'POST /wake', 'POST /sleep',
             'POST /memory/commit', 'POST /memory/recall',
             'GET /memory/stats', 'POST /memory/verify',
-            'GET /particles', 'GET /frequencies',
             'GET /persona/list', 'POST /persona/register',
-            'DELETE /persona/deregister', 'GET /persona/registry',
-            // MRL API Gateway endpoints
-            'GET /health',
-            'GET /api/mrl/runtimeos/ai/models',
-            'POST /api/mrl/runtimeos/ai/generate',
-            'POST /api/mrl/memory/search',
-            'POST /api/mrl/tools/execute',
-            'POST /api/mrl/files/upload',
-            'GET /api/mrl/audit/traces'
+            'DELETE /persona/deregister', 'GET /persona/registry'
           ]
         });
       }
@@ -349,33 +375,12 @@ export default {
 
       // GET /api/mrl/runtimeos/ai/models
       if (path === '/api/mrl/runtimeos/ai/models' && req.method === 'GET') {
-        // TODO: proxy to DL580 local runtime or return static list
-        return ok({
-          ok: true,
-          service: 'mrl-ai',
-          version: VERSION,
-          origin_signature: ORIGIN,
-          data: [
-            { id: 'mrl-local-default', name: 'MRL Local Default', type: 'text', contextWindow: 8192 }
-          ]
-        });
+        return err('AI model catalog is not configured', 501);
       }
 
       // POST /api/mrl/runtimeos/ai/generate
       if (path === '/api/mrl/runtimeos/ai/generate' && req.method === 'POST') {
-        const b = await json();
-        // TODO: proxy to DL580 local runtime (MRL_API_BASE_URL)
-        return ok({
-          ok: true,
-          service: 'mrl-ai',
-          version: VERSION,
-          origin_signature: ORIGIN,
-          data: {
-            model: b.model || 'mrl-local-default',
-            content: '(stub) 請設定 MRL_API_BASE_URL 指向本地 runtime',
-            usage: { input_tokens: 0, output_tokens: 0 }
-          }
-        });
+        return err('AI generation is not configured', 501);
       }
 
       // POST /api/mrl/memory/search
@@ -407,56 +412,24 @@ export default {
 
       // POST /api/mrl/tools/execute
       if (path === '/api/mrl/tools/execute' && req.method === 'POST') {
-        const b = await json();
-        // TODO: route to tool registry
-        return ok({
-          ok: true,
-          service: 'mrl-tools',
-          version: VERSION,
-          origin_signature: ORIGIN,
-          data: {
-            tool: b.tool || 'unknown',
-            status: 'stub',
-            message: '工具執行端點尚未完整實作，請配置 tool registry'
-          }
-        });
+        return err('Tool registry is not configured', 501);
       }
 
       // POST /api/mrl/files/upload
       if (path === '/api/mrl/files/upload' && req.method === 'POST') {
-        // TODO: stream to R2 / MinIO
-        return ok({
-          ok: true,
-          service: 'mrl-files',
-          version: VERSION,
-          origin_signature: ORIGIN,
-          data: {
-            key: `uploads/${Date.now()}`,
-            status: 'stub',
-            message: '檔案上傳端點尚未完整實作，請配置 R2/MinIO 連接'
-          }
-        });
+        return err('File storage is not configured', 501);
       }
 
       // GET /api/mrl/audit/traces
       if (path === '/api/mrl/audit/traces' && req.method === 'GET') {
-        // TODO: query audit log from D1 or Postgres
-        return ok({
-          ok: true,
-          service: 'mrl-audit',
-          version: VERSION,
-          origin_signature: ORIGIN,
-          data: {
-            traces: [],
-            message: '審計記錄端點尚未完整實作，請配置 D1/Postgres 查詢'
-          }
-        });
+        return err('Audit trace storage is not configured', 501);
       }
 
       // GET /api/mrl/ui-state/:userId
       if (path.startsWith('/api/mrl/ui-state/') && req.method === 'GET') {
         const userId = decodeURIComponent(path.replace('/api/mrl/ui-state/', ''));
-        const raw = await env.MRLIOUWORD_VAULT.get(`ui_state:${userId}`);
+        if (claims.sub !== userId) return err('Forbidden', 403);
+        const raw = await vault.get(`ui_state:${userId}`);
         return ok({
           ok: true,
           service: 'mrl-ui-state',
@@ -469,10 +442,11 @@ export default {
       // POST /api/mrl/ui-state/:userId
       if (path.startsWith('/api/mrl/ui-state/') && req.method === 'POST') {
         const userId = decodeURIComponent(path.replace('/api/mrl/ui-state/', ''));
+        if (claims.sub !== userId) return err('Forbidden', 403);
         const b = await json();
-        const existing = await env.MRLIOUWORD_VAULT.get(`ui_state:${userId}`);
+        const existing = await vault.get(`ui_state:${userId}`);
         const merged = { ...(existing ? JSON.parse(existing) : {}), ...b, userId, updatedAt: new Date().toISOString() };
-        await env.MRLIOUWORD_VAULT.put(`ui_state:${userId}`, JSON.stringify(merged));
+        await vault.put(`ui_state:${userId}`, JSON.stringify(merged));
         return ok({
           ok: true,
           service: 'mrl-ui-state',
@@ -485,7 +459,8 @@ export default {
       // DELETE /api/mrl/ui-state/:userId
       if (path.startsWith('/api/mrl/ui-state/') && req.method === 'DELETE') {
         const userId = decodeURIComponent(path.replace('/api/mrl/ui-state/', ''));
-        await env.MRLIOUWORD_VAULT.delete(`ui_state:${userId}`);
+        if (claims.sub !== userId) return err('Forbidden', 403);
+        await vault.delete(`ui_state:${userId}`);
         return ok({
           ok: true,
           service: 'mrl-ui-state',
@@ -551,7 +526,15 @@ export default {
       
       return err('Not Found', 404);
     } catch (e) {
-      return new Response(JSON.stringify({ error: e.message, origin: ORIGIN }), { status: 500, headers: cors });
+      if (e instanceof AccessTokenError) {
+        const headers = new Headers(cors);
+        if (e.status === 401) headers.set('WWW-Authenticate', 'Bearer');
+        return new Response(JSON.stringify({ error: e.message, origin: ORIGIN }), {
+          status: e.status,
+          headers
+        });
+      }
+      return new Response(JSON.stringify({ error: 'Internal error', origin: ORIGIN }), { status: 500, headers: cors });
     }
   }
 };
