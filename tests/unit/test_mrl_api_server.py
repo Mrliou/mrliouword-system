@@ -385,3 +385,96 @@ def test_runtime_bind_is_null_when_unknown(client):
     body = client.get("/mrl/runtime").json()
     assert body["bind_host"] is None
     assert body["bind_class"] is None
+
+
+
+# origin_signature: MrLiouWord
+@pytest.mark.parametrize("workers", [1, 3])
+def test_launcher_worker_factory_reports_the_selected_bind(monkeypatch, workers):
+    """A fresh interpreter must see the launcher bind, as Windows workers do."""
+    import importlib
+    import os
+    import subprocess
+    import sys
+
+    server = importlib.import_module(
+        "mrliouword_agents.api.Mrliou_MRL_Api_Server_v1"
+    )
+    previous = '{"previous": "launch"}'
+    monkeypatch.setenv(server._MRL_LAUNCH_BIND_ENV, previous)
+    monkeypatch.delenv(ALLOW_PUBLIC_BIND_ENV, raising=False)
+    observed = {}
+
+    def fake_uvicorn_run(app, **options):
+        module_name, factory_name = app.split(":")
+        child = (
+            "import importlib,json; from fastapi.testclient import TestClient; "
+            f"factory=getattr(importlib.import_module({module_name!r}),"
+            f"{factory_name!r}); "
+            "print(json.dumps(TestClient(factory()).get('/mrl/runtime').json()))"
+        )
+        output = subprocess.check_output(
+            [sys.executable, "-c", child], env=os.environ.copy(), text=True
+        )
+        observed.update(json.loads(output))
+        assert options["host"] == "127.0.0.1"
+        assert options["port"] == 8127
+        assert options["workers"] == workers
+        assert options["factory"] is True
+
+    monkeypatch.setattr("uvicorn.run", fake_uvicorn_run)
+    server.Mrliou_MRL_run_server(host="127.0.0.1", port=8127, workers=workers)
+    assert observed["bind_host"] == "127.0.0.1"
+    assert observed["bind_port"] == 8127
+    assert observed["bind_class"] == BIND_LOOPBACK
+    assert observed["origin_signature"] == ORIGIN
+    assert os.environ[server._MRL_LAUNCH_BIND_ENV] == previous
+
+
+def test_launcher_restores_environment_after_startup_failure(monkeypatch):
+    import importlib
+    import os
+
+    server = importlib.import_module(
+        "mrliouword_agents.api.Mrliou_MRL_Api_Server_v1"
+    )
+    monkeypatch.delenv(server._MRL_LAUNCH_BIND_ENV, raising=False)
+    monkeypatch.delenv(ALLOW_PUBLIC_BIND_ENV, raising=False)
+
+    def fail_start(*args, **kwargs):
+        raise RuntimeError("fixture startup failure")
+
+    monkeypatch.setattr("uvicorn.run", fail_start)
+    with pytest.raises(RuntimeError, match="fixture startup failure"):
+        server.Mrliou_MRL_run_server(host="127.0.0.1", port=8127, workers=3)
+    assert server._MRL_LAUNCH_BIND_ENV not in os.environ
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [None, "not-json", '["127.0.0.1", true]', '["127.0.0.1", 0]'],
+)
+def test_worker_factory_rejects_missing_or_invalid_bind(monkeypatch, metadata):
+    import importlib
+
+    server = importlib.import_module(
+        "mrliouword_agents.api.Mrliou_MRL_Api_Server_v1"
+    )
+    if metadata is None:
+        monkeypatch.delenv(server._MRL_LAUNCH_BIND_ENV, raising=False)
+    else:
+        monkeypatch.setenv(server._MRL_LAUNCH_BIND_ENV, metadata)
+    with pytest.raises(MrlApiBindRefused):
+        server._Mrliou_MRL_create_server_app()
+
+
+def test_worker_factory_rechecks_private_lan_boundary(monkeypatch):
+    import importlib
+
+    server = importlib.import_module(
+        "mrliouword_agents.api.Mrliou_MRL_Api_Server_v1"
+    )
+    monkeypatch.delenv(ALLOW_PUBLIC_BIND_ENV, raising=False)
+    monkeypatch.setenv(server._MRL_LAUNCH_BIND_ENV, '["0.0.0.0", 8127]')
+    with pytest.raises(MrlApiBindRefused):
+        server._Mrliou_MRL_create_server_app()
