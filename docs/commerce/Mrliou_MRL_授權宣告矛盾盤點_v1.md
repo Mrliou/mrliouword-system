@@ -56,9 +56,18 @@ GRANT OF LICENSE:
    prior written permission from MR.liou.
 ```
 
-它的第 1 條就是權威邊界的核心，而且**已經被程式化**：
-`modules/MRL_SystemB_CommerceLayer/Mrliou_MRL_License_v1.py` 的
-`Mrliou_MRL_check_signature_retention()` 檢查的就是這一條。
+它的第 1 條就是權威邊界的核心。
+
+> **2026-10-17 更正**：本文件原本在此處說該條「已經被程式化」，指的是
+> `modules/MRL_SystemB_CommerceLayer/`。該模組**已依擁有者指示撤出本 PR**——
+> 源頭 `dofaromg/mrliouword-system` 已有更完整的 `commercial_gate.py`
+> （12 項權利 × 9 欄 ＋ 15 必填欄），而且 `GOVERNANCE_ADDENDUM.md` 明文
+> 「技術完整性檢查只能輸出 BLOCKED 或 READY_FOR_AUTHORITY_REVIEW，不能自行
+> 產生 COMMERCIAL_APPROVED」。在已有 CORE 旁另造一個非 canonical 實作，正是
+> 源頭 `CLAUDE.md` 所稱的「反向混淆」。
+>
+> 本節以下的事實盤點不受影響：它只依賴倉庫內既有檔案，與該模組無關。
+> 被撤出的檔案保留在本分支的 commit 歷史中可回溯（LAW-2，未刪除歷史）。
 
 問題是它的涵蓋範圍只寫了 ChatServer 的 Universal DNS 元件，不是全系統。
 
@@ -85,20 +94,28 @@ proprietary 時製造大量假命中，與 MRL 的授權狀態無關。
 
 ## 待權利人裁定（我不替你決定）
 
-本次交付**不動**上表任何一個檔案，只提供草案與盤點。要處理的話，三個選項：
+本次交付**不動**上表任何一個檔案，只提供盤點。
+
+原本一併提出的 `MRL_LICENSE_v1.md` 草案**也已撤出本 PR**：依 `.mrliou/meta.json`
+的 `governance_authority: false`、`github_may_define_mrl_canonical: false`，
+本倉庫不得自行定義治理規則，一份由倉庫側起草的授權條文正落在那條邊界上。
+下列三個選項仍然成立，只是其中提到的「MRL 授權條文」目前**尚無草案檔**，
+需由權利人決定是否另行起草、以及起草於何處（Notion 或倉庫）。
+
+要處理的話，三個選項：
 
 **選項 A — 補上根 `LICENSE`，維持 MIT。**
-把 `MRL_LICENSE_v1.md` 僅作為母體語料與 `modules/MRL_System*` 的附加條款，
+把一份 MRL 授權條文僅作為母體語料與 `modules/MRL_System*` 的附加條款，
 程式碼維持 MIT。最不衝突，但 `origin_signature` 的保留要求在 MIT 下沒有強制力。
 
-**選項 B — 根 `LICENSE` 用 `MRL_LICENSE_v1.md`（專有），同步改四處 MIT 宣告。**
+**選項 B — 根 `LICENSE` 用一份 MRL 專有授權，同步改四處 MIT 宣告。**
 權威邊界最完整，與 authority-lock 一致。代價：變更貢獻者條款、既往的 MIT
 宣告不會追溯失效、可能影響既有使用者。
 
 **選項 C — 分層授權。**
 `mrliouword_agents/`（SDK，五個 agent 仍是 stub）維持 MIT；
-`core/particle_dict.json` 等母體語料與 `modules/MRL_System*` 走
-`MRL_LICENSE_v1.md`。每個子樹各放一份 `LICENSE`，根目錄放一份索引說明哪個子樹
+`core/particle_dict.json` 等母體語料與 `modules/MRL_System*` 走 MRL 專有授權。
+每個子樹各放一份 `LICENSE`，根目錄放一份索引說明哪個子樹
 適用哪一份。**這一條與既有的 `chatserver-license.txt` 作法一致**（它本來就是
 只涵蓋一個元件的分層授權），也最貼近倉庫現狀。
 
@@ -148,9 +165,12 @@ invariant: "Repository mirrors and organization projections cannot silently
             become source_of_truth."
 ```
 
-而本次所有產出（`modules/MRL_SystemB_CommerceLayer/`、
-`Mrliou_MRL_Identity_v1.py`、本文件、`MRL_LICENSE_v1.md`、兩筆 registry 登錄）
-**全部落在 organization_projection 上**，尚未進入 source_of_truth。
+而本次產出（`Mrliou_MRL_Identity_v1.py`、`Mrliou_MRL_Provenance_v1.py` 的
+別名辨識修正、本文件、一筆 registry 登錄）**全部落在 organization_projection
+上**，尚未進入 source_of_truth。
+
+> SystemB 商業層、商業模式文件、授權草案與移植指令稿原本也在本次產出內，
+> 已依擁有者指示撤出（2026-10-17），理由見本文件上半部的更正段落。
 
 GitHub API 顯示 `Mrliou/mrliouword-system` 的 `fork: true`，
 `parent` 與 `source` 皆為 `dofaromg/mrliouword-system`。
@@ -186,7 +206,7 @@ GitHub API 顯示 `Mrliou/mrliouword-system` 的 `fork: true`，
 把本疊的淨差異套用到 `dofaromg/mrliouword-system` 的 `main`（`8879f67`）：
 
 - **衝突 0 個**
-- 在源頭底座上重跑：SystemB 48 項、SystemA 10 項回歸、沙盒驗收 33 項，**全數通過**
+- 在源頭底座上重跑（當時含 SystemB）：48 + 10 + 33 項全數通過。SystemB 撤出後，本 PR 的範圍只剩 SystemA 的 10 項回歸，仍全數通過
 - 用的是源頭自己的 `core/particle_dict.json`
 
 環境：sandbox（容器），**不是 DL580 實機結果**。

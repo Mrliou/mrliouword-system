@@ -28,17 +28,22 @@ location:
   lives_in: "Mrliou/mrliouword-system"        # organization_projection（fork）
   source_of_truth: "dofaromg/mrliouword-system"
   in_source_of_truth: false                   # 尚未進入源頭
-  built_on_projection_main: "5c98c91"
+  built_on_projection_main: "3f22f93"          # PR #18 合併後的投影 main
   source_of_truth_main_at_record_time: "8879f67"
   divergence_at_record_time:
+    recorded_at: "2026-10-17"
     projection_behind_source: 262
-    projection_ahead_of_source: 31
+    projection_ahead_of_source: 37             # PR #18 合併後由 31 增為 37
     common_ancestor: "c388f0a (2026-08-11)"
   port_verified:
     date: "2026-10-16"
-    method: "本疊淨差異套用到 dofaromg/mrliouword-system 的 main"
+    method: "當時整疊淨差異套用到 dofaromg/mrliouword-system 的 main"
     conflicts: 0
-    tests_on_source_base: "SystemB 48 項 + SystemA 10 項 + 沙盒驗收 33 項，全數通過"
+    tests_on_source_base: "48 + 10 + 33 項全數通過（當時含 SystemB）"
+    scope_note: >
+      SystemB 商業層已於 2026-10-17 依擁有者指示撤出本 PR，
+      因此本登錄現行範圍只含 SystemA 溯源層；該範圍的 10 項回歸仍全數通過。
+      撤出的檔案保留在本分支的 commit 歷史可回溯（LAW-2，未刪除歷史）。
     environment: "sandbox（容器），不是 DL580 實機"
   note: >
     驗收所依據的母體語料在兩邊一致：origin=MrLiouWord、
