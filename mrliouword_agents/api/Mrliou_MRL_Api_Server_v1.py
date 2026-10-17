@@ -427,8 +427,35 @@ def create_app(bind: Optional[Tuple[str, int]] = None) -> Any:
     return app
 
 
+# Internal launch metadata inherited by Windows-spawned Uvicorn workers.
+# It contains no credentials and is restored when the launcher exits.
+_MRL_LAUNCH_BIND_ENV = "_MRL_API_LAUNCH_BIND_V1"
+
+
+def _Mrliou_MRL_create_server_app() -> Any:
+    """Build a worker app with the bind selected by the existing launcher."""
+    raw = os.environ.get(_MRL_LAUNCH_BIND_ENV)
+    if raw is None:
+        raise MrlApiBindRefused("MRL launcher bind metadata is missing")
+    try:
+        bind = json.loads(raw)
+        if (
+            not isinstance(bind, list)
+            or len(bind) != 2
+            or not isinstance(bind[0], str)
+            or type(bind[1]) is not int
+            or not 1 <= bind[1] <= 65535
+        ):
+            raise ValueError("invalid bind metadata")
+    except (ValueError, TypeError) as exc:
+        raise MrlApiBindRefused("MRL launcher bind metadata is invalid") from exc
+    return create_app(bind=Mrliou_MRL_resolve_bind(bind[0], bind[1]))
+
+
 #: Mrliou_MRL_run_server 以 import string 啟動，worker 數才會生效
-APP_FACTORY_IMPORT_STRING = "mrliouword_agents.api.Mrliou_MRL_Api_Server_v1:create_app"
+APP_FACTORY_IMPORT_STRING = (
+    "mrliouword_agents.api.Mrliou_MRL_Api_Server_v1:_Mrliou_MRL_create_server_app"
+)
 
 
 def Mrliou_MRL_run_server(
@@ -446,13 +473,21 @@ def Mrliou_MRL_run_server(
 
     resolved_host, resolved_port = Mrliou_MRL_resolve_bind(host, port)
     resolved_workers = Mrliou_MRL_resolve_workers(workers)
-    uvicorn.run(
-        APP_FACTORY_IMPORT_STRING,
-        factory=True,
-        host=resolved_host,
-        port=resolved_port,
-        workers=resolved_workers,
-    )
+    previous_bind = os.environ.get(_MRL_LAUNCH_BIND_ENV)
+    os.environ[_MRL_LAUNCH_BIND_ENV] = json.dumps([resolved_host, resolved_port])
+    try:
+        uvicorn.run(
+            APP_FACTORY_IMPORT_STRING,
+            factory=True,
+            host=resolved_host,
+            port=resolved_port,
+            workers=resolved_workers,
+        )
+    finally:
+        if previous_bind is None:
+            os.environ.pop(_MRL_LAUNCH_BIND_ENV, None)
+        else:
+            os.environ[_MRL_LAUNCH_BIND_ENV] = previous_bind
 
 
 __all__ = [
