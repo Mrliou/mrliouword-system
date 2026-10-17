@@ -145,7 +145,9 @@ def Mrliou_MRL_load_particle_dict(
         return None
     try:
         with located.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle, object_pairs_hook=_Mrliou_MRL_unique_json_object)
+            payload = json.load(
+                handle, object_pairs_hook=_Mrliou_MRL_unique_json_object
+            )
     except (OSError, ValueError, UnicodeError):
         return None
     return payload if Mrliou_MRL_corpus_is_wellformed(payload) else None
