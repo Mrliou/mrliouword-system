@@ -116,10 +116,7 @@ def Mrliou_MRL_corpus_is_wellformed(payload: Any) -> bool:
     ]
     if not signatures or any(value != ORIGIN_SIGNATURE for value in signatures):
         return False
-    if (
-        "canonical_authority" in payload
-        and payload["canonical_authority"] != "Mr.liou"
-    ):
+    if "canonical_authority" in payload and payload["canonical_authority"] != "Mr.liou":
         return False
     for key in ("particles", "domains", "frequencies", "constants"):
         if key in payload and not isinstance(payload[key], dict):
@@ -554,4 +551,3 @@ __all__ = [
     "PERMITTED_BIND_CLASSES",
     "create_app",
 ]
-
