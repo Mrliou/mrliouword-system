@@ -528,3 +528,97 @@ def test_installed_wheel_uses_explicit_existing_corpus(monkeypatch, tmp_path):
     assert loaded["body"]["corpus_origin"] == ORIGIN
     assert loaded["body"]["philosophy"] == "怎麼過去，就怎麼回來"
     assert hashlib.sha256(corpus.read_bytes()).hexdigest() == before
+
+
+
+@pytest.mark.parametrize(
+    "declarations",
+    [
+        {"origin": "ExternalVendor"},
+        {"origin": ORIGIN, "origin_signature": "ExternalVendor"},
+        {"origin": "ExternalVendor", "origin_signature": ORIGIN},
+        {},
+        {"origin": ""},
+        {"origin": "   "},
+        {"origin": None},
+        {"origin": 123},
+        {"origin": ORIGIN, "origin_signature": None},
+        {"origin": ORIGIN, "origin_signature": ""},
+        {"origin": ORIGIN, "canonical_authority": "ExternalVendor"},
+        {"origin": "mrliouword"},
+        {"origin": "Mr.liou"},
+        {"origin": "dofaromg"},
+    ],
+)
+def test_corpus_authority_rejected_without_source_rewrite(
+    monkeypatch, tmp_path, declarations
+):
+    """Namespace, human authority and contributor names are not origin signatures."""
+    import hashlib
+
+    from fastapi.testclient import TestClient
+
+    from mrliouword_agents.api import create_app
+
+    corpus = {"particles": {"fx.test": {"hv": "untrusted"}}, **declarations}
+    target = tmp_path / "corpus.json"
+    target.write_text(json.dumps(corpus), encoding="utf-8")
+    before = hashlib.sha256(target.read_bytes()).hexdigest()
+    monkeypatch.setenv(PARTICLE_DICT_ENV, str(target))
+    assert Mrliou_MRL_corpus_is_wellformed(corpus) is False
+    assert Mrliou_MRL_load_particle_dict() is None
+    with TestClient(create_app()) as client:
+        status = client.get("/mrl/status").json()
+        assert status["particle_dict_loaded"] is False
+        assert status["particle_count"] == 0
+        for route in ("/mrl/world", "/mrl/particles", "/mrl/particles/fx.test"):
+            response = client.get(route)
+            assert response.status_code == 503
+            body = response.json()
+            assert body["signature_scope"] == "api_implementation"
+            assert body["detail"]["state"] == "corpus_unavailable"
+            assert "corpus_origin" not in body
+            assert "particle" not in body
+    assert hashlib.sha256(target.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.parametrize(
+    "declarations",
+    [
+        {"origin": ORIGIN},
+        {"origin_signature": ORIGIN},
+        {"origin": ORIGIN, "origin_signature": ORIGIN},
+        {"origin": ORIGIN, "canonical_authority": "Mr.liou"},
+    ],
+)
+def test_canonical_corpus_source_key_aliases_preserved(
+    monkeypatch, tmp_path, declarations
+):
+    from fastapi.testclient import TestClient
+
+    from mrliouword_agents.api import create_app
+
+    corpus = {"particles": {"fx.test": {}}, **declarations}
+    target = tmp_path / "corpus.json"
+    target.write_text(json.dumps(corpus), encoding="utf-8")
+    original = target.read_bytes()
+    monkeypatch.setenv(PARTICLE_DICT_ENV, str(target))
+    assert Mrliou_MRL_corpus_is_wellformed(corpus) is True
+    assert Mrliou_MRL_load_particle_dict() == corpus
+    with TestClient(create_app()) as client:
+        response = client.get("/mrl/world")
+        assert response.status_code == 200
+        assert response.json()["corpus_origin"] == ORIGIN
+        assert response.json()["signature_scope"] == "api_implementation"
+        assert client.get("/mrl/particles/fx.test").status_code == 200
+    assert target.read_bytes() == original
+
+
+def test_duplicate_source_declarations_fail_closed(monkeypatch, tmp_path):
+    target = tmp_path / "corpus.json"
+    target.write_text(
+        '{"origin":"ExternalVendor","origin":"MrLiouWord","particles":{}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(PARTICLE_DICT_ENV, str(target))
+    assert Mrliou_MRL_load_particle_dict() is None

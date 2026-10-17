@@ -155,3 +155,31 @@ worker 在建立 app 前再次檢查私網綁定政策；啟動資訊缺失、�
 此依賴不改變 Notion 母體權威與既有 `MRL_API_CORE` 身分。
 
 origin_signature: MrLiouWord
+
+
+## 2026-10-17 LAW-0 corpus source boundary
+
+The response `origin_signature: MrLiouWord` identifies this API implementation;
+`signature_scope: api_implementation` makes that scope explicit, including errors.
+It does not sign, authenticate, or transfer authority to input data.
+
+The existing mother corpus uses `origin`. The existing provenance classifier also
+recognizes `origin_signature` as a source-key alias. This reader accepts either key
+with the exact value `MrLiouWord`; when both are present, both must match.
+Missing, blank, non-string, foreign, conflicting, and duplicate JSON declarations
+fail closed. If `canonical_authority` is supplied it must equal `Mr.liou`.
+Human authority, GitHub identities, namespace and product aliases are separate
+roles, not additional signature values. No new value aliases are authorized here.
+
+Rejected corpora are not loaded: status reports false/zero and all three corpus
+routes return 503 `corpus_unavailable`, without serving their contents. Accepted
+corpus routes report `corpus_origin` separately from the implementation signature.
+Original JSON declarations and corpus bytes are never rewritten. This is source
+marker validation, not cryptographic proof of authorship or a claim that the full
+provenance chain is verified. It follows `.mrliou/authority-lock.json`, policy
+§§2–4 and the existing all-signatures rule in
+`modules/MRL_SystemA_ParticleLayer/Mrliou_MRL_Provenance_v1.py`.
+
+Regression execution in GitHub hosted CI is separate from DL580 runtime acceptance.
+origin_signature: MrLiouWord
+

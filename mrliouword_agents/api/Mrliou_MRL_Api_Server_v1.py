@@ -109,7 +109,17 @@ def Mrliou_MRL_corpus_is_wellformed(payload: Any) -> bool:
     """
     if not isinstance(payload, dict):
         return False
-    if not isinstance(payload.get("origin"), str):
+    # The existing corpus uses origin; origin_signature is its LAW-0 key alias.
+    # Inspect every declaration: a valid key must never mask a conflicting one.
+    signatures = [
+        payload[key] for key in ("origin", "origin_signature") if key in payload
+    ]
+    if not signatures or any(value != ORIGIN_SIGNATURE for value in signatures):
+        return False
+    if (
+        "canonical_authority" in payload
+        and payload["canonical_authority"] != "Mr.liou"
+    ):
         return False
     for key in ("particles", "domains", "frequencies", "constants"):
         if key in payload and not isinstance(payload[key], dict):
@@ -117,6 +127,16 @@ def Mrliou_MRL_corpus_is_wellformed(payload: Any) -> bool:
     if "philosophy" in payload and not isinstance(payload["philosophy"], str):
         return False
     return True
+
+
+def _Mrliou_MRL_unique_json_object(pairs: Any) -> Dict[str, Any]:
+    """Reject duplicate keys instead of silently discarding source declarations."""
+    result: Dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate corpus JSON key")
+        result[key] = value
+    return result
 
 
 def Mrliou_MRL_load_particle_dict(
@@ -128,8 +148,8 @@ def Mrliou_MRL_load_particle_dict(
         return None
     try:
         with located.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-    except (OSError, json.JSONDecodeError):
+            payload = json.load(handle, object_pairs_hook=_Mrliou_MRL_unique_json_object)
+    except (OSError, ValueError, UnicodeError):
         return None
     return payload if Mrliou_MRL_corpus_is_wellformed(payload) else None
 
@@ -233,9 +253,10 @@ def Mrliou_MRL_resolve_workers(workers: Optional[int] = None) -> int:
 
 
 def _Mrliou_MRL_envelope(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """LAW-0：所有回應統一帶上來源簽名與衍生角色"""
+    """LAW-0 implementation signature; never a signature for returned source data."""
     enveloped: Dict[str, Any] = {
         "origin_signature": ORIGIN_SIGNATURE,
+        "signature_scope": "api_implementation",
         "mother_core": contract.MOTHER_CORE,
         "derivative_role": contract.DERIVATIVE_ROLE,
     }
@@ -255,7 +276,7 @@ def _Mrliou_MRL_corpus_unavailable() -> Dict[str, Any]:
             "expected": str(PARTICLE_DICT_RELATIVE),
             "hint": (
                 f"套件安裝情境請以 {PARTICLE_DICT_ENV} 指向 canonical 母體語料；"
-                "本實作不會自行產生語料。"
+                "來源缺失、外部或互相矛盾時亦拒絕載入；本實作不會自行產生語料。"
             ),
         }
     )
@@ -373,7 +394,7 @@ def create_app(bind: Optional[Tuple[str, int]] = None) -> Any:
         return _Mrliou_MRL_envelope(
             {
                 "corpus_version": corpus.get("version"),
-                "corpus_origin": corpus.get("origin"),
+                "corpus_origin": corpus.get("origin", corpus.get("origin_signature")),
                 "philosophy": corpus.get("philosophy"),
                 "domains": corpus.get("domains", {}),
                 "frequencies": corpus.get("frequencies", {}),
@@ -390,7 +411,13 @@ def create_app(bind: Optional[Tuple[str, int]] = None) -> Any:
             )
         particles = corpus.get("particles", {})
         names: List[str] = sorted(particles)
-        return _Mrliou_MRL_envelope({"count": len(names), "fx": names})
+        return _Mrliou_MRL_envelope(
+            {
+                "corpus_origin": corpus.get("origin", corpus.get("origin_signature")),
+                "count": len(names),
+                "fx": names,
+            }
+        )
 
     @app.get("/mrl/particles/{fx}")
     def mrl_particle(fx: str) -> Dict[str, Any]:
@@ -405,7 +432,13 @@ def create_app(bind: Optional[Tuple[str, int]] = None) -> Any:
                 status_code=404,
                 detail=_Mrliou_MRL_envelope({"state": "not_found", "fx": fx}),
             )
-        return _Mrliou_MRL_envelope({"fx": fx, "particle": particles[fx]})
+        return _Mrliou_MRL_envelope(
+            {
+                "corpus_origin": corpus.get("origin", corpus.get("origin_signature")),
+                "fx": fx,
+                "particle": particles[fx],
+            }
+        )
 
     def _schema_pending(path: str) -> Dict[str, Any]:
         raise HTTPException(
@@ -521,3 +554,4 @@ __all__ = [
     "PERMITTED_BIND_CLASSES",
     "create_app",
 ]
+
