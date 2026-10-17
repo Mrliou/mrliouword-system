@@ -113,21 +113,34 @@ function 解密(加密後: string, 主鑰匙: string): string {
 
 interface Env {
   PARTICLE_AUTH_VAULT: KVNamespace;
+  ALLOWED_ORIGINS?: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const 路徑 = url.pathname;
-    
-    const 回應頭 = {
-      "Access-Control-Allow-Origin": "*",
+    const origin = request.headers.get("Origin");
+    const 允許來源 = (env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((value: string) => value.trim())
+      .filter(Boolean);
+    const 來源允許 = !origin || 允許來源.includes(origin);
+    const 回應頭: Record<string, string> = {
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, X-Master-Key",
       "Content-Type": "application/json",
+      "Vary": "Origin",
       "X-Origin-Signature": 源
     };
-    
+    if (origin && 來源允許) 回應頭["Access-Control-Allow-Origin"] = origin;
+
+    if (!來源允許) {
+      return new Response(JSON.stringify({ 錯誤: "來源不允許", 源 }), {
+        status: 403,
+        headers: 回應頭
+      });
+    }
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: 回應頭 });
     }
@@ -140,13 +153,10 @@ export default {
           version: "1.0.0",
           philosophy: "怎麼過去，就怎麼回來",
           endpoints: {
-            "POST /init": "初始化系統",
-            "POST /tokens/batch": "批量添加令牌",
-            "POST /mcp/proxy": "MCP 代理請求",
+            "GET /": "API 端點說明",
             "GET /status": "系統狀態",
             "GET /world/heartbeat": "心跳",
-            "POST /world/flow": "頻率流過",
-            "DELETE /revoke": "撤銷所有"
+            "POST /world/flow": "頻率流過"
           },
           layers: {
             "L∞": "頻率源頭",
