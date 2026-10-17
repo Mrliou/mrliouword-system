@@ -1,0 +1,124 @@
+mrl_registry_entry: true
+
+id: "mrl_MRL_Api_Server_v0.1.0"
+type: "ApiImplementation"
+status: "schema-pending"
+root: "MrlCore"
+scope:
+  mainline: "MrlCore.Mainline"
+
+origin_signature: "MrLiouWord"
+created_at: "2026-10-17"
+
+naming_note: >
+  依 registry/rules/naming_rules_v1.yaml 的 Registry Gate
+  ——「Artifact must have an explicit registry entry before entering
+  naming/index rules」——本條目先於 MRL_ 名字存在。
+  `MRL_Api_Server` 是**本倉庫側的實作名**，不是新的母體 CORE 成員：
+  本倉庫 naming_authority: false，不得自造母體名稱。它既不是
+  母體的 MRL_API_CORE，也不是源頭正名表裡的 MRL_API_Gateway。
+  檔名沿用既有樣式 Mrliou_MRL_*（對照
+  modules/MRL_SystemA_ParticleLayer/Mrliou_MRL_Identity_v1.py）。
+
+registry_note: >
+  2026-10-17 依擁有者指示補上 API 伺服器實作。mrliouword_agents/api/ 原先只有
+  一個空的 __init__.py，而 requirements.txt 早就宣告了 fastapi>=0.100.0 與
+  uvicorn>=0.23.0，core/config.py 也早就宣告了 api_host / api_port / api_workers
+  ——宣告齊備但沒有實作。本條目登錄的就是補上的那份實作。
+
+# .mrliou/authority-lock.json invariant 3 要求的四欄宣告
+artifact_owner: "Mr.liou"
+source_repo: "dofaromg/mrliouword-system"
+projection_role: "api_implementation"
+
+# ATTRIBUTION_AND_PROVENANCE_POLICY_v1.0.md 第 4 節欄位
+canonical_authority: "Mr.liou"
+source_artifact: "mrliouword_agents/api/"
+source_version: "3f22f93e8eb75a16e66be51baee07c16d698849a（建置基底 commit）；模組版本 v0.1.0；套件版本 1.0.1"
+derivative_role: "implementation"
+contributors:
+  - "Mr.liou（canonical_authority：定義與裁決；指示補上本實作）"
+  - "Claude Code（tool：實作與測試撰寫）"
+transformation: >
+  新增 mrliouword_agents/api/ 下的契約表與伺服器實作，與對應單元測試。
+  未改動任何既有規章檔，未建立或變更任何資料庫表，未修改母體語料。
+verification_status: "partial"
+
+# 本實作不主張任何權威
+governance_authority: false
+naming_authority: false
+
+implements:
+  mother_core: "MRL_API_CORE"
+  checked_with: "源頭 tools/mother_core_registry.py --find API（投影沒有這支工具）"
+  mother_core_note: >
+    母體 MRL_API_CORE 有十五個成員。該工具的輸出原文：「倉庫側可以寫它的
+    implementation / adapter，但要在 PROVENANCE 標明 derivative_role，
+    不得宣稱自己是那個 CORE。」本實作照辦：derivative_role: implementation。
+  routes_bound: 9
+  routes_available: 6
+  routes_schema_pending: 3
+  contract_endpoint: "/mrl/contract（對外公布每條路由綁定哪個母體成員）"
+
+not_this_artifact:
+  - "MRL_API_CORE 本身——本實作是它的實作，不是它"
+  - >
+      MRL_API_Gateway——源頭 registry/MRL_System_MrliouAI_Naming_Registry_v1.yaml
+      （status: canonical）已把閘道正名為 MRL_API_Gateway，
+      service_name: mrl-api-gateway、public_domain: api.mrliouword.com。
+      本實作是閘道後面的服務，不是閘道。
+
+laws:
+  - "LAW-0: origin_signature 不可變，每個回應皆帶正規形 MrLiouWord"
+  - "LAW-1: DL580 上的 PostgreSQL 仍是權威持久層；本實作不碰持久層"
+  - "LAW-2: NO_DELETE / ADDITIVE / REVERSIBLE；本實作全為唯讀路由"
+
+path: "mrliouword_agents/api"
+network_phase: "PHASE1_PRIVATE_LAN_ONLY"
+
+deployment_boundary:
+  - "不建立或變更任何資料庫表"
+  - "母體語料 core/particle_dict.json 只讀不寫"
+  - "只有 GET 路由，沒有任何寫入路徑"
+  - >
+      會開 port——這是伺服器，與 MRL_SystemA_ParticleLayer 的「不開 port」
+      邊界不同，故放在 mrliouword_agents/api/ 而非粒子層內
+  - >
+      綁定位址：預設取 config 的 api_host；若解析為未指定位址
+      （會曝露所有介面）則**拒絕啟動**，除非明確設
+      MRL_API_ALLOW_PUBLIC_BIND=1。這條是 PHASE1_PRIVATE_LAN_ONLY 的執行點。
+
+mother_particles:
+  - fx: "fx.meta.origin"
+    hv: "溯源"
+    module: "Mrliou_MRL_Api_Contract_v1（每條路由綁回母體成員）"
+
+location:
+  lives_in: "Mrliou/mrliouword-system"        # organization_projection
+  source_of_truth: "dofaromg/mrliouword-system"
+  in_source_of_truth: false
+  built_on_projection_main: "3f22f93"
+  recorded_at: "2026-10-17"
+  note: >
+    依 .mrliou/authority-lock.json 的 invariant
+    「Repository mirrors and organization projections cannot silently become
+    source_of_truth」——不讓投影悄悄變源頭，就把位置寫明。
+
+verification:
+  environment: "sandbox（容器），不是 DL580 實機"
+  tests: "tests/unit/test_mrl_api_server.py，32 項全數通過"
+  gates:
+    - "black --check mrliouword_agents/api/：通過"
+    - "flake8 --select=E9,F63,F7,F82：0"
+    - "bandit -r mrliouword_agents/ -ll：新檔零發現（唯一的 medium 仍是既有的 config.py:56）"
+    - "mypy：檢查檔數 24 → 26，錯誤數 18 → 18（新檔零錯）"
+    - "pytest：105 通過（新增 32 項），零新增失敗"
+
+pending:
+  - >
+      LAW-1 的 System A 三表（mrl_persona / mrl_memory / mrl_file_index）schema：
+      待找回。schema 未找回之前 /mrl/persona、/mrl/memory、/mrl/files 回
+      503 schema_pending，不猜測欄位、不提供假資料。
+  - >
+      母體 MRL_API_CORE 其餘成員（GRAPH / TASK / UPLOAD / RPC）本實作未涵蓋，
+      理由逐條公布在 /mrl/contract 的 not_covered。

@@ -33,7 +33,7 @@ import argparse
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
-from integrations.github.logical_extractor import LogicalExtractor
+from integrations.github.logical_extractor import LogicalStructureExtractor as LogicalExtractor
 from integrations.webgpu.attention_filter import AttentionFilter
 from integrations.particle.test_recorder import ParticleTestRecorder
 from integrations.particle.naming_engine import ParticleNamingEngine
@@ -102,6 +102,18 @@ class IntelligentRepoSync:
         
         logger.info("IntelligentRepoSync initialized")
     
+    @staticmethod
+    def _pattern_terms(patterns) -> List[str]:
+        """Adapt extractor mappings for list consumers without rewriting evidence."""
+        if isinstance(patterns, dict):
+            terms = []
+            for category, matches in patterns.items():
+                terms.append(category)
+                terms.extend(matches)
+        else:
+            terms = list(patterns)
+        return list(dict.fromkeys(terms))
+
     def _load_config(self) -> Dict:
         """Load configuration from YAML file"""
         if not os.path.exists(self.config_path):
@@ -212,7 +224,7 @@ class IntelligentRepoSync:
         
         for snippet in snippets:
             try:
-                structure = self.logical_extractor.extract(
+                structure = self.logical_extractor.extract_from_code(
                     code=snippet.code,
                     language=snippet.language
                 )
@@ -237,7 +249,7 @@ class IntelligentRepoSync:
         # Step 3: Compute attention similarity
         logger.info("Step 3: Computing attention similarity...")
         try:
-            texts = [s['source_info']['repo'] + ' ' + ' '.join(s['patterns']) 
+            texts = [s['source_info']['repo'] + ' ' + ' '.join(self._pattern_terms(s['patterns'])) 
                     for s in structures]
             
             similarity_threshold = self.config.get('attention', {}).get('similarity_threshold', 0.5)
@@ -289,7 +301,7 @@ class IntelligentRepoSync:
         try:
             for structure in structures:
                 decision = self.naming_engine.generate_name(
-                    patterns=structure.get('patterns', []),
+                    patterns=self._pattern_terms(structure.get('patterns', [])),
                     concepts=structure.get('concepts', []),
                     reasoning_chains=structure.get('reasoning_chains', []),
                     source_info=structure.get('source_info')
@@ -329,7 +341,7 @@ class IntelligentRepoSync:
                     particle_type=structure.get('particle_type', 'fx.logic.general'),
                     content=content,
                     source_info=structure.get('source_info', {}),
-                    tags=structure.get('patterns', []) + structure.get('concepts', []),
+                    tags=self._pattern_terms(structure.get('patterns', [])) + structure.get('concepts', []),
                     metadata={
                         'confidence': structure.get('confidence', 0.0),
                         'formula': structure.get('formula', '')

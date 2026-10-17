@@ -84,18 +84,18 @@ class TestLogicalExtractor:
         extractor = LogicalExtractor()
         
         code = """
-        class AttentionLayer:
-            def forward(self, query, key, value):
-                scores = torch.matmul(query, key.transpose(-2, -1))
-                attn = F.softmax(scores, dim=-1)
-                output = torch.matmul(attn, value)
-                return output
-        """
+class AttentionLayer:
+    def forward(self, query, key, value):
+        scores = torch.matmul(query, key.transpose(-2, -1))
+        attn = F.softmax(scores, dim=-1)
+        output = torch.matmul(attn, value)
+        return output
+"""
         
         structure = extractor.extract_from_code(code, "Python")
         
-        assert 'attention' in structure['patterns']
-        assert structure['confidence'] > 0
+        assert 'attention_mechanism' in structure['patterns']
+        assert structure['complexity'] > 0
         assert len(structure['reasoning_chains']) > 0
     
     def test_extract_concepts(self):
@@ -103,15 +103,17 @@ class TestLogicalExtractor:
         extractor = LogicalExtractor()
         
         code = """
-        class DistributedCache:
-            async def get(self, key):
-                # Distributed concurrent access
-                pass
-        """
+class DistributedCache:
+    async def get(self, key):
+        # Distributed concurrent access
+        pass
+"""
         
         structure = extractor.extract_from_code(code, "Python")
         
-        assert 'distributed' in structure['concepts'] or 'concurrent' in structure['concepts']
+        # concepts 收的是識別字名稱，語意詞由 _extract_keywords 收進 keywords
+        assert 'DistributedCache' in structure['concepts']
+        assert 'distributed' in structure['keywords'] or 'concurrent' in structure['keywords']
     
     def test_generate_formula(self):
         """Test formula-related structure construction"""
@@ -429,3 +431,80 @@ def cleanup():
 # Run tests
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '--tb=short'])
+
+
+# MRL continuation: exercise real extraction through downstream storage.
+# origin_signature: MrLiouWord
+@pytest.mark.asyncio
+async def test_sync_real_extractor_reaches_storage_without_rewriting_patterns():
+    from types import SimpleNamespace
+    from scripts.intelligent_repo_sync import IntelligentRepoSync
+
+    sync = IntelligentRepoSync.__new__(IntelligentRepoSync)
+    sync.config = {'github': {}, 'attention': {}, 'testing': {'enabled': False}}
+    sync.errors = []
+    sync.search_engine = Mock()
+    sync.search_engine.search_code.return_value = [
+        CodeSnippet(
+            repo='fixture/mrl-contract', path='attention.py', language='Python',
+            code='def attention(query, key, value): return query',
+            url='https://example.invalid/mrl-contract', score=1.0
+        )
+    ]
+    sync.logical_extractor = LogicalExtractor()
+    sync.attention_filter = Mock()
+    sync.attention_filter.filter_by_attention.return_value = []
+    sync.naming_engine = Mock()
+    sync.naming_engine.generate_name.return_value = SimpleNamespace(
+        particle_name='fx.pattern.attention', particle_type='fx.pattern.attention'
+    )
+    sync.memory_storage = Mock()
+    sync.memory_storage.store.return_value = (object(), True)
+    sync._save_report = Mock()
+
+    report = await sync.sync_pattern('attention', limit=1)
+
+    assert report.extracted_structures == 1
+    assert report.particles_created == 1
+    assert report.summary['success'] is True
+    assert report.errors == []
+    naming = sync.naming_engine.generate_name.call_args.kwargs
+    assert isinstance(naming['patterns'], list)
+    assert 'attention' in naming['patterns']
+    saved = sync.memory_storage.store.call_args.kwargs
+    assert isinstance(saved['tags'], list)
+    assert 'attention' in saved['tags']
+    import json
+    evidence = json.loads(saved['content'])
+    assert isinstance(evidence['patterns'], dict)
+    assert 'attention_mechanism' in evidence['patterns']
+    assert saved['source_info']['repo'] == 'fixture/mrl-contract'
+
+
+@pytest.mark.asyncio
+async def test_sync_extraction_failure_stays_visible():
+    from scripts.intelligent_repo_sync import IntelligentRepoSync
+
+    sync = IntelligentRepoSync.__new__(IntelligentRepoSync)
+    sync.config = {'github': {}, 'attention': {}, 'testing': {'enabled': False}}
+    sync.errors = []
+    sync.search_engine = Mock()
+    sync.search_engine.search_code.return_value = [
+        CodeSnippet(
+            repo='fixture/mrl-contract', path='bad.py', language='Python',
+            code='fixture', url='https://example.invalid/mrl-contract', score=1.0
+        )
+    ]
+    sync.logical_extractor = Mock()
+    sync.logical_extractor.extract_from_code.side_effect = ValueError('fixture failure')
+    sync.attention_filter = Mock()
+    sync.naming_engine = Mock()
+    sync.memory_storage = Mock()
+    sync._save_report = Mock()
+
+    report = await sync.sync_pattern('attention', limit=1)
+
+    assert report.extracted_structures == 0
+    assert report.summary['success'] is False
+    assert any('fixture failure' in error for error in report.errors)
+    sync.memory_storage.store.assert_not_called()
