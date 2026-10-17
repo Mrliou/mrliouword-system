@@ -34,7 +34,7 @@ projection_role: "api_implementation"
 # ATTRIBUTION_AND_PROVENANCE_POLICY_v1.0.md 第 4 節欄位
 canonical_authority: "Mr.liou"
 source_artifact: "mrliouword_agents/api/"
-source_version: "見本倉庫 git 歷史"
+source_version: "3f22f93e8eb75a16e66be51baee07c16d698849a（建置基底 commit）；模組版本 v0.1.0；套件版本 1.0.1"
 derivative_role: "implementation"
 contributors:
   - "Mr.liou（canonical_authority：定義與裁決；指示補上本實作）"

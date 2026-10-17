@@ -13,6 +13,15 @@ import pytest
 
 from mrliouword_agents.api import (
     ALLOW_PUBLIC_BIND_ENV,
+    BIND_LOOPBACK,
+    BIND_PRIVATE,
+    BIND_PUBLIC,
+    BIND_UNRESOLVABLE,
+    BIND_UNSPECIFIED,
+    ENVIRONMENT_ENV,
+    ENV_DL580,
+    ENV_UNSPECIFIED,
+    PERMITTED_BIND_CLASSES,
     ENDPOINTS,
     LAW1_TABLES,
     MOTHER_MEMBERS,
@@ -20,6 +29,10 @@ from mrliouword_agents.api import (
     STATES,
     MrlApiBindRefused,
     MrlApiEndpoint,
+    Mrliou_MRL_classify_bind,
+    Mrliou_MRL_corpus_is_wellformed,
+    Mrliou_MRL_declared_environment,
+    Mrliou_MRL_resolve_workers,
     Mrliou_MRL_contract_payload,
     Mrliou_MRL_endpoint_for,
     Mrliou_MRL_is_public_bind,
@@ -87,19 +100,61 @@ def test_contract_payload_declares_derivative_role():
 
 
 @pytest.mark.parametrize(
+    "host,expected_class",
+    [
+        ("127.0.0.1", BIND_LOOPBACK),
+        ("::1", BIND_LOOPBACK),
+        ("localhost", BIND_LOOPBACK),
+        ("192.168.1.5", BIND_PRIVATE),
+        ("10.0.0.3", BIND_PRIVATE),
+        ("172.16.0.1", BIND_PRIVATE),
+        ("fc00::1", BIND_PRIVATE),
+        ("0.0.0.0", BIND_UNSPECIFIED),
+        ("::", BIND_UNSPECIFIED),
+        ("8.8.8.8", BIND_PUBLIC),
+        ("1.1.1.1", BIND_PUBLIC),
+        ("mrl-host.invalid", BIND_UNRESOLVABLE),
+    ],
+)
+def test_bind_classification(host, expected_class):
+    assert Mrliou_MRL_classify_bind(host) == expected_class
+
+
+@pytest.mark.parametrize(
     "host,expected",
     [
+        ("127.0.0.1", False),
+        ("192.168.1.5", False),
+        ("fc00::1", False),
+        # 以下四種以前全被放過去，這是 Codex P1 指出的繞過
         ("0.0.0.0", True),
         ("::", True),
-        ("127.0.0.1", False),
-        ("::1", False),
-        ("192.168.1.5", False),
-        ("10.0.0.3", False),
-        ("mrl-runtime", False),
+        ("8.8.8.8", True),
+        ("mrl-host.invalid", True),
     ],
 )
 def test_public_bind_detection(host, expected):
+    """只擋 wildcard 是不夠的：可全球路由的位址與解析不出來的主機名也要擋"""
     assert Mrliou_MRL_is_public_bind(host) is expected
+
+
+def test_permitted_classes_are_only_loopback_and_private():
+    assert PERMITTED_BIND_CLASSES == (BIND_LOOPBACK, BIND_PRIVATE)
+
+
+@pytest.mark.parametrize("host", ["8.8.8.8", "1.1.1.1", "mrl-host.invalid", "::"])
+def test_resolve_bind_refuses_anything_outside_private_lan(monkeypatch, host):
+    """公開位址、解析失敗的主機名，預設都要被拒——PHASE1 從嚴"""
+    monkeypatch.delenv(ALLOW_PUBLIC_BIND_ENV, raising=False)
+    with pytest.raises(MrlApiBindRefused) as excinfo:
+        Mrliou_MRL_resolve_bind(host=host, port=8000)
+    assert "PHASE1_PRIVATE_LAN_ONLY" in str(excinfo.value)
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "192.168.1.5", "10.0.0.3", "fc00::1"])
+def test_resolve_bind_allows_private_lan(monkeypatch, host):
+    monkeypatch.delenv(ALLOW_PUBLIC_BIND_ENV, raising=False)
+    assert Mrliou_MRL_resolve_bind(host=host, port=8000) == (host, 8000)
 
 
 def test_resolve_bind_refuses_public_bind_by_default(monkeypatch):
@@ -226,3 +281,107 @@ def test_no_route_outside_the_contract(client):
         if getattr(route, "path", "").startswith("/mrl")
     }
     assert registered == contract_paths
+
+
+# ── Codex 審查補上的覆蓋 ──────────────────────────────────────────
+
+
+def test_malformed_corpus_shapes_are_rejected(monkeypatch, tmp_path):
+    """{"particles": null} 以前會讓 /mrl/status 在 len(None) 爆 500"""
+    for payload in (
+        {"origin": "MrLiouWord", "particles": None},
+        {"origin": "MrLiouWord", "domains": []},
+        {"origin": 123},
+        {"particles": {}},
+        [],
+    ):
+        target = tmp_path / "particle_dict.json"
+        target.write_text(json.dumps(payload), encoding="utf-8")
+        monkeypatch.setenv(PARTICLE_DICT_ENV, str(target))
+        assert Mrliou_MRL_corpus_is_wellformed(payload) is False
+        assert Mrliou_MRL_load_particle_dict() is None
+
+
+def test_status_does_not_crash_on_malformed_corpus(monkeypatch, tmp_path):
+    target = tmp_path / "particle_dict.json"
+    target.write_text(
+        json.dumps({"origin": "MrLiouWord", "particles": None}), encoding="utf-8"
+    )
+    monkeypatch.setenv(PARTICLE_DICT_ENV, str(target))
+
+    from fastapi.testclient import TestClient
+
+    from mrliouword_agents.api import create_app
+
+    response = TestClient(create_app()).get("/mrl/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["particle_dict_loaded"] is False
+    assert body["particle_count"] == 0
+
+
+def test_corpus_unavailable_names_the_override_env(monkeypatch, tmp_path):
+    monkeypatch.setenv(PARTICLE_DICT_ENV, str(tmp_path / "nope.json"))
+
+    from fastapi.testclient import TestClient
+
+    from mrliouword_agents.api import create_app
+
+    response = TestClient(create_app()).get("/mrl/world")
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert detail["state"] == "corpus_unavailable"
+    assert PARTICLE_DICT_ENV in detail["hint"]
+
+
+def test_framework_404_carries_origin_signature(client):
+    """LAW-0 也要蓋到框架自己產生的回應"""
+    response = client.get("/mrl/definitely-not-a-route")
+    assert response.status_code == 404
+    assert response.json()["origin_signature"] == ORIGIN
+
+
+def test_framework_405_carries_origin_signature(client):
+    response = client.post("/mrl/health")
+    assert response.status_code == 405
+    assert response.json()["origin_signature"] == ORIGIN
+
+
+def test_workers_follow_config():
+    """api_workers 以前完全沒有被讀到"""
+    from mrliouword_agents.core.config import config as runtime_config
+
+    assert Mrliou_MRL_resolve_workers() == max(1, runtime_config.api_workers)
+    assert Mrliou_MRL_resolve_workers(3) == 3
+    assert Mrliou_MRL_resolve_workers(0) == 1
+
+
+def test_runtime_returns_what_the_contract_advertises(monkeypatch):
+    """契約說會回報宣告的環境與綁定目標，就必須真的有"""
+    monkeypatch.setenv(ENVIRONMENT_ENV, ENV_DL580)
+
+    from fastapi.testclient import TestClient
+
+    from mrliouword_agents.api import create_app
+
+    body = TestClient(create_app(bind=("127.0.0.1", 8000))).get("/mrl/runtime").json()
+    assert body["declared_environment"] == ENV_DL580
+    assert body["environment_is_declared_not_detected"] is True
+    assert body["bind_host"] == "127.0.0.1"
+    assert body["bind_port"] == 8000
+    assert body["bind_class"] == BIND_LOOPBACK
+
+
+def test_environment_is_declared_not_guessed(monkeypatch):
+    """沒宣告或值不認識時回 unspecified，不自行猜測"""
+    monkeypatch.delenv(ENVIRONMENT_ENV, raising=False)
+    assert Mrliou_MRL_declared_environment() == ENV_UNSPECIFIED
+    monkeypatch.setenv(ENVIRONMENT_ENV, "whatever")
+    assert Mrliou_MRL_declared_environment() == ENV_UNSPECIFIED
+
+
+def test_runtime_bind_is_null_when_unknown(client):
+    """直接 create_app() 時不編一個綁定位址出來"""
+    body = client.get("/mrl/runtime").json()
+    assert body["bind_host"] is None
+    assert body["bind_class"] is None

@@ -135,7 +135,11 @@ ENDPOINTS: Tuple[MrlApiEndpoint, ...] = (
         path="/mrl/runtime",
         mother_member="MRL_RUNTIME_API",
         state=STATE_AVAILABLE,
-        summary="執行環境描述（Python 版本、是否 DL580、綁定位址）",
+        summary=(
+            "執行環境描述：Python 版本、作業系統、宣告的環境"
+            "（sandbox / dl580 / unspecified，由呼叫端宣告，不自動偵測）、"
+            "實際綁定目標與其分類、母體語料路徑"
+        ),
     ),
     MrlApiEndpoint(
         path="/mrl/contract",
