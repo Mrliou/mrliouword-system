@@ -6,3 +6,7 @@ pytest>=7.0.0
 pytest-asyncio>=0.21.0
 pytest-cov>=4.0.0
 pytest-mock>=3.11.0
+
+# FastAPI 的 TestClient 走 httpx；tests/unit/test_mrl_api_server.py 需要它
+# 對 MRL API 的路由做實際請求。僅測試用，不是生產依賴。
+httpx>=0.27.0
