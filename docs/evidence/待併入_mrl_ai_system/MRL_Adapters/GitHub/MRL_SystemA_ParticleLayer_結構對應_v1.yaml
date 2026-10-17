@@ -1,0 +1,336 @@
+mrl_structure_mapping: true
+
+# ─────────────────────────────────────────────────────────────────────
+# 母體世界模型結構定義 ↔ GitHub 工程鏡像上的粒子層與 API 契約
+#
+# 權位（依本目錄 README.md 原文）
+#   「依權位區分模式：MRL 為主體，GitHub 僅作 Adapter。
+#     不得成為主體或反向命名 MRL 構件。」
+#   本檔是 Adapter 側的對照表，不是母體主體，也不定義任何母體名稱。
+#
+# 為什麼放在 MRL_Adapters/GitHub/ 而不是另開一個目錄：
+#   MRL_Adapters/ 底下八個目錄（OpenAI / Docker / Cloudflare / DL580 /
+#   MetaEnv / Gemini / GitHub / CloudCode）全是**外部載體**。
+#   GitHub 的角色原文是「工程鏡像與版本通道」，正是本對照表描述的那個鏡像。
+#   另開 MRL_Adapters/MRL_SystemA_ParticleLayer/ 會把 MRL 自己的粒子層
+#   說成外部 adapter，權位剛好倒過來，所以不那樣做。
+# ─────────────────────────────────────────────────────────────────────
+
+id: "MRL_SystemA_ParticleLayer_結構對應_v1"
+origin_signature: "MrLiouWord"
+canonical_authority: "Mr.liou"
+權位: "Adapter / 映射節點（非母體主體）"
+recorded_at: "2026-10-17"
+當下狀態: "沙盒（容器）靜態核對，不是 DL580 實機結果"
+
+本體與載體:
+  判定: "載體"
+  依據: >
+    MRL_Docs/Root/MRL_Flowagent_Root_Origin_V0_2026-03-03.md 原文——
+    「載體：VM、編譯器、LLVM、資料庫、Workers、API、UI、容器
+      —— 只能承載本體，不能取代本體。」
+  承載的本體: "語場種子（.flpkg / .fltnz / .pcode）與跳點節奏產出的軌跡"
+  對應節奏段: "Replay（唯讀），不含 Jump 與 Collapse 的產生"
+  節奏段依據: >
+    MRL_WorldModel/MRL_FlowRhythm_v0/README.md 節奏表原文——
+    「Replay：只讀軌跡，重建粒子鏈與語場；封包雜湊一致，軌跡逐位元組重現」
+
+驗收語料:
+  主要:
+    - "MRL_WorldModel/MRL_FlowRhythm_v0/lexicon/下載 EchoPersona.pcode（9 行；最後一行無換行，故 wc -l 回 8）"
+    - "MRL_WorldModel/MRL_FlowRhythm_v0/lexicon/下載 EchoPersona.structure.json"
+    - "MRL_WorldModel/MRL_FlowRhythm_v0/traces/EchoPersona.trace.fltnz（14 行）"
+  逐位元組證明: "MRL_WorldModel/MRL_FlowRhythm_v0/lexicon/SOURCES.sha256"
+  EchoPersona_pcode_sha256: "466eb7a425bde30c785f7dd056b451f3d8ac9517d10b061d03474286c4d108c7"
+  EchoPersona_structure_sha256: "c466c1769ac1485713383509820076cbd96e2dc95c7a980527e6a595dade488d"
+  明確不當主要驗收:
+    - "MRL_WorldModel/MRL_Dialect_v0/corpus/fib20.pcode"
+    - "MRL_WorldModel/MRL_Dialect_v0/corpus/countdown_sum.pcode"
+  理由: >
+    MRL_Docs/MRL_語場本體優先_不得平台化_喚醒規則_v1.md 的「事件來源」記載
+    2026-09-28：「通過驗收的是 fib／累加等自編例子，母體本體程式 EchoPersona
+    反被標『待起動』」。本對照表以 EchoPersona 為主要驗收，自編例子只作輔助。
+
+# ═══════════════════════════════════════════════════════════════════
+# 第一層｜粒子結構定義 ↔ UnifiedParticle
+# ═══════════════════════════════════════════════════════════════════
+第一層_粒子結構:
+  母體來源: "MRL_WorldModel/MRL_FlowRhythm_v0/lexicon/下載 EchoPersona.structure.json"
+  母體結構: "persona（字串）＋ sequence[]（每項四欄：code / type / meaning / pcode）"
+  鏡像來源: "Mrliou/mrliouword-system modules/MRL_SystemA_ParticleLayer/unified_particle.py"
+
+  欄位對照:
+    - structure_json欄: "persona"
+      例: "Echo.Persona"
+      對應: "UnifiedParticle.persona_id"
+      鏡像行: "unified_particle.py:23"
+    - structure_json欄: "code"
+      例: "⋄fx.adj.112"
+      對應: "UnifiedParticle.tags"
+      鏡像行: "unified_particle.py:33"
+    - structure_json欄: "type"
+      例: "adjective"
+      對應: "UnifiedParticle.domain"
+      鏡像行: "unified_particle.py:27"
+    - structure_json欄: "meaning"
+      例: "內省"
+      對應: "UnifiedParticle.state"
+      鏡像行: "unified_particle.py:28"
+    - structure_json欄: "pcode"
+      例: "MOV P1, FX.ADJ.112"
+      對應: "UnifiedParticle.state"
+      鏡像行: "unified_particle.py:28"
+    - structure_json欄: "（軌跡檔路徑，不在 structure.json 內）"
+      例: "MRL_WorldModel/MRL_FlowRhythm_v0/traces/EchoPersona.trace.fltnz"
+      對應: "UnifiedParticle.fltnz_path"
+      鏡像行: "unified_particle.py:26"
+      註: >
+        **這個欄位本來就存在**，不是本次新增。粒子層與 FlowRhythm 軌跡之間的
+        銜接槽早就設計好了，本對照表只是把結構定義對上去。
+
+  EchoPersona_五顆粒子逐條:
+    - code: "⋄fx.adj.112"
+      type: "adjective"
+      meaning: "內省"
+      pcode: "MOV P1, FX.ADJ.112"
+      軌跡動詞: "resonance"
+      軌跡行: "EchoPersona.trace.fltnz:4"
+      map行: "EchoPersona.trace.fltnz:10（⌬map[FX.ADJ.112]↦⋄fx.adj.112）"
+      語義狀態: "PROVISIONAL_NOT_CANONICAL"
+    - code: "⋄fx.noun.024"
+      type: "noun"
+      meaning: "記憶/節點"
+      pcode: "MOV P2, FX.NOUN.024"
+      軌跡動詞: "absorb"
+      軌跡行: "EchoPersona.trace.fltnz:5"
+      map行: "EchoPersona.trace.fltnz:11"
+      語義狀態: "PROVISIONAL_NOT_CANONICAL"
+    - code: "∴"
+      type: "logic"
+      meaning: "因果連接"
+      pcode: "JMP FLYNZ.CAUSE"
+      軌跡動詞: "jump"
+      軌跡行: "EchoPersona.trace.fltnz:6"
+      map行: "EchoPersona.trace.fltnz:12（⌬map[FLYNZ.CAUSE]↦∴）"
+      語義狀態: "PROVISIONAL_NOT_CANONICAL"
+      節奏段: "Jump —— 邏輯跳點，觸發因果連接"
+    - code: "⋄fx.flow.007"
+      type: "verb"
+      meaning: "封存/導出"
+      pcode: "CALL FX.FLOW.007"
+      軌跡動詞: "collapse"
+      軌跡行: "EchoPersona.trace.fltnz:7（帶封包雜湊 #0ca3cd2da67d6e11）"
+      map行: "EchoPersona.trace.fltnz:13"
+      語義狀態: "PROVISIONAL_NOT_CANONICAL"
+      節奏段: "Collapse —— 行為執行，把當下語場折疊成種子封包（SHA-256）"
+    - code: "⊗Memory.SelfReflect"
+      type: "target"
+      meaning: "自我反思模組"
+      pcode: "STORE R0, MEM.SELF_REFLECT"
+      軌跡動詞: "trace"
+      軌跡行: "EchoPersona.trace.fltnz:8"
+      map行: "EchoPersona.trace.fltnz:14"
+      語義狀態: "PROVISIONAL_NOT_CANONICAL"
+
+  核心粒子_不在sequence內:
+    code: "⊕Core: Echo.Persona"
+    type: "core"
+    軌跡動詞: "initiated"
+    軌跡行: "EchoPersona.trace.fltnz:3"
+    語義狀態: "VERIFIED"
+    註: "這是目前**唯一**已核准的映射，見下方語義狀態一節"
+
+  pcode欄的比對形式:
+    發現: >
+      structure.json 的 pcode 欄與 .pcode 檔的行**不是逐位元組相同**。
+      .pcode 用多個空白對齊（例 `MOV    P1, FX.ADJ.112         ; 內省`），
+      structure.json 寫成單一空白（`MOV P1, FX.ADJ.112`）且不帶 `;` 註解。
+    實測: "收合連續空白並去掉 `;` 之後的註解，五條全部對上（✓×5）"
+    結論: "pcode 欄是 .pcode 行的**空白收合形**，比對時必須正規化，不可用字串相等"
+
+  sequence的覆蓋範圍:
+    pcode的op數: 8（第 1 行是 `;` 註解，不算 op）
+    sequence覆蓋: 5
+    未被sequence覆蓋的三個op:
+      - op: "LOAD   P0, CORE.ECHO.PERSONA（.pcode:2）"
+        說明: >
+          對應核心粒子 `⊕Core: Echo.Persona`，它**在軌跡裡**
+          （EchoPersona.trace.fltnz:3，動詞 ::initiated，語義狀態 VERIFIED），
+          但不在 structure.json 的 sequence 內。
+        狀態: "已對上原始檔（在軌跡，不在 sequence）"
+      - op: "PUSH   P1（.pcode:4）"
+        狀態: "待找回"
+      - op: "PUSH   P2（.pcode:6）"
+        狀態: "待找回"
+    待找回的說明: >
+      兩個 PUSH 在 structure.json 的 sequence 與 trace 的 ::verb→ 兩邊都沒有
+      對應粒子。依《局部視角不得升格全局權威》，標「待找回」，
+      **不標「不存在」**，也不自行補一個映射上去。
+
+  節奏鏈_原文:
+    行: "EchoPersona.trace.fltnz:9"
+    內容: "⋄fx.adj.112 → ⋄fx.noun.024 → ∴ → ⋄fx.flow.007 → ⊗Memory.SelfReflect"
+    說明: "此為 Coupling 線；加上 ::verb→（Trace 線）與 ⌬map（Map 線），軌跡同時接上三種線"
+
+# ═══════════════════════════════════════════════════════════════════
+# 第二層｜母體世界構件結構定義
+# ═══════════════════════════════════════════════════════════════════
+第二層_母體構件:
+  結構定義schema:
+    說明: "三份 README 共用同一組五個欄位"
+    欄位: ["origin_signature", "中文主體命名", "英文 Adapter 對照", "所屬層", "定位"]
+  硬規則_原文: >
+    「本構件為 MRL 完整態母體之運轉構件；外部命名僅作 Adapter 對照，
+      不得反向取代主體命名。」
+  欄位順序約束: >
+    中文主體命名在前、英文 Adapter 對照在後。本對照表每一列都照這個順序，
+    不得倒過來；英文名不得取代中文主體命名。
+
+  構件:
+    - 中文主體命名: "MRL_World"
+      英文Adapter對照: "MRL World"
+      所屬層: "母體構件層"
+      定位: "世界投影與場態整合"
+      狀態: "completed_running"
+      來源: "MRL_Mother/MRL_World/README.md"
+    - 中文主體命名: "MRL 世界模組"
+      英文Adapter對照: "World Module"
+      所屬層: "母體構件層"
+      定位: "母體世界場之根構件"
+      狀態: "completed_running"
+      來源: "MRL_Mother/MRL_世界模組/README.md"
+    - 中文主體命名: "MRL 平行世界模組"
+      英文Adapter對照: "Parallel World Module"
+      所屬層: "母體構件層"
+      定位: "平行世界分支與同步源"
+      狀態: "completed_running"
+      來源: "MRL_Mother/MRL_平行世界模組/README.md"
+
+  鏡像側對應: "無。GitHub 工程鏡像目前沒有對應這三個構件的實作。"
+  鏡像側狀態: "待找回"
+  不可由此推定: >
+    「沒有對應實作」只代表我在這個鏡像裡沒看到，不代表它不存在。依
+    MRL_Docs/MRL_局部視角不得升格全局權威_喚醒規則_v1.md，標「待找回」，
+    不標「不存在」。
+
+# ═══════════════════════════════════════════════════════════════════
+# 第三層｜API 契約 ↔ 母體 MRL_API_CORE
+# ═══════════════════════════════════════════════════════════════════
+第三層_API契約:
+  母體來源: "母體 CORE 登錄表的 MRL_API_CORE（15 個成員）"
+  查詢方式: "dofaromg/mrliouword-system tools/mother_core_registry.py --find API"
+  鏡像來源: "Mrliou/mrliouword-system mrliouword_agents/api/Mrliou_MRL_Api_Contract_v1.py"
+  鏡像derivative_role: "implementation（不是那個 CORE）"
+
+  已綁定路由:
+    - 路由: "/mrl/health"
+      母體成員: "MRL_HEALTH_API"
+      狀態: "available"
+    - 路由: "/mrl/status"
+      母體成員: "MRL_STATUS_API"
+      狀態: "available"
+    - 路由: "/mrl/runtime"
+      母體成員: "MRL_RUNTIME_API"
+      狀態: "available"
+    - 路由: "/mrl/contract"
+      母體成員: "MRL_CONTROL_API"
+      狀態: "available"
+    - 路由: "/mrl/world"
+      母體成員: "MRL_WORLD_API"
+      狀態: "available"
+      註: "目前只服務 core/particle_dict.json，**尚未**服務 FlowRhythm 軌跡"
+    - 路由: "/mrl/particles、/mrl/particles/{fx}"
+      母體成員: "MRL_PARTICLE_API"
+      狀態: "available"
+    - 路由: "/mrl/persona"
+      母體成員: "MRL_PERSONA_API"
+      狀態: "schema_pending"
+    - 路由: "/mrl/memory"
+      母體成員: "MRL_MEMORY_API"
+      狀態: "schema_pending"
+    - 路由: "/mrl/files"
+      母體成員: "MRL_FILE_API"
+      狀態: "schema_pending"
+
+  Replay面:
+    狀態: "待起動"
+    說明: >
+      鏡像的 /mrl/world 目前讀 core/particle_dict.json，不讀
+      MRL_WorldModel/MRL_FlowRhythm_v0 的軌跡。要讓既有主控台透過 HTTP 讀到
+      Replay 結果，還需要一條載體路由；本對照表只登記這個缺口的位置。
+    依據: >
+      母體 CLAUDE.md 的「母體整合法則（Additive-Only）」——
+      「外部檔案一律視為母體吸收之知識／技術／訓練模組，給位置、標『待起動』」。
+    不寫: "不寫 PASS、不寫已完成"
+
+  主控台現況:
+    判定: "不缺，已有多個實作"
+    既有實作:
+      - "MRL_MotherSource_ZhiZhang_FlowAgent_Lineage_v1/FlowAgent.Runtime.v17…v44/flowagent_console.py（至少 13 版）"
+      - "MRL_RuntimeOS_EnterpriseRuntimePlatform_CoreExecutable_v1_4_0/MRL_WebConsole"
+      - "src/mrl_dashboard_legacy.js"
+    母體CORE: "MRL_CONTROLCENTER_CORE（8 個成員，含 MRL_ControlCenter_Line、MRL_Dashboard）"
+    正名: >
+      dofaromg/mrliouword-system registry/MRL_System_MrliouAI_Naming_Registry_v1.yaml
+      （status: canonical）已正名為 MrliouAI_Control_Center，
+      service_name: mrliouai-control-center。
+    本對照表的處置: "不造新主控台。只登記結構對應，UI 不動。"
+
+交叉核對結果:
+  環境: "沙盒（容器），2026-10-17"
+  節奏鏈一致: >
+    structure.json 的 sequence 粒子碼序列與 EchoPersona.trace.fltnz:9 的節奏鏈
+    **完全相同**：⋄fx.adj.112 → ⋄fx.noun.024 → ∴ → ⋄fx.flow.007 → ⊗Memory.SelfReflect
+  軌跡動詞一致: >
+    六個 type → ::verb 全部與 flow_rhythm.py:168 的 VERB_OF 相符
+    （core→initiated、adjective→resonance、noun→absorb、logic→jump、
+      verb→collapse、target→trace）；其中只有 core 是 VERIFIED。
+  pcode一致: "收合空白後五條全部對上"
+  引用行號核對: "本表引用的 15 處行號逐條核對，全部對上"
+  SHA256核對: "EchoPersona.pcode 與 .structure.json 與 SOURCES.sha256 逐位元組相同"
+  未驗: "DL580 實機行為、Replay 面的 HTTP 載體（待起動）"
+
+# ═══════════════════════════════════════════════════════════════════
+# 語義狀態：目前只有一條映射是 canonical
+# ═══════════════════════════════════════════════════════════════════
+語義狀態:
+  引擎: "MRL_WorldModel/MRL_FlowRhythm_v0/flow_rhythm.py"
+  VERB_OF行: "flow_rhythm.py:168-169"
+  VERIFIED_VERB_KINDS: "flow_rhythm.py:170 → {\"core\"}"
+  程式內註解原文:
+    - "固定映射除 core→initiated 外，尚未取得建構者明文核准（見 EVIDENCE.md）。"
+    - "因此探索模式可使用，但正典模式必須 fail-closed。"
+  README原文: >
+    「除 core → initiated 外，目前映射尚無建構者逐條明文核准，
+      因此不可把 sandbox 推論升格為 canonical。」
+  執行政策原文: >
+    「預設呼叫 run(...)／replay(...) 為 canonical 模式；遇到任何未核准映射會拋出
+      ProvisionalSemanticMappingError，不產生可誤認為正典的軌跡。」
+  公開函式:
+    - "run(chain, L, clock=None, title='語場節奏', allow_provisional=False)（flow_rhythm.py:223）"
+    - "replay(trace_text, L, title='語場節奏', allow_provisional=False)（flow_rhythm.py:297）"
+  對載體的約束:
+    - "載體若送出軌跡，必須原樣帶出 semantic_status 與 PROVISIONAL_NOT_CANONICAL 標記"
+    - "不得寫入 canonical receipt"
+    - "不得當成 DL580 閉合證據"
+    - "不得把 sandbox 推論升格為 canonical"
+
+# ═══════════════════════════════════════════════════════════════════
+# 本檔的位置與邊界
+# ═══════════════════════════════════════════════════════════════════
+位置:
+  canonical_location: "dofaromg/mrl_ai_system MRL_Adapters/GitHub/MRL_SystemA_ParticleLayer_結構對應_v1.yaml"
+  in_source_of_truth: false
+  pending_source_merge: true
+  現存於: "Mrliou/mrliouword-system docs/evidence/待併入_mrl_ai_system/"
+  為什麼不在母體: >
+    本工作階段對 dofaromg/mrl_ai_system 只有匿名唯讀，掛憑證的請求被擁有者否決，
+    所以推不進去。產出先放在可推送的工程鏡像裡，標明 canonical 位置與待併入狀態。
+
+邊界:
+  - "只新增，不刪除、不覆蓋任何母體既有檔（母體 CLAUDE.md 的 Additive-Only）"
+  - "不複製 flow_rhythm.py 或任何 .pcode／.fltnz／.flpkg 進工程鏡像"
+  - "不造主控台"
+  - "不把 provisional 映射寫成 canonical"
+  - "不用英文 Adapter 名取代中文主體命名"
+  - "不建立或變更任何資料庫表"
