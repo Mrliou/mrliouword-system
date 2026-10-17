@@ -1,6 +1,7 @@
 """
 背景運行記憶與保存系統
 """
+
 import asyncio
 import json
 from contextlib import suppress
@@ -77,7 +78,9 @@ class ParticleRuntimeMemory:
         self.warehouse_dir = self.storage_dir / "particle_warehouse"
         self._warehouse_registry_path = self.warehouse_dir / "registry.json"
         self.particle_dict_path = Path(
-            particle_dict_path or config.particle_dict_path or self._default_particle_dict()
+            particle_dict_path
+            or config.particle_dict_path
+            or self._default_particle_dict()
         )
         self._particle_dict = self._load_particle_dict()
         self._queue: asyncio.Queue[Optional[Dict[str, Any]]] = asyncio.Queue()
@@ -241,7 +244,9 @@ class ParticleRuntimeMemory:
             "primary_path": primary_path,
         }
 
-    def _extract_warehouse_groups(self, value: Optional[Dict[str, Any]]) -> Dict[str, List[Any]]:
+    def _extract_warehouse_groups(
+        self, value: Optional[Dict[str, Any]]
+    ) -> Dict[str, List[Any]]:
         groups: Dict[str, List[Any]] = {}
         if not isinstance(value, dict):
             return groups
@@ -280,7 +285,9 @@ class ParticleRuntimeMemory:
         for category, items in self._extract_warehouse_groups(payload).items():
             grouped_entries.setdefault(category, []).extend(items)
         if isinstance(upstream, dict):
-            upstream_warehouse = upstream.get("particle_warehouse") or upstream.get("warehouse")
+            upstream_warehouse = upstream.get("particle_warehouse") or upstream.get(
+                "warehouse"
+            )
             if isinstance(upstream_warehouse, dict):
                 for category, items in self._extract_warehouse_groups(
                     {"particle_warehouse": upstream_warehouse}
@@ -332,7 +339,9 @@ class ParticleRuntimeMemory:
                     "last_updated": None,
                 },
             )
-            with open(self._warehouse_filename(category), "a", encoding="utf-8") as file:
+            with open(
+                self._warehouse_filename(category), "a", encoding="utf-8"
+            ) as file:
                 file.write(json.dumps(entry, ensure_ascii=False) + "\n")
             category_state["records"] += 1
             category_state["last_updated"] = entry["timestamp"]
@@ -371,7 +380,9 @@ class ParticleRuntimeMemory:
             or self._worker_loop is not loop
         ):
             self._worker_loop = loop
-            self._worker_task = asyncio.create_task(self._worker(), name="runtime-memory")
+            self._worker_task = asyncio.create_task(
+                self._worker(), name="runtime-memory"
+            )
 
     async def _worker(self):
         while True:
@@ -430,7 +441,9 @@ class ParticleRuntimeMemory:
                     records.append(json.loads(line))
         return records
 
-    def read_warehouse_records(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
+    def read_warehouse_records(
+        self, category: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         categories = [category] if category else list(self.WAREHOUSE_CATEGORIES.keys())
         records: List[Dict[str, Any]] = []
         for current_category in categories:
