@@ -78,7 +78,7 @@ class ParticleGlobe:
         self._particle_index: Dict[str, List[str]] = {}
 
     @staticmethod
-    def _validate_coordinate(latitude: float, longitude: float, altitude: float) -> None:
+    def _validate_coordinate(latitude: Any, longitude: Any, altitude: Any) -> None:
         if latitude is None or longitude is None:
             raise ValueError("latitude and longitude are required")
         if not -90 <= latitude <= 90:
@@ -103,9 +103,9 @@ class ParticleGlobe:
             return point
 
         if isinstance(point, dict):
-            latitude = point.get("latitude", point.get("lat"))
-            longitude = point.get("longitude", point.get("lng", point.get("lon")))
-            altitude = point.get("altitude", point.get("alt", 0.0))
+            latitude: Any = point.get("latitude", point.get("lat"))
+            longitude: Any = point.get("longitude", point.get("lng", point.get("lon")))
+            altitude: Any = point.get("altitude", point.get("alt", 0.0))
             timestamp = point.get("timestamp") or _utc_now()
             meta = dict(default_meta or {})
             meta.update(point.get("meta", {}))
@@ -141,10 +141,16 @@ class ParticleGlobe:
         return [cls._normalize_point(point, default_meta) for point in (points or [])]
 
     @staticmethod
-    def _detect_geometry_type(structure: Dict[str, Any], trajectory: List[GeoPoint]) -> str:
+    def _detect_geometry_type(
+        structure: Dict[str, Any], trajectory: List[GeoPoint]
+    ) -> str:
         if structure.get("surfaces"):
             return "surface"
-        if structure.get("lines") or len(trajectory) > 1 or len(structure.get("points", [])) > 1:
+        if (
+            structure.get("lines")
+            or len(trajectory) > 1
+            or len(structure.get("points", [])) > 1
+        ):
             return "line"
         return "point"
 
@@ -244,7 +250,9 @@ class ParticleGlobe:
         binding.longitude = point.longitude
         binding.altitude = point.altitude
         binding.structure.setdefault("points", []).append(point.to_dict())
-        binding.geometry_type = self._detect_geometry_type(binding.structure, binding.trajectory)
+        binding.geometry_type = self._detect_geometry_type(
+            binding.structure, binding.trajectory
+        )
         binding.lifecycle["updated_at"] = point.timestamp
         return point.to_dict()
 
@@ -274,14 +282,20 @@ class ParticleGlobe:
 
         if lines is not None:
             normalized_lines = [
-                [point.to_dict() for point in self._normalize_points(line, {"type": "line"})]
+                [
+                    point.to_dict()
+                    for point in self._normalize_points(line, {"type": "line"})
+                ]
                 for line in lines
             ]
             structure["lines"] = normalized_lines
 
         if surfaces is not None:
             normalized_surfaces = [
-                [point.to_dict() for point in self._normalize_points(surface, {"type": "surface"})]
+                [
+                    point.to_dict()
+                    for point in self._normalize_points(surface, {"type": "surface"})
+                ]
                 for surface in surfaces
             ]
             structure["surfaces"] = normalized_surfaces
@@ -299,7 +313,9 @@ class ParticleGlobe:
         if data:
             binding.data.update(data)
 
-        binding.geometry_type = self._detect_geometry_type(structure, binding.trajectory)
+        binding.geometry_type = self._detect_geometry_type(
+            structure, binding.trajectory
+        )
         binding.lifecycle["updated_at"] = _utc_now()
         return binding.to_dict()
 
@@ -332,7 +348,7 @@ class ParticleGlobe:
         binding.lifecycle["updated_at"] = event.timestamp
         return binding.to_dict()
 
-    def scale_particle(self, particle_id: str, factor: float) -> Dict[str, float]:
+    def scale_particle(self, particle_id: str, factor: float) -> Dict[str, Any]:
         """縮放粒子結構。"""
 
         if factor <= 0:
@@ -343,7 +359,7 @@ class ParticleGlobe:
         binding.lifecycle["updated_at"] = _utc_now()
         return {"particle_id": particle_id, "scale": next_scale}
 
-    def set_zoom(self, particle_id: str, zoom: float) -> Dict[str, float]:
+    def set_zoom(self, particle_id: str, zoom: float) -> Dict[str, Any]:
         """設定粒子縮放倍率。"""
 
         if zoom <= 0:
@@ -365,9 +381,10 @@ class ParticleGlobe:
         lon_delta = radians(longitude_b - longitude_a)
         start_lat = radians(latitude_a)
         end_lat = radians(latitude_b)
-        haversine = sin(lat_delta / 2) ** 2 + cos(start_lat) * cos(end_lat) * sin(
-            lon_delta / 2
-        ) ** 2
+        haversine = (
+            sin(lat_delta / 2) ** 2
+            + cos(start_lat) * cos(end_lat) * sin(lon_delta / 2) ** 2
+        )
         return 2 * radius * asin(sqrt(haversine))
 
     def get_particles_in_radius(
@@ -419,7 +436,9 @@ class ParticleGlobe:
                 selected.append(
                     {
                         "bind_id": item.get("bind_id", uuid4().hex),
-                        "particle_id": item.get("particle_id", item.get("id", "external")),
+                        "particle_id": item.get(
+                            "particle_id", item.get("id", "external")
+                        ),
                         "origin_signature": self.origin_signature,
                         "geometry_type": "point",
                         "latitude": point.latitude,
@@ -509,7 +528,9 @@ class ParticleGlobe:
                     ]
                 )
 
-            for index, segment in enumerate(record.get("structure", {}).get("lines", []), start=1):
+            for index, segment in enumerate(
+                record.get("structure", {}).get("lines", []), start=1
+            ):
                 lines.extend(
                     [
                         "  <Placemark>",
