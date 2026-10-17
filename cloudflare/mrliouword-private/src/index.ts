@@ -301,7 +301,7 @@ export default {
     const originAllowed = !origin || allowedOrigins.includes(origin);
     const cors = {
       'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Master-Key',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
       'Content-Type': 'application/json',
       'Vary': 'Origin'
     };

@@ -21,7 +21,10 @@ function decodeJsonSegment(segment) {
 
 async function loadJwks(url, refresh = false) {
   const cached = jwksCache.get(url);
-  if (!refresh && cached && cached.expiresAt > Date.now()) return cached.keys;
+  const now = Date.now();
+  if (cached && cached.expiresAt > now && (!refresh || cached.refreshAfter > now)) {
+    return cached.keys;
+  }
 
   let response;
   try {
@@ -41,7 +44,11 @@ async function loadJwks(url, refresh = false) {
     throw new AccessTokenError('Identity provider returned invalid keys', 503);
   }
 
-  jwksCache.set(url, { keys: body.keys, expiresAt: Date.now() + JWKS_CACHE_MS });
+  jwksCache.set(url, {
+    keys: body.keys,
+    expiresAt: Date.now() + JWKS_CACHE_MS,
+    refreshAfter: Date.now() + 30 * 1000,
+  });
   return body.keys;
 }
 
@@ -87,6 +94,7 @@ export async function verifyAccessToken(request, env) {
   }
 
   const authorization = request.headers.get('Authorization') || '';
+  if (authorization.length > 16_384) throw new AccessTokenError('Invalid access token');
   const match = /^Bearer\s+([A-Za-z0-9._~-]+)$/i.exec(authorization);
   if (!match) throw new AccessTokenError('Authentication required');
 

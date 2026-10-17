@@ -114,6 +114,22 @@ function 解密(加密後: string, 主鑰匙: string): string {
 interface Env {
   PARTICLE_AUTH_VAULT: KVNamespace;
   ALLOWED_ORIGINS?: string;
+  MASTER_KEY?: string;
+}
+
+async function validMasterKey(candidate: string, expected: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [candidateHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(candidate)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected))
+  ]);
+  const candidateBytes = new Uint8Array(candidateHash);
+  const expectedBytes = new Uint8Array(expectedHash);
+  let difference = 0;
+  for (let index = 0; index < candidateBytes.length; index++) {
+    difference |= candidateBytes[index] ^ expectedBytes[index];
+  }
+  return difference === 0;
 }
 
 export default {
@@ -191,6 +207,19 @@ export default {
       
       // 狀態
       if (路徑 === "/status" && request.method === "GET") {
+        if (!env.MASTER_KEY) {
+          return new Response(JSON.stringify({ 錯誤: "認證尚未設定", 源 }), {
+            status: 503,
+            headers: 回應頭
+          });
+        }
+        const masterKey = request.headers.get("X-Master-Key") || "";
+        if (!masterKey || !(await validMasterKey(masterKey, env.MASTER_KEY))) {
+          return new Response(JSON.stringify({ 錯誤: "未授權", 源 }), {
+            status: 401,
+            headers: 回應頭
+          });
+        }
         const 原始 = await env.PARTICLE_AUTH_VAULT.get("vault_data");
         const 保險庫資料 = 原始 ? JSON.parse(原始) : null;
         
@@ -212,7 +241,6 @@ export default {
     } catch (error) {
       return new Response(JSON.stringify({
         錯誤: "內部錯誤",
-        訊息: error instanceof Error ? error.message : "未知錯誤",
         源
       }), { status: 500, headers: 回應頭 });
     }

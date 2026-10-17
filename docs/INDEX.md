@@ -36,6 +36,7 @@ Essential documentation to get you started with MrLiouWord System.
 - **[Deployment Guide](../DEPLOYMENT.md)** - General deployment instructions
 - **[Deploy Guide](../DEPLOY-GUIDE.md)** - Detailed deployment walkthrough
 - **[System Index](../SYSTEM_INDEX.md)** - Complete system component index
+- **[Commercial Service Readiness](commercial-service-readiness.md)** - Pilot and commercial launch gates
 
 ### Sync & Integration
 - **[Sync README](../README_SYNC.md)** - Repository synchronization

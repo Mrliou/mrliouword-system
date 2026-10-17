@@ -58,6 +58,8 @@ Mother Runtime 位於各 Runtime Node 之上，統一治理身分、規則、世
 | mrliouword-private | [連結](https://mrliouword-private.mrliou.workers.dev) | 記憶/人格/吸收/掃描 |
 | particle-auth-gateway | [連結](https://particle-auth-gateway.mrliou.workers.dev) | 統一身份認證 |
 
+> 部署清單不代表商業服務就緒。外部試行前，請先完成 [商業服務準備與試行門檻](./docs/commercial-service-readiness.md) 中的身份、資料、成本及營運檢查。
+
 ### 資料存儲
 | 類型 | 名稱 | 用途 |
 |------|------|------|
