@@ -278,7 +278,7 @@ def _Mrliou_MRL_schema_pending_detail(path: str) -> Dict[str, Any]:
 def create_app(bind: Optional[Tuple[str, int]] = None) -> Any:
     """建立 FastAPI 應用
 
-    bind 是已決定的 (host, port)，由 Mrliou_MRL_run_server 傳入，讓
+    bind 是已決定的 (host, port)，由 launcher 的 worker factory 傳入，讓
     /mrl/runtime 能回報實際綁定目標。直接呼叫 create_app() 時為 None，
     /mrl/runtime 的 bind 欄位就回 null，而不是編一個值出來。
     """
