@@ -303,6 +303,7 @@ export default {
       'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type,Authorization',
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
       'Vary': 'Origin'
     };
     if (origin && originAllowed) cors['Access-Control-Allow-Origin'] = origin;

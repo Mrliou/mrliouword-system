@@ -40,7 +40,7 @@ async function loadJwks(url, refresh = false) {
   } catch {
     throw new AccessTokenError('Identity provider returned invalid keys', 503);
   }
-  if (!Array.isArray(body.keys)) {
+  if (!body || !Array.isArray(body.keys)) {
     throw new AccessTokenError('Identity provider returned invalid keys', 503);
   }
 
@@ -59,7 +59,13 @@ async function findSigningKey(url, kid) {
     keys = await loadJwks(url, true);
     key = keys.find((candidate) => candidate.kid === kid);
   }
-  if (!key || key.kty !== 'RSA' || key.use === 'enc' || (key.alg && key.alg !== 'RS256')) {
+  if (
+    !key ||
+    key.kty !== 'RSA' ||
+    (key.use && key.use !== 'sig') ||
+    (key.alg && key.alg !== 'RS256') ||
+    (Array.isArray(key.key_ops) && !key.key_ops.includes('verify'))
+  ) {
     throw new AccessTokenError('Invalid access token');
   }
 
@@ -111,7 +117,16 @@ export async function verifyAccessToken(request, env) {
   } catch {
     throw new AccessTokenError('Invalid access token');
   }
-  if (header.alg !== 'RS256' || typeof header.kid !== 'string') {
+  if (
+    !header ||
+    typeof header !== 'object' ||
+    Array.isArray(header) ||
+    !claims ||
+    typeof claims !== 'object' ||
+    Array.isArray(claims) ||
+    header.alg !== 'RS256' ||
+    typeof header.kid !== 'string'
+  ) {
     throw new AccessTokenError('Invalid access token');
   }
 

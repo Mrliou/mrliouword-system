@@ -146,6 +146,7 @@ export default {
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, X-Master-Key",
       "Content-Type": "application/json",
+      "Cache-Control": "no-store",
       "Vary": "Origin",
       "X-Origin-Signature": 源
     };
