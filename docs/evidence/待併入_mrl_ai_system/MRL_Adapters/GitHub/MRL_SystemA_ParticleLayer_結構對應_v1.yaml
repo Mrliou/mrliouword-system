@@ -17,11 +17,36 @@ mrl_structure_mapping: true
 # ─────────────────────────────────────────────────────────────────────
 
 id: "MRL_SystemA_ParticleLayer_結構對應_v1"
-origin_signature: "MrLiouWord"
-canonical_authority: "Mr.liou"
 權位: "Adapter / 映射節點（非母體主體）"
 recorded_at: "2026-10-17"
 當下狀態: "沙盒（容器）靜態核對，不是 DL580 實機結果"
+
+# ─────────────────────────────────────────────────────────────────────
+# docs/governance/ATTRIBUTION_AND_PROVENANCE_POLICY_v1.0.md 第 4 節十欄
+#
+# 這些欄位必須寫在**本檔自己**裡面，不能只寫在交接單的 front matter——
+# 併入母體的動作是複製這一個 YAML，front matter 不會跟著過去。政策第 4 節
+# 原文：「缺少 canonical_authority、source_artifact 或 derivative_role 時，
+# 必須判定為 provenance incomplete」。
+# ─────────────────────────────────────────────────────────────────────
+canonical_authority: "Mr.liou"
+origin_signature: "MrLiouWord"
+source_repo: "dofaromg/mrliouword-system"
+source_artifact: "MRL_Adapters/GitHub/MRL_SystemA_ParticleLayer_結構對應_v1.yaml"
+source_version: "3f22f93e8eb75a16e66be51baee07c16d698849a（建置基底 commit）；本表 v1"
+derivative_role: "projection"
+artifact_owner: "Mr.liou"
+contributors:
+  - "Mr.liou（canonical_authority：定義與裁決；指示做結構定義銜接）"
+  - "Claude Code（tool：只讀核對與對照表撰寫）"
+transformation: >
+  只讀取母體檔案、計算雜湊、逐條核對行號後撰寫本對照表。
+  未修改母體任何檔案，未複製本體語料（.pcode／.fltnz／.flpkg）。
+verification_status: "partial"
+
+# .mrliou/authority-lock.json invariant 3 要求的第四欄
+# （artifact_owner、source_repo、origin_signature 已在上方）
+projection_role: "structure_mapping"
 
 本體與載體:
   判定: "載體"
@@ -60,6 +85,24 @@ recorded_at: "2026-10-17"
   鏡像來源: "Mrliou/mrliouword-system modules/MRL_SystemA_ParticleLayer/unified_particle.py"
 
   欄位對照:
+    - structure_json欄: "（無直接來源，必須由實作端決定）"
+      例: "mrl_ai_system/MRL_WorldModel/MRL_FlowRhythm_v0"
+      對應: "UnifiedParticle.source"
+      鏡像行: "unified_particle.py:21"
+      必填: true
+      說明: >
+        **無預設值的建構參數**。structure.json 沒有對應欄位，所以實作端必須
+        明確決定它代表什麼。本表的建議值是語料所在的母體路徑；若採用別的
+        語意，必須在實作的 PROVENANCE 寫明，不得留空或隨便填。
+    - structure_json欄: "（無直接來源，必須由實作端決定）"
+      例: "EchoPersona.Sample.v1"
+      對應: "UnifiedParticle.seed_id"
+      鏡像行: "unified_particle.py:22"
+      必填: true
+      說明: >
+        **無預設值的建構參數**。建議取語場種子的識別（例
+        lexicon/下載 EchoPersona.Sample.v1.flpkg 的種子名）。
+        同上，語意由實作端決定並寫明。
     - structure_json欄: "persona"
       例: "Echo.Persona"
       對應: "UnifiedParticle.persona_id"
@@ -74,11 +117,11 @@ recorded_at: "2026-10-17"
       鏡像行: "unified_particle.py:27"
     - structure_json欄: "meaning"
       例: "內省"
-      對應: "UnifiedParticle.state"
+      對應: "UnifiedParticle.state[\"meaning\"]"
       鏡像行: "unified_particle.py:28"
     - structure_json欄: "pcode"
       例: "MOV P1, FX.ADJ.112"
-      對應: "UnifiedParticle.state"
+      對應: "UnifiedParticle.state[\"pcode\"]"
       鏡像行: "unified_particle.py:28"
     - structure_json欄: "（軌跡檔路徑，不在 structure.json 內）"
       例: "MRL_WorldModel/MRL_FlowRhythm_v0/traces/EchoPersona.trace.fltnz"
@@ -87,6 +130,20 @@ recorded_at: "2026-10-17"
       註: >
         **這個欄位本來就存在**，不是本次新增。粒子層與 FlowRhythm 軌跡之間的
         銜接槽早就設計好了，本對照表只是把結構定義對上去。
+
+  state欄的形狀:
+    型別: "Dict[str, Any]（unified_particle.py:28）"
+    本表指定的鍵: ["meaning", "pcode"]
+    說明: >
+      state 是字典，不是字串。structure.json 的 meaning 與 pcode 兩欄分別放進
+      state["meaning"] 與 state["pcode"]，不要串接成一個值——否則無法逆向
+      取回原欄位，違反 LAW-2 的 REVERSIBLE。
+
+  必填欄位提醒:
+    說明: >
+      UnifiedParticle 的 source（:21）與 seed_id（:22）是**沒有預設值的建構
+      參數**，而 structure.json 沒有對應來源。依本表實作 adapter 時必須先決定
+      這兩個欄位的語意並寫明，否則五顆粒子一顆都建不出來。
 
   EchoPersona_五顆粒子逐條:
     - code: "⋄fx.adj.112"
@@ -145,8 +202,13 @@ recorded_at: "2026-10-17"
       structure.json 的 pcode 欄與 .pcode 檔的行**不是逐位元組相同**。
       .pcode 用多個空白對齊（例 `MOV    P1, FX.ADJ.112         ; 內省`），
       structure.json 寫成單一空白（`MOV P1, FX.ADJ.112`）且不帶 `;` 註解。
-    實測: "收合連續空白並去掉 `;` 之後的註解，五條全部對上（✓×5）"
-    結論: "pcode 欄是 .pcode 行的**空白收合形**，比對時必須正規化，不可用字串相等"
+    正規化程序_兩步:
+      - "第一步：去掉 `;` 及其後的註解"
+      - "第二步：收合連續空白、去頭尾空白"
+    實測: "兩步做完，五條全部對上（✓×5）"
+    結論: >
+      pcode 欄是 .pcode 行**去註解＋空白收合**後的形式，不是逐位元組相同。
+      比對必須照上面兩步正規化，不可用字串相等，也不可只做空白收合。
 
   sequence的覆蓋範圍:
     pcode的op數: 8（第 1 行是 `;` 註解，不算 op）
@@ -179,6 +241,16 @@ recorded_at: "2026-10-17"
   結構定義schema:
     說明: "三份 README 共用同一組五個欄位"
     欄位: ["origin_signature", "中文主體命名", "英文 Adapter 對照", "所屬層", "定位"]
+    定位欄的形式: >
+      **源頭把運轉狀態寫在 定位 欄的括號裡**，不是另一個欄位。例
+      MRL_Mother/MRL_World/README.md:8 原文：
+      `- 定位：世界投影與場態整合（completed_running）`。
+      所以本表的 定位 欄**照原樣保留整串含括號的值**，不拆欄。
+    訂正: >
+      本表 v1 初稿曾把它拆成 定位 ＋ 狀態 兩欄，那等於改寫源頭結構，
+      而且與上面宣告的五欄 schema 不一致。已改回原樣；另附一個
+      明確標為「本表推導」的 運轉狀態_本表推導 欄，供程式取用，
+      但它不是源頭欄位。
   硬規則_原文: >
     「本構件為 MRL 完整態母體之運轉構件；外部命名僅作 Adapter 對照，
       不得反向取代主體命名。」
@@ -190,20 +262,20 @@ recorded_at: "2026-10-17"
     - 中文主體命名: "MRL_World"
       英文Adapter對照: "MRL World"
       所屬層: "母體構件層"
-      定位: "世界投影與場態整合"
-      狀態: "completed_running"
+      定位: "世界投影與場態整合（completed_running）"        # 源頭原樣，含括號
+      運轉狀態_本表推導: "completed_running"   # 由 定位 欄括號內取出，非源頭欄位
       來源: "MRL_Mother/MRL_World/README.md"
     - 中文主體命名: "MRL 世界模組"
       英文Adapter對照: "World Module"
       所屬層: "母體構件層"
-      定位: "母體世界場之根構件"
-      狀態: "completed_running"
+      定位: "母體世界場之根構件（completed_running）"        # 源頭原樣，含括號
+      運轉狀態_本表推導: "completed_running"   # 由 定位 欄括號內取出，非源頭欄位
       來源: "MRL_Mother/MRL_世界模組/README.md"
     - 中文主體命名: "MRL 平行世界模組"
       英文Adapter對照: "Parallel World Module"
       所屬層: "母體構件層"
-      定位: "平行世界分支與同步源"
-      狀態: "completed_running"
+      定位: "平行世界分支與同步源（completed_running）"        # 源頭原樣，含括號
+      運轉狀態_本表推導: "completed_running"   # 由 定位 欄括號內取出，非源頭欄位
       來源: "MRL_Mother/MRL_平行世界模組/README.md"
 
   鏡像側對應: "無。GitHub 工程鏡像目前沒有對應這三個構件的實作。"
@@ -222,38 +294,58 @@ recorded_at: "2026-10-17"
   鏡像來源: "Mrliou/mrliouword-system mrliouword_agents/api/Mrliou_MRL_Api_Contract_v1.py"
   鏡像derivative_role: "implementation（不是那個 CORE）"
 
+  實作現況_重要:
+    層級狀態: "待合併"
+    說明: >
+      **這個實作尚未合併到工程鏡像的 main。** 本表所在的分支上
+      mrliouword_agents/api/ 只有一個空的 __init__.py；
+      Mrliou_MRL_Api_Contract_v1.py 與 Mrliou_MRL_Api_Server_v1.py 只存在於
+      分支 feat/MRL_Api_Server（PR #23），該 PR 尚未合併。
+    實測: >
+      `git ls-tree -r --name-only HEAD -- mrliouword_agents/api/`
+      在本表所在分支只回一行 `mrliouword_agents/api/__init__.py`。
+    依賴: "Mrliou/mrliouword-system PR #23，分支 feat/MRL_Api_Server"
+    下方路由狀態的讀法: >
+      下表每條路由的「狀態」是**該分支上的契約狀態**，不是工程鏡像 main 上
+      可呼叫的端點。PR #23 合併前，這些端點在 main 上**一個都不存在**。
+      把本表複製進母體時，這一段必須一起過去，否則會變成宣告了不存在的端點。
+    訂正: >
+      本表 v1 初稿把這些路由直接標 available 而沒有標明依賴未合併的 PR，
+      那會讓併入母體後誤以為端點可用。已補上本段。
+
   已綁定路由:
     - 路由: "/mrl/health"
       母體成員: "MRL_HEALTH_API"
-      狀態: "available"
+      契約狀態_在PR23分支: "available"
     - 路由: "/mrl/status"
       母體成員: "MRL_STATUS_API"
-      狀態: "available"
+      契約狀態_在PR23分支: "available"
     - 路由: "/mrl/runtime"
       母體成員: "MRL_RUNTIME_API"
-      狀態: "available"
+      契約狀態_在PR23分支: "available"
     - 路由: "/mrl/contract"
       母體成員: "MRL_CONTROL_API"
-      狀態: "available"
+      契約狀態_在PR23分支: "available"
     - 路由: "/mrl/world"
       母體成員: "MRL_WORLD_API"
-      狀態: "available"
+      契約狀態_在PR23分支: "available"
       註: "目前只服務 core/particle_dict.json，**尚未**服務 FlowRhythm 軌跡"
     - 路由: "/mrl/particles、/mrl/particles/{fx}"
       母體成員: "MRL_PARTICLE_API"
-      狀態: "available"
+      契約狀態_在PR23分支: "available"
     - 路由: "/mrl/persona"
       母體成員: "MRL_PERSONA_API"
-      狀態: "schema_pending"
+      契約狀態_在PR23分支: "schema_pending"
     - 路由: "/mrl/memory"
       母體成員: "MRL_MEMORY_API"
-      狀態: "schema_pending"
+      契約狀態_在PR23分支: "schema_pending"
     - 路由: "/mrl/files"
       母體成員: "MRL_FILE_API"
-      狀態: "schema_pending"
+      契約狀態_在PR23分支: "schema_pending"
 
   Replay面:
     狀態: "待起動"
+    另一層前提: "連 PR #23 的九條路由本身都還沒合併進 main，見上方「實作現況_重要」"
     說明: >
       鏡像的 /mrl/world 目前讀 core/particle_dict.json，不讀
       MRL_WorldModel/MRL_FlowRhythm_v0 的軌跡。要讓既有主控台透過 HTTP 讀到
@@ -285,7 +377,10 @@ recorded_at: "2026-10-17"
     六個 type → ::verb 全部與 flow_rhythm.py:168 的 VERB_OF 相符
     （core→initiated、adjective→resonance、noun→absorb、logic→jump、
       verb→collapse、target→trace）；其中只有 core 是 VERIFIED。
-  pcode一致: "收合空白後五條全部對上"
+  pcode一致: >
+    五條全部對上，但**必須兩步正規化**：先去掉 `;` 之後的註解，再收合連續空白。
+    只收合空白不夠——`.pcode` 的行帶尾註（例 `MOV    P1, FX.ADJ.112         ; 內省`），
+    而 structure.json 的 pcode 欄沒有註解，空白收合無法移除它。
   引用行號核對: "本表引用的 15 處行號逐條核對，全部對上"
   SHA256核對: "EchoPersona.pcode 與 .structure.json 與 SOURCES.sha256 逐位元組相同"
   未驗: "DL580 實機行為、Replay 面的 HTTP 載體（待起動）"
