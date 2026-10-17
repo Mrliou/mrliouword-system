@@ -33,7 +33,7 @@ import argparse
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
-from integrations.github.logical_extractor import LogicalExtractor
+from integrations.github.logical_extractor import LogicalStructureExtractor
 from integrations.webgpu.attention_filter import AttentionFilter
 from integrations.particle.test_recorder import ParticleTestRecorder
 from integrations.particle.naming_engine import ParticleNamingEngine
@@ -86,7 +86,7 @@ class IntelligentRepoSync:
         self.search_engine = GitHubSearchEngine(
             token=os.getenv('GITHUB_TOKEN')
         )
-        self.logical_extractor = LogicalExtractor()
+        self.logical_extractor = LogicalStructureExtractor()
         self.attention_filter = AttentionFilter(
             embedding_dim=self.config.get('attention', {}).get('embedding_dim', 128),
             num_heads=self.config.get('attention', {}).get('num_heads', 4)
@@ -212,7 +212,7 @@ class IntelligentRepoSync:
         
         for snippet in snippets:
             try:
-                structure = self.logical_extractor.extract(
+                structure = self.logical_extractor.extract_from_code(
                     code=snippet.code,
                     language=snippet.language
                 )
