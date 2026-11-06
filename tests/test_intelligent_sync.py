@@ -94,8 +94,8 @@ class TestLogicalExtractor:
         
         structure = extractor.extract_from_code(code, "Python")
         
-        assert 'attention' in structure['patterns']
-        assert structure['confidence'] > 0
+        assert 'attention_mechanism' in structure['patterns']
+        assert structure['complexity'] > 0
         assert len(structure['reasoning_chains']) > 0
     
     def test_extract_concepts(self):
@@ -111,7 +111,8 @@ class TestLogicalExtractor:
         
         structure = extractor.extract_from_code(code, "Python")
         
-        assert 'distributed' in structure['concepts'] or 'concurrent' in structure['concepts']
+        concepts = [c.lower() for c in structure['concepts']]
+        assert any('distributed' in c or 'concurrent' in c for c in concepts)
     
     def test_generate_formula(self):
         """Test formula-related structure construction"""
@@ -127,7 +128,7 @@ def attention(query, key, value):
         structure = extractor.extract_from_code(code, "Python")
         
         # Validate that the logical structure carries the expected information.
-        assert 'attention' in structure['patterns'] or 'softmax' in structure['keywords']
+        assert 'attention_mechanism' in structure['patterns'] or 'softmax' in structure['keywords']
         assert isinstance(structure['complexity'], (int, float))
 
 
@@ -403,7 +404,11 @@ class TestSyncOrchestrator:
         
         assert report is not None
         assert report.pattern == 'test pattern'
-        assert isinstance(report.github_results, int)
+        assert report.github_results == 1
+        # Extraction must actually succeed, not be swallowed by the
+        # per-snippet try/except (regression: .extract() vs .extract_from_code()).
+        assert report.extracted_structures == 1
+        assert not [e for e in report.errors if e.startswith('Extraction error')]
 
 
 # Pytest fixtures

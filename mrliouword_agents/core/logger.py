@@ -1,6 +1,7 @@
 """
 統一的日誌系統
 """
+
 import logging
 import sys
 from pathlib import Path
@@ -29,8 +30,7 @@ class MrliouwordLogger:
 
             # 格式化
             formatter = logging.Formatter(
-                log_format
-                or "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                log_format or "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
             console_handler.setFormatter(formatter)
             self.logger.addHandler(console_handler)
