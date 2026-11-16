@@ -8,17 +8,13 @@
 
 ```bash
 # 1. 安裝依賴
-pip install pyyaml numpy
+pip install requests pyyaml numpy
 
-# 2. 驗證配置
-python scripts/sync_config_validator.py intelligent_sync.yaml
-
-# 3. 執行同步
-python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml
-
-# 4. 查看統計
-python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml --stats
+# 2. 執行候選同步
+python scripts/intelligent_repo_sync.py --config intelligent_sync.yaml --all
 ```
+
+每次執行的統計與候選資料位於 `sync_candidates/run-*/`，由 Owner 審核。
 
 ## 核心特性
 
@@ -63,6 +59,8 @@ Repository → 全域掃描 → 邏輯架構提取 → 模式匹配 → 粒子�
 
 ## 配置範例
 
+下列是舊版 `scripts/sync_config_validator.py` 的配置格式。現行工作流程讀取倉庫根目錄的 [intelligent_sync.yaml](../intelligent_sync.yaml)。
+
 ```yaml
 settings:
   scan_mode: "global"
@@ -94,7 +92,7 @@ python scripts/intelligent_repo_sync.py --pattern attention_mechanism
 
 ### 同步特定倉庫
 ```bash
-python scripts/intelligent_repo_sync.py --repo flow-tasks
+python scripts/intelligent_repo_sync.py --pattern "attention repo:dofaromg/flow-tasks"
 ```
 
 ### 查詢相似粒子
@@ -111,7 +109,7 @@ similar = manager.find_similar(query_code, threshold=3)
 - 每週一自動執行
 - 支援手動觸發
 - 可指定模式或倉庫過濾
-- 自動提交粒子記憶
+- 將來源及粒子候選上傳為執行報告附件，等待 Owner 審核
 - Merkle 鏈完整性驗證
 
 ## 文檔
@@ -124,7 +122,7 @@ similar = manager.find_similar(query_code, threshold=3)
 ## 測試
 
 ```bash
-python tests/test_intelligent_sync.py
+python -m pytest -q tests/test_intelligent_sync.py
 ```
 
 測試覆蓋：

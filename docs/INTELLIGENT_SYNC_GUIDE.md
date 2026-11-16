@@ -25,14 +25,14 @@ The **MrLiouWord Intelligent Synchronization System** is a comprehensive GitHub 
 - 🎯 **Filters** using attention-based similarity (inspired by WebGPU)
 - ✅ **Tests** particle system with 7 critical verification tests
 - 🏷️ **Names** particles automatically based on logical understanding
-- 💾 **Stores** as particles with SimHash deduplication and Merkle verification
+- 💾 **Stages** candidates with SimHash fingerprints and Merkle verification
 - 📊 **Reports** comprehensive synchronization results
 
 ### Key Features
 
 - **Multi-language support**: Python, TypeScript, Go, Rust, Java, JavaScript
 - **Pattern detection**: Attention, Memory, Merkle, Particle, Flow, Layer architectures
-- **Deduplication**: SimHash64 with Hamming distance ≤ 3
+- **Source retention**: Each candidate keeps its source version, including candidates with the same fingerprint
 - **Integrity verification**: Merkle chain for tamper-proof memory
 - **Layer assignment**: L1-L7 based on similarity scores
 - **Frequency resonance**: Schumann (7.83Hz) × Phi-based frequencies
@@ -75,6 +75,8 @@ The system runs automatically every Monday at 00:00 UTC via GitHub Actions. You 
 2. Click **Run workflow**
 3. Enter optional pattern and limit
 4. Click **Run workflow**
+
+The workflow publishes run artifacts for Owner review. Each invocation writes the review files under `sync_candidates/run-*/` with the source name and provenance. The workflow uses read-only repository permissions.
 
 ---
 
@@ -157,7 +159,7 @@ Frequencies are calculated as: **SCHUMANN (7.83 Hz) × PHI^n**
          │
          ▼
 ┌─────────────────┐
-│ Memory Storage  │ ──► Store with dedup & Merkle
+│ Memory Storage  │ ──► Stage candidates & verify Merkle
 └────────┬────────┘
          │
          ▼
@@ -202,7 +204,7 @@ Implements 7 critical tests:
 
 1. **Write Test**: Verify particle can write to KV
 2. **Read Test**: Verify particle can be read
-3. **SimHash Collision**: Check similar particles (Hamming ≤ 3)
+3. **SimHash Collision**: Check normalized duplicates and the Hamming distance boundary at 3 and 4
 4. **Merkle Integrity**: Verify Merkle chain
 5. **Layer Retrieval**: Verify layer-based (L1-L7) retrieval
 6. **Tag Search**: Verify tag-based search
@@ -269,23 +271,25 @@ snippets = engine.search_code(
 # - code: source code
 # - url: GitHub URL
 # - score: search score
+# - original_name: original file name
+# - commit_sha: full revision from the API when available
+# - blob_sha: verified Git blob SHA
 ```
 
 ### Logical Extractor
 
 ```python
-from integrations.github.logical_structure_extractor import LogicalStructureExtractor
+from integrations.github.logical_extractor import LogicalStructureExtractor
 
 extractor = LogicalStructureExtractor()
 
-structure = extractor.extract_from_code(code="...", language="Python")
+structure = extractor.extract_from_code(code="...", language="Python", file_path="example.py")
 
-# structure['patterns']: ['attention', 'memory']
-# structure['concepts']: ['vector', 'neural']
-# structure['relationships']: {'classes': [...], 'functions': [...]}
-# structure['reasoning_chains']: ['query -> key -> value -> softmax']
-# structure['formula']: 'Attention(Q,K,V) = softmax(QK^T/√d)V'
-# structure['confidence']: 0.85
+# structure['patterns']: mapping from pattern names to matched keywords
+# structure['concepts']: original concept names
+# structure['relationships']: list of relationships
+# structure['reasoning_chains']: list of ordered lists of function names
+# structure['complexity']: score computed from the extracted structure
 ```
 
 ### Attention Filter

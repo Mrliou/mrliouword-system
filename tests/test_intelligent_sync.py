@@ -8,127 +8,160 @@ Comprehensive test suite for all components.
 Author: MR.liou
 """
 
-import os
+import base64
+import hashlib
+import json
+import runpy
 import sys
+from pathlib import Path
+from textwrap import dedent
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, patch
+import requests
 
-# Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
-
-from scripts.global_github_search import GitHubSearchEngine, CodeSnippet
-from integrations.github.logical_extractor import LogicalStructureExtractor as LogicalExtractor, LogicalStructure
-from integrations.webgpu.attention_filter import AttentionFilter, VectorCore
-from integrations.particle.test_recorder import ParticleTestRecorder
-from integrations.particle.naming_engine import ParticleNamingEngine
+from integrations.github.logical_extractor import LogicalStructureExtractor
 from integrations.particle.memory_storage import ParticleMemoryStorage
+from integrations.particle.naming_engine import ParticleNamingEngine
+from integrations.particle.test_recorder import ParticleTestRecorder
+from integrations.particle.test_recorder import TestReport as ParticleValidationReport
+from integrations.webgpu.attention_filter import AttentionFilter, VectorCore
+from scripts.global_github_search import GitHubSearchEngine
+
+SYNC_SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'intelligent_repo_sync.py'
+SEARCH_URL = 'https://api.github.com/search/code'
+SYNTHETIC_CODE = dedent('''
+    origin_signature = 'MrLiouWord'
+
+    def PreserveOriginalName(query, key, value):
+        if query:
+            return recall_context(key)
+        return value
+
+    def recall_context(key):
+        return verify_chain(key)
+
+    def verify_chain(key):
+        return key
+''')
+
+
+def github_file(path='Src/OriginalName.py', ref='a' * 40, code=SYNTHETIC_CODE):
+    raw = code.encode('utf-8')
+    repository = {
+        'full_name': 'ExampleOrg/FixtureRepo',
+        'url': 'https://api.github.com/repos/ExampleOrg/FixtureRepo',
+        'fork': False,
+    }
+    item = {
+        'name': Path(path).name,
+        'path': path,
+        'sha': hashlib.sha1(f'blob {len(raw)}\0'.encode('ascii') + raw).hexdigest(),
+        'url': f"{repository['url']}/contents/{path}?ref={ref}",
+        'html_url': f"https://github.com/{repository['full_name']}/blob/{ref}/{path}",
+        'repository': repository,
+        'score': 1.0,
+    }
+    return item, {'content': base64.b64encode(raw).decode('ascii')}
+
+
+def response(data):
+    result = Mock(spec=requests.Response)
+    result.headers = {}
+    result.json.return_value = data
+    return result
+
+
+def configure_sync(tmp_path, **config):
+    path = tmp_path / 'intelligent_sync.yaml'
+    path.write_text(json.dumps({'github': {'languages': ['Python']}, **config}))
+    return path
+
+
+def read_jsonl(path):
+    return [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines()]
 
 
 class TestGitHubSearch:
-    """Test GitHub Search Engine"""
-    
     def test_build_query(self):
-        """Test query builder"""
         engine = GitHubSearchEngine()
-        
-        query = engine.build_query(
-            pattern="attention",
-            languages=["Python", "TypeScript"],
-            min_stars=10
+        assert engine.build_query('attention', 'Python') == 'attention language:Python'
+        assert engine.build_query('attention', exclude_forks=False) == 'attention fork:true'
+
+    def test_search_code(self, monkeypatch):
+        python_item, python_content = github_file()
+        ts_item, ts_content = github_file('Src/OriginalName.ts', code='const attention = 1;')
+        fork_item, _ = github_file('Src/Fork.py')
+        fork_item['repository']['fork'] = True
+        low_star_item, _ = github_file('Src/LowStars.ts')
+        low_star_item['repository'].update(full_name='ExampleOrg/SmallRepo', stargazers_count=1)
+        get = Mock(side_effect=[
+            response({'items': [python_item, fork_item]}),
+            response({'items': [ts_item, low_star_item]}),
+            response({'stargazers_count': 42}),
+            response(python_content),
+            response(ts_content),
+        ])
+        monkeypatch.setattr(requests, 'get', get)
+
+        snippets = GitHubSearchEngine().search_code(
+            'attention', languages=['Python', 'TypeScript'], min_stars=10, limit=3
         )
-        
-        assert "attention" in query
-        assert "language:Python" in query or "language:TypeScript" in query
-        assert "stars:>=10" in query
-        assert "fork:false" in query
-    
-    @patch('requests.get')
-    def test_search_code(self, mock_get):
-        """Test code search with mocked API"""
-        # Mock response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            'items': [
-                {
-                    'repository': {'full_name': 'user/repo'},
-                    'path': 'test.py',
-                    'language': 'Python',
-                    'html_url': 'https://github.com/user/repo/blob/main/test.py',
-                    'url': 'https://api.github.com/repos/user/repo/contents/test.py',
-                    'score': 1.0
-                }
-            ]
-        }
-        mock_response.headers = {
-            'X-RateLimit-Remaining': '30',
-            'X-RateLimit-Reset': '1234567890'
-        }
-        mock_get.return_value = mock_response
-        
-        engine = GitHubSearchEngine()
-        
-        # Mock _fetch_file_content
-        with patch.object(engine, '_fetch_file_content', return_value='test code'):
-            snippets = engine.search_code("test", limit=1)
-            
-            assert len(snippets) > 0
-            assert snippets[0].repo == 'user/repo'
+
+        assert [(s.path, s.language) for s in snippets] == [
+            ('Src/OriginalName.py', 'Python'), ('Src/OriginalName.ts', 'TypeScript')
+        ]
+        assert snippets[0].original_name == 'OriginalName.py'
+        assert snippets[0].commit_sha == 'a' * 40
+        assert snippets[0].blob_sha == python_item['sha']
+        assert snippets[0].code == SYNTHETIC_CODE
+        assert [call.args[0] for call in get.call_args_list] == [
+            SEARCH_URL, SEARCH_URL, python_item['repository']['url'], python_item['url'], ts_item['url']
+        ]
+        assert [call.kwargs['params'] for call in get.call_args_list[:2]] == [
+            {'q': 'attention language:Python', 'per_page': 3},
+            {'q': 'attention language:TypeScript', 'per_page': 3},
+        ]
+
+    def test_unspecified_language_and_ref(self, monkeypatch):
+        item, contents = github_file('Src/OriginalName.py', ref='topic-branch')
+        item['repository']['stargazers_count'] = 42
+        monkeypatch.setattr(requests, 'get', Mock(side_effect=[
+            response({'items': [item]}), response(contents)
+        ]))
+        snippet, = GitHubSearchEngine().search_code('attention')
+        assert snippet.language == 'Python'
+        assert snippet.commit_sha is None
+        assert snippet.blob_sha == item['sha']
 
 
 class TestLogicalExtractor:
     """Test Logical Architecture Extractor"""
     
     def test_extract_patterns(self):
-        """Test pattern extraction"""
-        extractor = LogicalExtractor()
-        
-        code = """
-        class AttentionLayer:
-            def forward(self, query, key, value):
-                scores = torch.matmul(query, key.transpose(-2, -1))
-                attn = F.softmax(scores, dim=-1)
-                output = torch.matmul(attn, value)
-                return output
-        """
-        
-        structure = extractor.extract_from_code(code, "Python")
-        
-        assert 'attention' in structure['patterns']
-        assert structure['confidence'] > 0
-        assert len(structure['reasoning_chains']) > 0
-    
+        structure = LogicalStructureExtractor().extract_from_code(SYNTHETIC_CODE, 'Python')
+        assert 'query' in structure['patterns']['attention_mechanism']
+        assert 'memory_system' in structure['patterns']
+        assert structure['reasoning_chains'] == [
+            ['PreserveOriginalName', 'recall_context', 'verify_chain']
+        ]
+
     def test_extract_concepts(self):
-        """Test concept extraction"""
-        extractor = LogicalExtractor()
-        
-        code = """
-        class DistributedCache:
-            async def get(self, key):
-                # Distributed concurrent access
-                pass
-        """
-        
-        structure = extractor.extract_from_code(code, "Python")
-        
-        assert 'distributed' in structure['concepts'] or 'concurrent' in structure['concepts']
-    
-    def test_generate_formula(self):
-        """Test formula-related structure construction"""
-        extractor = LogicalExtractor()
-        
-        code = """
-def attention(query, key, value):
-    scores = query @ key.T / math.sqrt(d_k)
-    weights = softmax(scores)
-    return weights @ value
-        """
-        
-        structure = extractor.extract_from_code(code, "Python")
-        
-        # Validate that the logical structure carries the expected information.
-        assert 'attention' in structure['patterns'] or 'softmax' in structure['keywords']
-        assert isinstance(structure['complexity'], (int, float))
+        code = dedent('''
+            class DistributedCache:
+                def GetOriginalName(self, key):
+                    return key
+        ''')
+        structure = LogicalStructureExtractor().extract_from_code(code, 'Python')
+        assert structure['concepts'] == ['DistributedCache', 'GetOriginalName']
+        assert isinstance(structure['complexity'], float)
+        assert 'cache' in structure['patterns']['memory_system']
+
+    def test_extract_from_code_supports_unknown_language(self):
+        structure = LogicalStructureExtractor().extract_from_code('unknown syntax', 'Unknown')
+        assert structure['concepts'] == []
+        assert 'unknown' in structure['keywords']
+        assert structure['patterns'] == {}
 
 
 class TestAttentionFilter:
@@ -202,8 +235,11 @@ class TestParticleTestRecorder:
         assert result.status in ['pass', 'fail', 'error']
         assert result.test_name == 'simhash_collision_test'
         
-        if result.status == 'pass':
-            assert result.details.get('collision_detected') == True
+        assert result.status == 'pass'
+        assert result.details['collision_detected'] is True
+        assert result.details['hamming_distance'] == 0
+        assert result.details['distance_3_accepted'] is True
+        assert result.details['distance_4_rejected'] is True
     
     @pytest.mark.asyncio
     async def test_all_tests(self):
@@ -213,7 +249,7 @@ class TestParticleTestRecorder:
         report = await recorder.run_all_tests()
         
         assert report.total_tests == 7
-        assert report.passed + report.failed + report.errors == 7
+        assert report.passed_all
 
 
 class TestNamingEngine:
@@ -376,54 +412,221 @@ class TestMemoryStorage:
 
 
 class TestSyncOrchestrator:
-    """Test Sync Orchestrator (integration tests)"""
-    
+    def test_cli_import(self, tmp_path, capsys, monkeypatch):
+        monkeypatch.setattr(sys, 'argv', [str(SYNC_SCRIPT), '--help'])
+        with pytest.raises(SystemExit) as command:
+            runpy.run_path(str(SYNC_SCRIPT), run_name='__main__')
+        assert command.value.code == 0
+        assert '--pattern' in capsys.readouterr().out
+        assert not list(tmp_path.iterdir())
+
     @pytest.mark.asyncio
-    @patch('scripts.global_github_search.GitHubSearchEngine.search_code')
-    async def test_sync_pattern(self, mock_search):
-        """Test pattern synchronization"""
+    async def test_sync_pattern_preserves_each_source_and_candidate_version(self, tmp_path, monkeypatch):
         from scripts.intelligent_repo_sync import IntelligentRepoSync
-        
-        # Mock GitHub search results
-        mock_search.return_value = [
-            CodeSnippet(
-                repo='user/test-repo',
-                path='test.py',
-                language='Python',
-                code='def attention(): pass',
-                url='https://github.com/user/test-repo',
-                score=1.0
-            )
-        ]
-        
-        sync = IntelligentRepoSync()
-        
-        # Run sync
-        report = await sync.sync_pattern('test pattern', limit=1)
-        
-        assert report is not None
-        assert report.pattern == 'test pattern'
-        assert isinstance(report.github_results, int)
+
+        first, file_content = github_file()
+        second, _ = github_file(ref='b' * 40)
+        get = Mock(side_effect=[
+            response({'items': [first, second]}),
+            response({'stargazers_count': 42}),
+            response(file_content),
+            response(file_content),
+        ])
+        monkeypatch.setattr(requests, 'get', get)
+
+        existing = {
+            'particle_memory/particles.jsonl': {
+                'id': 'legacy-1', 'name': 'Original名稱', 'version': '2.4.1',
+                'origin_signature': 'MrLiouWord',
+                'sources': [{'repo': 'Owner/Existing', 'path': 'Original名稱.py'}],
+            },
+            'naming_history/naming_history.jsonl': {
+                'particle_name': 'Original名稱', 'version': 7, 'owner_review': 'APPROVED',
+            },
+            'test_results/legacy.jsonl': {'result': 'before'},
+            'sync_reports/legacy.jsonl': {'result': 'before'},
+        }
+        original_bytes = {}
+        for name, row in existing.items():
+            path = tmp_path / name
+            path.parent.mkdir()
+            original_bytes[path] = (json.dumps(row, ensure_ascii=False) + '\n').encode('utf-8')
+            path.write_bytes(original_bytes[path])
+        config = configure_sync(
+            tmp_path,
+            particle_memory={'storage_path': './particle_memory'},
+            naming={'storage_path': './naming_history'},
+            testing={'enabled': True, 'storage_path': './test_results'},
+            reporting={'output_dir': './sync_reports'},
+        )
+
+        sync = IntelligentRepoSync(config)
+        report = await sync.sync_pattern('attention', limit=2)
+        assert report.errors == []
+        assert report.summary['success'] is True
+        assert report.summary['attention_pairs'] == 1
+        assert report.summary['storage_scope'] == 'candidate'
+        assert report.summary['owner_review'] == 'PENDING'
+        assert report.github_results == report.extracted_structures == 2
+        assert report.particles_created == report.naming_decisions == 2
+        assert report.particles_merged == 0
+        assert report.test_results['passed'] == report.test_results['total'] == 7
+        validation = json.loads(next(sync.candidate_dir.glob('test_results/*/report.json')).read_text())
+        assert all(test['status'] == 'pass' for test in validation['tests'])
+
+        staged = read_jsonl(sync.candidate_dir / 'particle_memory' / 'particles.jsonl')
+        history = read_jsonl(sync.candidate_dir / 'naming_history' / 'naming_history.jsonl')
+        reader = ParticleMemoryStorage(str(sync.candidate_dir / 'particle_memory'))
+        assert reader.verify_merkle_chain() == (True, [])
+        assert len(staged) == len(history) == 2
+        assert staged[1]['name'] == f"{staged[0]['name']}_v2"
+        for version, (item, particle, decision) in enumerate(zip([first, second], staged, history), 1):
+            source, = particle['sources']
+            assert source == decision['metadata']['source_info']
+            assert source['repo'] == item['repository']['full_name']
+            assert source['original_name'] == 'OriginalName.py'
+            assert source['path'] == item['path']
+            assert source['url'] == item['html_url']
+            assert source['commit_sha'] == item['url'].split('ref=')[1]
+            assert source['blob_sha'] == item['sha']
+            assert source['source_provenance'] == 'unsigned_pending'
+            assert 'origin_signature' not in source
+            assert 'origin_signature' not in particle
+            assert particle['metadata']['owner_review'] == 'PENDING'
+            assert particle['metadata']['naming_version'] == decision['version'] == version
+            assert particle['name'] == decision['particle_name']
+            assert particle['type'] == 'fx.pattern.attention'
+            assert 'attention_mechanism' in particle['tags']
+            structure = json.loads(particle['content'])
+            assert structure['concepts'][0] == 'PreserveOriginalName'
+            assert structure['reasoning_chains'][0][0] == 'PreserveOriginalName'
+            assert structure['patterns']['attention_mechanism'] == ['query', 'key', 'value']
+            assert reader.get(particle['id']).to_dict() == particle
+
+        assert {path: path.read_bytes() for path in original_bytes} == original_bytes
+        saved_report = next(sync.candidate_dir.glob('sync_reports/*.json'))
+        assert json.loads(saved_report.read_text()) == report.to_dict()
+
+    @pytest.mark.asyncio
+    async def test_flatten_reasoning_only_for_naming(self, tmp_path, monkeypatch):
+        from scripts.intelligent_repo_sync import IntelligentRepoSync
+
+        item, contents = github_file(code='def Alpha(): pass\ndef Beta(): pass\ndef Gamma(): pass')
+        item['repository']['stargazers_count'] = 42
+        monkeypatch.setattr(requests, 'get', Mock(side_effect=[
+            response({'items': [item]}), response(contents)
+        ]))
+
+        sync = IntelligentRepoSync(configure_sync(tmp_path))
+        report = await sync.sync_pattern('fixture', limit=1)
+        assert report.summary['success'] is True
+        decision, = sync.naming_engine.get_history()
+        assert decision['metadata']['reasoning_chains'] == ['Alpha Beta Gamma']
+        staged, = read_jsonl(sync.candidate_dir / 'particle_memory' / 'particles.jsonl')
+        assert json.loads(staged['content'])['reasoning_chains'] == [['Alpha', 'Beta', 'Gamma']]
+
+    def test_particle_validation_failure_exits_before_naming_or_storage(self, tmp_path, monkeypatch):
+        item, contents = github_file()
+        item['repository']['stargazers_count'] = 42
+        monkeypatch.setattr(requests, 'get', Mock(side_effect=[
+            response({'items': [item]}), response(contents)
+        ]))
+        failed = ParticleValidationReport('fixture', 7, 6, 1, 0, [], '2026-11-16T00:00:00Z')
+        monkeypatch.setattr(ParticleTestRecorder, 'run_all_tests', AsyncMock(return_value=failed))
+        config = configure_sync(tmp_path)
+        monkeypatch.setattr(sys, 'argv', [str(SYNC_SCRIPT), '--config', str(config), '--pattern', 'fixture'])
+
+        with pytest.raises(SystemExit) as command:
+            runpy.run_path(str(SYNC_SCRIPT), run_name='__main__')
+        assert command.value.code == 1
+        report_file, = tmp_path.glob('sync_candidates/run-*/sync_reports/*.json')
+        report = json.loads(report_file.read_text())
+        assert report['errors'] == ['Particle validation: 6/7 tests passed; expected 7/7']
+        assert report['summary']['success'] is False
+        assert not list(tmp_path.glob('sync_candidates/run-*/particle_memory/particles.jsonl'))
+        assert not list(tmp_path.glob('sync_candidates/run-*/naming_history/naming_history.jsonl'))
+
+    @pytest.mark.asyncio
+    async def test_blob_mismatch_blocks_storage(self, tmp_path, monkeypatch):
+        from scripts.intelligent_repo_sync import IntelligentRepoSync
+
+        item, _ = github_file()
+        _, mismatched_contents = github_file(code='def OtherSource(): pass')
+        item['repository']['stargazers_count'] = 42
+        monkeypatch.setattr(requests, 'get', Mock(side_effect=[
+            response({'items': [item]}), response(mismatched_contents)
+        ]))
+
+        sync = IntelligentRepoSync(configure_sync(tmp_path))
+        report = await sync.sync_pattern('fixture')
+        assert report.summary['success'] is False
+        assert 'Git blob SHA mismatch' in report.errors[0]
+        assert report.particles_created == 0
+        assert not (sync.candidate_dir / 'particle_memory' / 'particles.jsonl').exists()
+
+    @pytest.mark.asyncio
+    async def test_storage_error_leaves_pending_evidence_and_retry_uses_a_fresh_directory(
+        self, tmp_path, monkeypatch
+    ):
+        from scripts.intelligent_repo_sync import IntelligentRepoSync
+
+        item, contents = github_file()
+        item['repository']['stargazers_count'] = 42
+        monkeypatch.setattr(requests, 'get', Mock(side_effect=[
+            response({'items': [item]}), response(contents),
+            response({'items': [item]}), response(contents),
+        ]))
+        config = configure_sync(tmp_path)
+
+        first = IntelligentRepoSync(config)
+        monkeypatch.setattr(first.memory_storage, 'store', Mock(side_effect=OSError('fixture disk error')))
+        failed = await first.sync_pattern('fixture')
+        assert failed.summary['success'] is False
+        assert failed.errors == ['Candidate storage: fixture disk error']
+        assert failed.particles_created == 0
+        assert failed.naming_decisions == 1
+        first_history = first.candidate_dir / 'naming_history' / 'naming_history.jsonl'
+        history_before_retry = first_history.read_bytes()
+
+        retry = IntelligentRepoSync(config)
+        recovered = await retry.sync_pattern('fixture')
+        assert recovered.summary['success'] is True
+        assert recovered.particles_created == 1
+        assert retry.candidate_dir != first.candidate_dir
+        assert first_history.read_bytes() == history_before_retry
+
+    def test_all_patterns_retains_each_result_and_returns_failure(self, tmp_path, monkeypatch):
+        item, contents = github_file()
+        item['repository']['stargazers_count'] = 42
+        rejected = response({})
+        rejected.raise_for_status.side_effect = requests.HTTPError('403 Forbidden')
+        monkeypatch.setattr(requests, 'get', Mock(side_effect=[
+            rejected, response({'items': [item]}), response(contents)
+        ]))
+        config = configure_sync(tmp_path, patterns=['no-access', 'candidate'])
+        monkeypatch.setattr(sys, 'argv', [str(SYNC_SCRIPT), '--config', str(config), '--all'])
+
+        with pytest.raises(SystemExit) as command:
+            runpy.run_path(str(SYNC_SCRIPT), run_name='__main__')
+        assert command.value.code == 1
+        reports = {}
+        for path in tmp_path.glob('sync_candidates/run-*/sync_reports/*.json'):
+            data = json.loads(path.read_text())
+            reports[data['pattern']] = data
+        assert reports['no-access']['errors'] == ['GitHub search: 403 Forbidden']
+        assert reports['no-access']['summary']['success'] is False
+        assert reports['candidate']['summary']['success'] is True
+        assert reports['candidate']['particles_created'] == 1
 
 
-# Pytest fixtures
 @pytest.fixture(autouse=True)
-def cleanup():
-    """Cleanup test directories after each test"""
-    yield
-    
-    # Clean up test directories
-    import shutil
-    test_dirs = [
-        './test_temp',
-        './test_naming',
-        './test_storage',
-        './test_particles_output'
-    ]
-    
-    for dir_path in test_dirs:
-        if os.path.exists(dir_path):
-            shutil.rmtree(dir_path)
+def isolate_filesystem_and_network(tmp_path, monkeypatch):
+    def unexpected_request(*args, **kwargs):
+        raise AssertionError('Tests must stub GitHub HTTP at the request boundary')
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('GITHUB_TOKEN', raising=False)
+    monkeypatch.setattr(requests.sessions.Session, 'request', unexpected_request)
 
 
 # Run tests
