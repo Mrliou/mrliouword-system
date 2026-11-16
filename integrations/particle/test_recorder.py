@@ -75,6 +75,10 @@ class TestReport:
     errors: int
     tests: List[ParticleTest]
     timestamp: str
+
+    @property
+    def passed_all(self) -> bool:
+        return self.total_tests == self.passed == 7 and self.failed == self.errors == 0
     
     def to_dict(self) -> Dict:
         return {
@@ -304,9 +308,10 @@ class ParticleTestRecorder:
         logger.info("Running Test 3: SimHash Collision Test")
         
         try:
-            # Create similar particles
+            # A normalization-equivalent pair verifies the stored fingerprints.
+            # Test the distance cutoff separately from semantic similarity.
             content_a = "夥伴回來吧，我們繼續開發粒子系統"
-            content_b = "夥伴回來吧，我們繼續開發粒子架構"
+            content_b = f" {content_a}\n"
             
             particle_a = await self.memory.commit(
                 content=content_a,
@@ -326,23 +331,22 @@ class ParticleTestRecorder:
             distance = hamming_distance(hash_a, hash_b)
             is_collision = is_similar(hash_a, hash_b, threshold=3)
             
-            if is_collision and distance <= 3:
-                status = "pass"
-                details = {
-                    'hash_a': hash_a,
-                    'hash_b': hash_b,
-                    'hamming_distance': distance,
-                    'collision_detected': True
-                }
-            else:
-                status = "fail"
-                details = {
-                    'hash_a': hash_a,
-                    'hash_b': hash_b,
-                    'hamming_distance': distance,
-                    'collision_detected': False,
-                    'note': 'Similar texts should have distance ≤ 3'
-                }
+            near_hash = f'{int(hash_a, 16) ^ 0b0111:016x}'
+            far_hash = f'{int(hash_a, 16) ^ 0b1111:016x}'
+            near_distance = hamming_distance(hash_a, near_hash)
+            far_distance = hamming_distance(hash_a, far_hash)
+            accepts_near = is_similar(hash_a, near_hash, threshold=3)
+            accepts_far = is_similar(hash_a, far_hash, threshold=3)
+            boundary_ok = near_distance == 3 and far_distance == 4 and accepts_near and not accepts_far
+            status = "pass" if is_collision and distance == 0 and boundary_ok else "fail"
+            details = {
+                'hash_a': hash_a,
+                'hash_b': hash_b,
+                'hamming_distance': distance,
+                'collision_detected': is_collision,
+                'distance_3_accepted': accepts_near,
+                'distance_4_rejected': not accepts_far,
+            }
             
             result = self._create_test_result(
                 test_name="simhash_collision_test",
@@ -739,5 +743,6 @@ if __name__ == '__main__':
                 print(f"  Details: {test.details}")
         
         print("="*80)
-    
-    asyncio.run(main())
+        return 0 if report.passed_all else 1
+
+    sys.exit(asyncio.run(main()))

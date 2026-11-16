@@ -13,7 +13,7 @@ A comprehensive GitHub Global Logical Architecture Synchronization System that d
 - 🎯 **Attention Filter**: Frequency-based embeddings with Schumann resonance (7.83Hz)
 - ✅ **7 Particle Tests**: Comprehensive verification suite
 - 🏷️ **Auto-Naming**: Intelligent particle name generation
-- 💾 **Memory Storage**: SimHash deduplication + Merkle chain integrity
+- 💾 **Candidate Storage**: SimHash fingerprints, separate source versions, and Merkle chain verification
 - 📊 **Sync Reports**: Detailed synchronization analytics
 
 ## 🚀 Quick Start
@@ -35,8 +35,11 @@ python scripts/intelligent_repo_sync.py --all
 python integrations/particle/test_recorder.py
 
 # Run test suite
-python -m pytest tests/test_intelligent_sync.py -v
+pip install pytest pytest-asyncio
+python -m pytest -q tests/test_intelligent_sync.py
 ```
+
+Each invocation stages candidates under `sync_candidates/run-*/`. Candidate names and versions are proposals for Owner review. The records preserve the original source name, repository, path, URL, commit SHA when available, and verified Git blob SHA.
 
 ## 📁 Project Structure
 
@@ -95,8 +98,8 @@ Auto-generates particle names based on logical understanding:
 - Auto-versioning on conflicts
 
 ### 6. Particle Memory Storage
-Stores particles with:
-- SimHash64 deduplication (Hamming ≤ 3)
+Stores candidates with:
+- SimHash64 fingerprints and a separate record for each candidate source version
 - Merkle chain integrity
 - Layer assignment (L1-L7)
 - Frequency calculation (Schumann × Phi^n)
@@ -142,7 +145,7 @@ Runs automatically every Monday at 00:00 UTC. Manual trigger available:
 1. Go to **Actions** → **Intelligent GitHub Sync**
 2. Click **Run workflow**
 3. Enter pattern (optional) and limit
-4. View sync reports in artifacts
+4. Review the reports and pending candidates in the run's artifacts
 
 ## 📊 Example Usage
 
@@ -158,9 +161,9 @@ snippets = engine.search_code("attention mechanism", limit=10)
 # Extract logical structure
 extractor = LogicalStructureExtractor()
 for snippet in snippets:
-    structure = extractor.extract_from_code(snippet.code, snippet.language)
+    structure = extractor.extract_from_code(snippet.code, snippet.language, snippet.path)
     print(f"Patterns: {structure['patterns']}")
-    print(f"Formula: {structure['formula']}")
+    print(f"Complexity: {structure['complexity']}")
 ```
 
 ### Store Particles

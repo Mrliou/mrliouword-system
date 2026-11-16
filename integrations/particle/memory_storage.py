@@ -279,7 +279,9 @@ class ParticleMemoryStorage:
         content: str,
         source_info: Dict,
         tags: Optional[List[str]] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        *,
+        deduplicate: bool = True,
     ) -> Tuple[Particle, bool]:
         """
         Store particle with deduplication
@@ -291,6 +293,8 @@ class ParticleMemoryStorage:
             source_info: Source information (repo, url, etc.)
             tags: Tags
             metadata: Additional metadata
+            deduplicate: Merge similar particles. Candidate sync disables this
+                to retain each source and proposed version.
             
         Returns:
             (particle, is_new) tuple
@@ -301,7 +305,7 @@ class ParticleMemoryStorage:
         content_hash = simhash64(content)
         
         # Check for similar particles
-        similar_ids = self._find_similar_particles(content_hash, threshold=3)
+        similar_ids = self._find_similar_particles(content_hash, threshold=3) if deduplicate else []
         
         if similar_ids:
             # Merge with existing particle

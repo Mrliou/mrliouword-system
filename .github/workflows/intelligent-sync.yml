@@ -18,7 +18,7 @@ on:
         type: number
         default: 30
       run_tests:
-        description: 'Run particle tests'
+        description: 'Run the standalone particle test report'
         required: false
         type: boolean
         default: true
@@ -28,12 +28,14 @@ jobs:
     runs-on: ubuntu-latest
     
     permissions:
-      contents: write
+      contents: read
       actions: read
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -43,32 +45,31 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests pyyaml numpy
+          pip install requests pyyaml numpy pytest pytest-asyncio
       
       - name: Verify core modules
         run: |
           python -c "from core.simhash64 import simhash64; print('✓ simhash64')"
           python -c "from core.merkle import MerkleChain; print('✓ merkle')"
       
+      - name: Verify intelligent sync contracts
+        run: python -m pytest -q tests/test_intelligent_sync.py
+
       - name: Run intelligent sync
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PATTERN: ${{ inputs.pattern }}
+          LIMIT: ${{ github.event.inputs.limit || '30' }}
         run: |
-          PATTERN="${{ github.event.inputs.pattern }}"
-          LIMIT="${{ github.event.inputs.limit || 30 }}"
-
-          # Validate LIMIT: must be an integer between 1 and 100 (inclusive)
-          if ! echo "$LIMIT" | grep -Eq '^[1-9][0-9]?$|^100$'; then
-            echo "Invalid limit input: '$LIMIT'. Only integers between 1 and 100 are allowed."
+          if [[ ! "$LIMIT" =~ ^([1-9][0-9]?|100)$ ]]; then
+            echo "Invalid limit input. Only integers between 1 and 100 are allowed."
             exit 1
           fi
 
-          # Validate PATTERN if provided: allow only safe characters to avoid shell injection
-          if [ -n "$PATTERN" ]; then
-            if ! echo "$PATTERN" | grep -Eq '^[A-Za-z0-9_.:/\- ]*$'; then
-              echo "Invalid pattern input. Only letters, digits, space, '.', '_', '-', '/', and ':' are allowed."
-              exit 1
-            fi
+          PATTERN_RE='^[A-Za-z0-9_.:/ -]*$'
+          if [[ -n "$PATTERN" && ! "$PATTERN" =~ $PATTERN_RE ]]; then
+            echo "Invalid pattern input. Only letters, digits, space, '.', '_', '-', '/', and ':' are allowed."
+            exit 1
           fi
 
           if [ -n "$PATTERN" ]; then
@@ -86,75 +87,40 @@ jobs:
           fi
       
       - name: Run particle tests
-        if: ${{ github.event.inputs.run_tests != 'false' }}
-        run: |
-          python integrations/particle/test_recorder.py
-      
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
+        working-directory: ${{ runner.temp }}
+        run: python "$GITHUB_WORKSPACE/integrations/particle/test_recorder.py"
+
       - name: Generate summary report
+        if: ${{ !cancelled() }}
         run: |
-          echo "## Intelligent Sync Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Find latest sync report
-          LATEST_REPORT=$(ls -t sync_reports/*.json 2>/dev/null | head -1)
-          
-          if [ -f "$LATEST_REPORT" ]; then
-            echo "### Latest Sync" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            
-            # Extract summary using dedicated script
-            REPORT_PATH="$LATEST_REPORT" python scripts/generate_summary.py >> $GITHUB_STEP_SUMMARY
-            
-            echo "" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No sync reports found" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # Storage statistics
-          if [ -d "particle_memory" ]; then
-            echo "### Particle Storage" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            
-            PARTICLE_COUNT=$(wc -l < particle_memory/particles.jsonl 2>/dev/null || echo 0)
-            echo "**Total Particles:** $PARTICLE_COUNT" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-      
+          {
+            echo "## Intelligent Sync Report"
+            echo "**Storage:** Candidate particles · Owner review pending"
+            echo ""
+            shopt -s nullglob
+            reports=(sync_candidates/run-*/sync_reports/*.json)
+            if (( ${#reports[@]} == 0 )); then
+              echo "No sync reports found"
+            fi
+            for report in "${reports[@]}"; do
+              python scripts/generate_summary.py "$report"
+              echo ""
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload sync reports
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: sync-reports-${{ github.run_number }}
           path: |
-            sync_reports/
-            test_results/
-            naming_history/
+            sync_candidates/run-*/sync_reports/
+            sync_candidates/run-*/test_results/*/report.json
+            sync_candidates/run-*/naming_history/
+            sync_candidates/run-*/particle_memory/
           retention-days: 90
-      
-      - name: Commit changes
-        if: success()
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          
-          # Add particle memory
-          git add particle_memory/ || true
-          git add naming_history/ || true
-          git add sync_reports/ || true
-          
-          # Commit if there are changes
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            COMMIT_MSG="🔄 Intelligent Sync: $(date '+%Y-%m-%d %H:%M:%S UTC')"
-            
-            if [ -n "${{ github.event.inputs.pattern }}" ]; then
-              COMMIT_MSG="$COMMIT_MSG - Pattern: ${{ github.event.inputs.pattern }}"
-            fi
-            
-            git commit -m "$COMMIT_MSG"
-            git push
-          fi
-      
+
       - name: Notification on failure
         if: failure()
         run: |

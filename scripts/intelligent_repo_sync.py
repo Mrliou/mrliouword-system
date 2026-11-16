@@ -26,18 +26,22 @@ import logging
 import asyncio
 from typing import List, Dict, Optional
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+from tempfile import mkdtemp
+from uuid import uuid4
 import argparse
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
-from integrations.github.logical_extractor import LogicalExtractor
+from integrations.github.logical_extractor import LogicalStructureExtractor
 from integrations.webgpu.attention_filter import AttentionFilter
 from integrations.particle.test_recorder import ParticleTestRecorder
 from integrations.particle.naming_engine import ParticleNamingEngine
 from integrations.particle.memory_storage import ParticleMemoryStorage
+from modules.MRL_SystemA_ParticleLayer import UNSIGNED_PENDING
 from scripts.global_github_search import GitHubSearchEngine
 
 logging.basicConfig(
@@ -45,6 +49,13 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+NAMING_PATTERNS = {
+    'attention_mechanism': 'attention',
+    'memory_system': 'memory',
+    'merkle_chain': 'merkle',
+    'particle_engine': 'particle',
+}
 
 @dataclass
 class SyncReport:
@@ -86,20 +97,25 @@ class IntelligentRepoSync:
         self.search_engine = GitHubSearchEngine(
             token=os.getenv('GITHUB_TOKEN')
         )
-        self.logical_extractor = LogicalExtractor()
+        self.logical_extractor = LogicalStructureExtractor()
         self.attention_filter = AttentionFilter(
             embedding_dim=self.config.get('attention', {}).get('embedding_dim', 128),
             num_heads=self.config.get('attention', {}).get('num_heads', 4)
         )
+
+        # Each invocation stages new candidates in a fresh directory for Owner review.
+        candidate_root = Path('sync_candidates')
+        if candidate_root.is_symlink():
+            raise ValueError("sync_candidates must be a local directory")
+        candidate_root.mkdir(exist_ok=True)
+        self.candidate_dir = Path(mkdtemp(prefix='run-', dir=candidate_root)).absolute()
         self.naming_engine = ParticleNamingEngine(
-            storage_path=self.config.get('naming', {}).get('storage_path', './naming_history')
+            storage_path=str(self.candidate_dir / 'naming_history')
         )
         self.memory_storage = ParticleMemoryStorage(
-            storage_path=self.config.get('particle_memory', {}).get('storage_path', './particle_memory')
+            storage_path=str(self.candidate_dir / 'particle_memory')
         )
-        
-        self.errors = []
-        
+
         logger.info("IntelligentRepoSync initialized")
     
     def _load_config(self) -> Dict:
@@ -175,181 +191,110 @@ class IntelligentRepoSync:
         Returns:
             Sync report
         """
-        import uuid
-        session_id = str(uuid.uuid4())
-        timestamp = datetime.now().isoformat()
-        
-        logger.info(f"="*80)
-        logger.info(f"Sync Session: {session_id}")
-        logger.info(f"Pattern: {pattern}")
-        logger.info(f"="*80)
-        
-        # Step 1: Search GitHub globally
-        logger.info("Step 1: Searching GitHub...")
-        github_config = self.config.get('github', {})
-        max_results = limit or github_config.get('max_results', 30)
-        
-        snippets = self.search_engine.search_code(
-            pattern=pattern,
-            languages=github_config.get('languages'),
-            limit=max_results,
-            min_stars=github_config.get('min_stars', 10)
-        )
-        
-        logger.info(f"Found {len(snippets)} code snippets")
-        
-        if not snippets:
-            logger.warning("No results from GitHub search")
-            return self._create_report(
-                session_id, timestamp, pattern,
-                github_results=0,
-                errors=['No results from GitHub search']
-            )
-        
-        # Step 2: Extract logical architecture
-        logger.info("Step 2: Extracting logical architecture...")
+        session_id = str(uuid4())
+        timestamp = datetime.now(timezone.utc).isoformat()
+        logger.info("Sync session %s, pattern %s", session_id, pattern)
+
+        snippets = []
         structures = []
-        
-        for snippet in snippets:
-            try:
-                structure = self.logical_extractor.extract(
-                    code=snippet.code,
-                    language=snippet.language
+        attention_pairs = 0
+        test_results = {}
+        naming_decisions = 0
+        particles_created = 0
+        errors = []
+        stage = 'GitHub search'
+        try:
+            github_config = self.config.get('github', {})
+            snippets = self.search_engine.search_code(
+                pattern=pattern,
+                languages=github_config.get('languages'),
+                limit=limit or github_config.get('max_results', 30),
+                min_stars=github_config.get('min_stars', 10),
+                exclude_forks=github_config.get('exclude_forks', True),
+            )
+            if not snippets:
+                raise ValueError('No results from GitHub search')
+
+            stage = 'Logical extraction'
+            for snippet in snippets:
+                structure = self.logical_extractor.extract_from_code(
+                    code=snippet.code, language=snippet.language, file_path=snippet.path
                 )
-                
-                # Add source info
-                structure_dict = structure
-                structure_dict['source_info'] = {
+                structure['keywords'] = sorted(structure['keywords'])
+                source = {
                     'repo': snippet.repo,
                     'path': snippet.path,
                     'url': snippet.url,
-                    'language': snippet.language
+                    'language': snippet.language,
+                    'original_name': snippet.original_name or PurePosixPath(snippet.path).name,
+                    'commit_sha': snippet.commit_sha,
+                    'blob_sha': snippet.blob_sha,
+                    'source_provenance': UNSIGNED_PENDING,
                 }
-                
-                structures.append(structure_dict)
-                
-            except Exception as e:
-                logger.error(f"Extraction error: {e}")
-                self.errors.append(f"Extraction error for {snippet.repo}: {str(e)}")
-        
-        logger.info(f"Extracted {len(structures)} logical structures")
-        
-        # Step 3: Compute attention similarity
-        logger.info("Step 3: Computing attention similarity...")
-        try:
-            texts = [s['source_info']['repo'] + ' ' + ' '.join(s['patterns']) 
-                    for s in structures]
-            
-            similarity_threshold = self.config.get('attention', {}).get('similarity_threshold', 0.5)
-            # Architectural placeholder: Preserve attention scores for future
-            # particle similarity analysis and world-model consistency
-            attention_scores = self.attention_filter.filter_by_attention(
-                texts,
-                threshold=similarity_threshold
-            )
-            similar_pairs = attention_scores
-            
-            logger.info(f"Found {len(similar_pairs)} similar pairs")
-            
-        except Exception as e:
-            logger.error(f"Attention error: {e}")
-            self.errors.append(f"Attention computation error: {str(e)}")
-        
-        # Step 4: Test particle access (7 tests)
-        test_results = {}
-        
-        if self.config.get('testing', {}).get('enabled', True):
-            logger.info("Step 4: Running particle tests...")
-            try:
-                test_recorder = ParticleTestRecorder(
-                    storage_path=self.config.get('testing', {}).get('storage_path', './test_results')
-                )
-                
-                test_report = await test_recorder.run_all_tests()
-                
+                structures.append((structure, source))
+
+            stage = 'Attention'
+            texts = [
+                ' '.join([source['repo'], *structure['patterns']])
+                for structure, source in structures
+            ]
+            threshold = self.config.get('attention', {}).get('similarity_threshold', 0.5)
+            attention_pairs = len(self.attention_filter.filter_by_attention(texts, threshold))
+
+            stage = 'Particle validation'
+            if self.config.get('testing', {}).get('enabled', True):
+                test_dir = self.candidate_dir / 'test_results' / session_id
+                recorder = ParticleTestRecorder(storage_path=str(test_dir))
+                result = await recorder.run_all_tests()
+                with (test_dir / 'report.json').open('w', encoding='utf-8') as f:
+                    json.dump(result.to_dict(), f, indent=2, ensure_ascii=False)
                 test_results = {
-                    'session_id': test_report.session_id,
-                    'total': test_report.total_tests,
-                    'passed': test_report.passed,
-                    'failed': test_report.failed,
-                    'errors': test_report.errors
+                    'session_id': result.session_id,
+                    'total': result.total_tests,
+                    'passed': result.passed,
+                    'failed': result.failed,
+                    'errors': result.errors,
                 }
-                
-                logger.info(f"Tests: {test_report.passed}/{test_report.total_tests} passed")
-                
-            except Exception as e:
-                logger.error(f"Testing error: {e}")
-                self.errors.append(f"Testing error: {str(e)}")
-                test_results = {'error': str(e)}
-        
-        # Step 5: Auto-rename/define particles
-        logger.info("Step 5: Generating particle names...")
-        naming_decisions = []
-        
-        try:
-            for structure in structures:
+                if not result.passed_all:
+                    raise ValueError(f'{result.passed}/{result.total_tests} tests passed; expected 7/7')
+            else:
+                test_results = {'status': 'skipped'}
+
+            for structure, source in structures:
+                stage = 'Candidate naming'
+                patterns = list(structure['patterns'])
                 decision = self.naming_engine.generate_name(
-                    patterns=structure.get('patterns', []),
-                    concepts=structure.get('concepts', []),
-                    reasoning_chains=structure.get('reasoning_chains', []),
-                    source_info=structure.get('source_info')
+                    patterns=[NAMING_PATTERNS.get(pattern, pattern) for pattern in patterns],
+                    concepts=structure['concepts'],
+                    reasoning_chains=[' '.join(chain) for chain in structure['reasoning_chains']],
+                    source_info=source,
                 )
-                
-                naming_decisions.append(decision)
-                
-                # Add naming to structure
-                structure['particle_name'] = decision.particle_name
-                structure['particle_type'] = decision.particle_type
-            
-            logger.info(f"Generated {len(naming_decisions)} particle names")
-            
-        except Exception as e:
-            logger.error(f"Naming error: {e}")
-            self.errors.append(f"Naming error: {str(e)}")
-        
-        # Step 6: Store as particles
-        logger.info("Step 6: Storing particles...")
-        particles_created = 0
-        particles_merged = 0
-        
-        try:
-            for structure in structures:
-                # Prepare content
-                content = json.dumps({
-                    'patterns': structure.get('patterns', []),
-                    'concepts': structure.get('concepts', []),
-                    'reasoning_chains': structure.get('reasoning_chains', []),
-                    'formula': structure.get('formula', ''),
-                    'confidence': structure.get('confidence', 0.0)
-                }, indent=2)
-                
-                # Store particle
-                particle, is_new = self.memory_storage.store(
-                    name=structure.get('particle_name', 'fx.logic.unknown'),
-                    particle_type=structure.get('particle_type', 'fx.logic.general'),
-                    content=content,
-                    source_info=structure.get('source_info', {}),
-                    tags=structure.get('patterns', []) + structure.get('concepts', []),
+                naming_decisions += 1
+
+                stage = 'Candidate storage'
+                self.memory_storage.store(
+                    name=decision.particle_name,
+                    particle_type=decision.particle_type,
+                    content=json.dumps(structure, indent=2, ensure_ascii=False),
+                    source_info=source,
+                    tags=patterns + structure['concepts'],
                     metadata={
-                        'confidence': structure.get('confidence', 0.0),
-                        'formula': structure.get('formula', '')
-                    }
+                        'naming_version': decision.version,
+                        'naming_confidence': decision.confidence,
+                        'owner_review': 'PENDING',
+                    },
+                    deduplicate=False,
                 )
-                
-                if is_new:
-                    particles_created += 1
-                else:
-                    particles_merged += 1
-            
-            logger.info(f"Stored: {particles_created} new, {particles_merged} merged")
-            
-        except Exception as e:
-            logger.error(f"Storage error: {e}")
-            self.errors.append(f"Storage error: {str(e)}")
-        
-        # Step 7: Generate sync report
-        logger.info("Step 7: Generating sync report...")
-        
+                particles_created += 1
+
+            stage = 'Candidate Merkle verification'
+            valid, merkle_errors = self.memory_storage.verify_merkle_chain()
+            if not valid:
+                raise ValueError('; '.join(merkle_errors))
+        except Exception as exc:
+            logger.exception("%s failed for pattern %s", stage, pattern)
+            errors.append(f"{stage}: {exc}")
+
         report = self._create_report(
             session_id=session_id,
             timestamp=timestamp,
@@ -357,20 +302,16 @@ class IntelligentRepoSync:
             github_results=len(snippets),
             extracted_structures=len(structures),
             particles_created=particles_created,
-            particles_merged=particles_merged,
             test_results=test_results,
-            naming_decisions=len(naming_decisions)
+            naming_decisions=naming_decisions,
+            errors=errors,
         )
-        
-        # Save report
+        report.summary['attention_pairs'] = attention_pairs
+        report.summary['owner_review'] = 'PENDING'
+        report.summary['storage_scope'] = 'candidate'
         self._save_report(report)
-        
-        logger.info("="*80)
-        logger.info(f"Sync complete: {particles_created + particles_merged} particles")
-        logger.info("="*80)
-        
         return report
-    
+
     def _create_report(
         self,
         session_id: str,
@@ -391,7 +332,7 @@ class IntelligentRepoSync:
             'new_particles': particles_created,
             'merged_particles': particles_merged,
             'extraction_rate': f"{extracted_structures}/{github_results}" if github_results > 0 else "0/0",
-            'success': len(errors or self.errors) == 0
+            'success': not errors
         }
         
         return SyncReport(
@@ -404,25 +345,19 @@ class IntelligentRepoSync:
             particles_merged=particles_merged,
             test_results=test_results or {},
             naming_decisions=naming_decisions,
-            errors=errors or self.errors,
+            errors=errors or [],
             summary=summary
         )
     
     def _save_report(self, report: SyncReport):
         """Save sync report"""
-        reports_dir = './sync_reports'
-        os.makedirs(reports_dir, exist_ok=True)
-        
-        report_file = os.path.join(
-            reports_dir,
-            f"sync_{report.session_id[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        )
-        
-        with open(report_file, 'w') as f:
+        reports_dir = self.candidate_dir / 'sync_reports'
+        reports_dir.mkdir(exist_ok=True)
+        report_file = reports_dir / f"sync_{report.session_id}.json"
+        with report_file.open('w', encoding='utf-8') as f:
             json.dump(report.to_dict(), f, indent=2, ensure_ascii=False)
-        
-        logger.info(f"Report saved: {report_file}")
-    
+        logger.info("Report saved: %s", report_file)
+
     async def sync_all_patterns(self, limit: Optional[int] = None) -> List[SyncReport]:
         """Sync all patterns from config"""
         patterns = self.config.get('patterns', [])
@@ -433,12 +368,8 @@ class IntelligentRepoSync:
             logger.info(f"Syncing pattern: {pattern}")
             logger.info(f"{'='*80}\n")
             
-            try:
-                report = await self.sync_pattern(pattern, limit)
-                reports.append(report)
-            except Exception as e:
-                logger.error(f"Pattern sync failed: {e}")
-        
+            reports.append(await self.sync_pattern(pattern, limit))
+
         return reports
 
 
@@ -484,7 +415,10 @@ async def main():
             parser.error("--pattern contains invalid control characters")
         args.pattern = sanitized_pattern
     
-    # Initialize orchestrator
+    if not args.pattern and not args.all:
+        parser.print_help()
+        return 0
+
     sync = IntelligentRepoSync(config_path=args.config)
     
     # Run sync
@@ -512,8 +446,9 @@ async def main():
                 print(f"  - {error}")
         
         print("="*80)
-        
-    elif args.all:
+        return 0 if report.summary['success'] else 1
+
+    else:
         # Sync all patterns
         reports = await sync.sync_all_patterns(args.limit)
         
@@ -529,10 +464,8 @@ async def main():
             print(f"  Errors: {len(report.errors)}")
         
         print("="*80)
-    
-    else:
-        parser.print_help()
+        return 0 if reports and all(report.summary['success'] for report in reports) else 1
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()))
