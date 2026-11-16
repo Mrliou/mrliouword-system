@@ -42,7 +42,7 @@ from integrations.particle.test_recorder import ParticleTestRecorder
 from integrations.particle.naming_engine import ParticleNamingEngine
 from integrations.particle.memory_storage import ParticleMemoryStorage
 from modules.MRL_SystemA_ParticleLayer import UNSIGNED_PENDING
-from scripts.global_github_search import GitHubSearchEngine
+from scripts.global_github_search import GitHubRateLimitError, GitHubSearchEngine
 
 logging.basicConfig(
     level=logging.INFO,
@@ -202,6 +202,7 @@ class IntelligentRepoSync:
         naming_decisions = 0
         particles_created = 0
         errors = []
+        rate_limit = None
         stage = 'GitHub search'
         try:
             github_config = self.config.get('github', {})
@@ -294,6 +295,8 @@ class IntelligentRepoSync:
         except Exception as exc:
             logger.exception("%s failed for pattern %s", stage, pattern)
             errors.append(f"{stage}: {exc}")
+            if isinstance(exc, GitHubRateLimitError):
+                rate_limit = exc.details
 
         report = self._create_report(
             session_id=session_id,
@@ -309,6 +312,8 @@ class IntelligentRepoSync:
         report.summary['attention_pairs'] = attention_pairs
         report.summary['owner_review'] = 'PENDING'
         report.summary['storage_scope'] = 'candidate'
+        if rate_limit is not None:
+            report.summary['github_rate_limit'] = rate_limit
         self._save_report(report)
         return report
 
@@ -362,13 +367,32 @@ class IntelligentRepoSync:
         """Sync all patterns from config"""
         patterns = self.config.get('patterns', [])
         reports = []
+        blocked_by_pattern = None
         
         for pattern in patterns:
             logger.info(f"\n{'='*80}")
             logger.info(f"Syncing pattern: {pattern}")
             logger.info(f"{'='*80}\n")
             
-            reports.append(await self.sync_pattern(pattern, limit))
+            if blocked_by_pattern is None:
+                report = await self.sync_pattern(pattern, limit)
+                if 'github_rate_limit' in report.summary:
+                    blocked_by_pattern = pattern
+            else:
+                report = self._create_report(
+                    session_id=str(uuid4()),
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    pattern=pattern,
+                    errors=[f'Skipped after GitHub rate limit in pattern {blocked_by_pattern}'],
+                )
+                report.summary.update(
+                    storage_scope='candidate',
+                    owner_review='PENDING',
+                    status='SKIPPED_RATE_LIMIT',
+                    blocked_by_pattern=blocked_by_pattern,
+                )
+                self._save_report(report)
+            reports.append(report)
 
         return reports
 
