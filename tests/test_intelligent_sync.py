@@ -15,6 +15,7 @@ import runpy
 import sys
 from pathlib import Path
 from textwrap import dedent
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -26,6 +27,7 @@ from integrations.particle.naming_engine import ParticleNamingEngine
 from integrations.particle.test_recorder import ParticleTestRecorder
 from integrations.particle.test_recorder import TestReport as ParticleValidationReport
 from integrations.webgpu.attention_filter import AttentionFilter, VectorCore
+from scripts import global_github_search
 from scripts.global_github_search import GitHubSearchEngine
 
 SYNC_SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'intelligent_repo_sync.py'
@@ -65,9 +67,10 @@ def github_file(path='Src/OriginalName.py', ref='a' * 40, code=SYNTHETIC_CODE):
     return item, {'content': base64.b64encode(raw).decode('ascii')}
 
 
-def response(data):
+def response(data, status=200, headers=None):
     result = Mock(spec=requests.Response)
-    result.headers = {}
+    result.status_code = status
+    result.headers = headers or {}
     result.json.return_value = data
     return result
 
@@ -133,6 +136,56 @@ class TestGitHubSearch:
         assert snippet.language == 'Python'
         assert snippet.commit_sha is None
         assert snippet.blob_sha == item['sha']
+
+    @pytest.mark.parametrize(
+        'limited_response,expected_delay',
+        [
+            (response({}, 429, {'Retry-After': '8'}), 8),
+            (response({}, 403, {
+                'Retry-After': '3',
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': '100010',
+            }), 11),
+        ],
+    )
+    def test_rate_limit_honors_server_wait(self, monkeypatch, limited_response, expected_delay):
+        clock = SimpleNamespace(time=lambda: 100000, sleep=Mock())
+        monkeypatch.setattr(global_github_search, 'time', clock)
+        item, contents = github_file()
+        item['repository']['stargazers_count'] = 42
+        get = Mock(side_effect=[limited_response, response({'items': [item]}), response(contents)])
+        monkeypatch.setattr(requests, 'get', get)
+
+        snippet, = GitHubSearchEngine().search_code('attention', languages=['Python'])
+
+        assert snippet.blob_sha == item['sha']
+        clock.sleep.assert_called_once_with(expected_delay)
+        assert [call.args[0] for call in get.call_args_list] == [SEARCH_URL, SEARCH_URL, item['url']]
+
+    def test_rate_limit_without_headers_backs_off(self, monkeypatch):
+        clock = SimpleNamespace(time=lambda: 100000, sleep=Mock())
+        monkeypatch.setattr(global_github_search, 'time', clock)
+        get = Mock(side_effect=[
+            response({}, 429),
+            response({'message': 'You have exceeded a secondary rate limit.'}, 403),
+            response({'items': []}),
+        ])
+        monkeypatch.setattr(requests, 'get', get)
+        assert GitHubSearchEngine().search_code('attention') == []
+        assert [call.args[0] for call in clock.sleep.call_args_list] == [60, 120]
+        assert get.call_count == 3
+
+    def test_permission_failure_is_not_retried(self, monkeypatch):
+        clock = SimpleNamespace(time=lambda: 100000, sleep=Mock())
+        monkeypatch.setattr(global_github_search, 'time', clock)
+        denied = response({'message': 'Resource not accessible by integration'}, 403)
+        denied.raise_for_status.side_effect = requests.HTTPError('403 Forbidden')
+        get = Mock(return_value=denied)
+        monkeypatch.setattr(requests, 'get', get)
+        with pytest.raises(requests.HTTPError, match='403 Forbidden'):
+            GitHubSearchEngine().search_code('attention')
+        clock.sleep.assert_not_called()
+        get.assert_called_once()
 
 
 class TestLogicalExtractor:
@@ -598,7 +651,7 @@ class TestSyncOrchestrator:
     def test_all_patterns_retains_each_result_and_returns_failure(self, tmp_path, monkeypatch):
         item, contents = github_file()
         item['repository']['stargazers_count'] = 42
-        rejected = response({})
+        rejected = response({}, 403)
         rejected.raise_for_status.side_effect = requests.HTTPError('403 Forbidden')
         monkeypatch.setattr(requests, 'get', Mock(side_effect=[
             rejected, response({'items': [item]}), response(contents)
@@ -617,6 +670,43 @@ class TestSyncOrchestrator:
         assert reports['no-access']['summary']['success'] is False
         assert reports['candidate']['summary']['success'] is True
         assert reports['candidate']['particles_created'] == 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('retry_after,expected_calls', [(None, 3), ('301', 1)])
+    async def test_persistent_rate_limit_stops_later_patterns(
+        self, tmp_path, monkeypatch, retry_after, expected_calls
+    ):
+        from scripts.intelligent_repo_sync import IntelligentRepoSync
+
+        headers = {'X-GitHub-Request-Id': 'SYNTHETIC:01'}
+        if retry_after is not None:
+            headers['Retry-After'] = retry_after
+        get = Mock(return_value=response({}, 429, headers))
+        monkeypatch.setattr(requests, 'get', get)
+        clock = SimpleNamespace(time=lambda: 100000, sleep=Mock())
+        monkeypatch.setattr(global_github_search, 'time', clock)
+        config = configure_sync(tmp_path, patterns=['initial', 'second', 'third'])
+
+        sync = IntelligentRepoSync(config)
+        first, *skipped = await sync.sync_all_patterns()
+
+        assert get.call_count == expected_calls
+        assert all('initial' in call.kwargs['params']['q'] for call in get.call_args_list)
+        details = first.summary['github_rate_limit']
+        assert details['http_status'] == 429
+        assert details['request_id'] == 'SYNTHETIC:01'
+        assert details['attempts'] == expected_calls
+        assert details['retry_after'] == retry_after
+        assert first.summary['success'] is False
+        assert [report.pattern for report in skipped] == ['second', 'third']
+        assert all(
+            report.summary['status'] == 'SKIPPED_RATE_LIMIT'
+            and report.summary['blocked_by_pattern'] == 'initial'
+            and not report.summary['success']
+            for report in skipped
+        )
+        assert all(report.particles_created == 0 for report in [first, *skipped])
+        assert len(list(sync.candidate_dir.glob('sync_reports/*.json'))) == 3
 
 
 @pytest.fixture(autouse=True)

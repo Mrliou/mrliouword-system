@@ -16,6 +16,7 @@ Author: MR.liou
 
 import base64
 import hashlib
+import json
 import os
 import re
 import time
@@ -37,6 +38,16 @@ FILE_LANGUAGES = {
     '.sh': 'Shell', '.bash': 'Shell', '.md': 'Markdown',
     '.go': 'Go', '.rs': 'Rust', '.java': 'Java',
 }
+
+RATE_LIMIT_RETRIES = 2
+RATE_LIMIT_WAIT_BUDGET = 300
+
+
+class GitHubRateLimitError(RuntimeError):
+    def __init__(self, details: Dict):
+        self.details = details
+        super().__init__(f"GitHub REST rate limit: {json.dumps(details)}")
+
 
 @dataclass
 class CodeSnippet:
@@ -140,9 +151,8 @@ class GitHubSearchEngine:
             logger.info("Searching GitHub: %s", query)
             self._check_rate_limit()
             params = {'q': query, 'per_page': min(limit, 100)}
-            response = requests.get(url, headers=self.headers, params=params, timeout=30)
+            response = self._get(url, timeout=30, params=params)
             self._update_rate_limit(response)
-            response.raise_for_status()
             results_by_language.append([
                 (language, item) for item in response.json()['items']
             ])
@@ -191,21 +201,64 @@ class GitHubSearchEngine:
         if name not in self._repo_star_counts:
             stars = repository.get('stargazers_count')
             if stars is None:
-                response = requests.get(repository['url'], headers=self.headers, timeout=10)
-                response.raise_for_status()
+                response = self._get(repository['url'], timeout=10)
                 stars = response.json()['stargazers_count']
             self._repo_star_counts[name] = stars
         return self._repo_star_counts[name]
 
     def _fetch_file_content(self, url: str, expected_blob_sha: str) -> str:
         """Verify the exact Git blob before decoding it for analysis."""
-        response = requests.get(url, headers=self.headers, timeout=10)
-        response.raise_for_status()
+        response = self._get(url, timeout=10)
         raw = base64.b64decode(response.json()['content'])
         blob_header = f'blob {len(raw)}\0'.encode('ascii')
         if hashlib.sha1(blob_header + raw).hexdigest() != expected_blob_sha:
             raise ValueError(f'Git blob SHA mismatch for {url}')
         return raw.decode('utf-8', errors='replace')
+
+    def _get(self, url: str, *, timeout: int, params: Optional[Dict] = None):
+        """Retry GitHub rate-limit responses within a bounded wait budget."""
+        wait_budget = RATE_LIMIT_WAIT_BUDGET
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
+            response = requests.get(url, headers=self.headers, params=params, timeout=timeout)
+            headers = response.headers
+            retry_after = headers.get('Retry-After')
+            remaining = headers.get('X-RateLimit-Remaining')
+            reset = headers.get('X-RateLimit-Reset')
+            rate_limited = response.status_code == 429
+            if response.status_code == 403:
+                rate_limited = retry_after is not None or remaining == '0'
+                if not rate_limited:
+                    try:
+                        body = response.json()
+                    except ValueError:
+                        body = {}
+                    if isinstance(body, dict):
+                        rate_limited = 'rate limit' in str(body.get('message', '')).lower()
+            if not rate_limited:
+                response.raise_for_status()
+                return response
+
+            waits = []
+            if retry_after and retry_after.isdecimal():
+                waits.append(int(retry_after))
+            if remaining == '0' and reset and reset.isdecimal():
+                waits.append(max(0, int(reset) - int(time.time()) + 1))
+            delay = max(1, max(waits, default=60 * 2 ** attempt))
+            details = {
+                'endpoint': urlsplit(url).path,
+                'http_status': response.status_code,
+                'request_id': headers.get('X-GitHub-Request-Id'),
+                'rate_limit_resource': headers.get('X-RateLimit-Resource'),
+                'rate_limit_remaining': remaining,
+                'rate_limit_reset': reset,
+                'retry_after': retry_after,
+                'attempts': attempt + 1,
+            }
+            if attempt == RATE_LIMIT_RETRIES or delay > wait_budget:
+                raise GitHubRateLimitError(details)
+            logger.warning("GitHub rate limit, waiting %ss. %s", delay, json.dumps(details))
+            time.sleep(delay)
+            wait_budget -= delay
     
     def search_repositories(
         self,
