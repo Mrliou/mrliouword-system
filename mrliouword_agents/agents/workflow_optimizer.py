@@ -1,6 +1,7 @@
 """
 工作流優化 Agent
 """
+
 from typing import AsyncGenerator, Optional
 
 from ..core.base_agent import BaseAgent
@@ -17,11 +18,11 @@ class MrliouwordWorkflowOptimizer(BaseAgent):
     ) -> AsyncGenerator[str, None]:
         """
         優化工作流
-        
+
         Args:
             workflow_path: 工作流檔案路徑
             optimization_level: 優化級別 (basic, standard, advanced)
-            
+
         Yields:
             優化過程中的消息
         """

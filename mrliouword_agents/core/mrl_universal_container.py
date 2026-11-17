@@ -3,6 +3,7 @@
 這個模組不是 MrliouAI 母體本身，也不列舉有限世界清單。它保存母體建立
 粒子空間時最低限度的可驗證行為：建立、進化、組合、多視角呈現、快照與恢復。
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -12,7 +13,6 @@ from hashlib import sha256
 import json
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 from uuid import uuid4
-
 
 ORIGIN_SIGNATURE = "MrLiou"
 UNIVERSAL_CONTAINER_SPEC = "MrliouAI.UniversalContainer.v1"
@@ -264,7 +264,9 @@ class MRLUniversalContainer:
             source_ids + (stored.space_id,),
             "preserve_sources_then_compose",
             after_hash=stored.digest(),
-            details={"source_hashes": {item.space_id: item.digest() for item in sources}},
+            details={
+                "source_hashes": {item.space_id: item.digest() for item in sources}
+            },
         )
         return deepcopy(stored)
 
@@ -357,4 +359,3 @@ class MRLUniversalContainer:
 
     def event_ledger(self) -> Tuple[MotherEvent, ...]:
         return tuple(deepcopy(self._events))
-

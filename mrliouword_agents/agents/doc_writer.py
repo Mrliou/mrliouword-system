@@ -1,6 +1,7 @@
 """
 文件撰寫 Agent
 """
+
 from typing import AsyncGenerator, Optional
 from pathlib import Path
 
@@ -19,19 +20,19 @@ class MrliouwordDocWriter(BaseAgent):
     ) -> AsyncGenerator[str, None]:
         """
         生成文件
-        
+
         Args:
             file_path: 源碼檔案路徑
             doc_type: 文件類型 (api, guide, tutorial)
-            
+
         Yields:
             生成過程中的消息
         """
         yield f"📝 開始生成 {doc_type} 文件: {file_path}"
-        
+
         if not Path(file_path).exists():
             raise AgentError(f"檔案不存在: {file_path}")
-        
+
         yield f"📖 分析源碼中..."
         yield f"✓ 源碼分析完成"
         yield f"✍️ 撰寫文件..."
